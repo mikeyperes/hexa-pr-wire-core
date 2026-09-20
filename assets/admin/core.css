@@ -1,0 +1,137 @@
+.hprwc-admin-content {
+	max-width: 1180px;
+	padding-top: 20px;
+}
+
+.hprwc-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	gap: 14px;
+	margin: 0 0 18px;
+}
+
+.hprwc-card,
+.hprwc-panel {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 7px;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.hprwc-card {
+	color: #1d2327;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 18px;
+	text-decoration: none;
+}
+
+.hprwc-card:hover,
+.hprwc-card:focus {
+	border-color: #2271b1;
+	color: #135e96;
+}
+
+.hprwc-card strong {
+	font-size: 28px;
+	line-height: 1;
+}
+
+.hprwc-panel {
+	margin: 0 0 18px;
+	padding: 18px;
+}
+
+.hprwc-panel > :first-child,
+.hprwc-template > :first-child {
+	margin-top: 0;
+}
+
+.hprwc-template {
+	border-bottom: 1px solid #dcdcde;
+	margin: 0 0 18px;
+	padding: 0 0 18px;
+}
+
+.hprwc-template label {
+	display: block;
+	margin-top: 10px;
+}
+
+.hprwc-badge {
+	border-radius: 999px;
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1;
+	padding: 5px 8px;
+}
+
+.hprwc-badge.success {
+	background: #edfaef;
+	color: #006b1b;
+}
+
+.hprwc-badge.warning {
+	background: #fff8e5;
+	color: #6e4a00;
+}
+
+.hprwc-entitlements {
+	max-height: 430px;
+	overflow: auto;
+}
+
+.column-hprwc_drafts,
+.column-hprwc_releases {
+	width: 72px;
+}
+
+.hprwc-checklist ul {
+	margin: 12px 0;
+}
+
+.hprwc-checklist li {
+	align-items: center;
+	display: flex;
+	font-weight: 600;
+	gap: 7px;
+	margin: 7px 0;
+}
+
+.hprwc-checklist li span {
+	align-items: center;
+	border-radius: 50%;
+	display: inline-flex;
+	height: 20px;
+	justify-content: center;
+	width: 20px;
+}
+
+.hprwc-checklist .is-complete {
+	color: #008a20;
+}
+
+.hprwc-checklist .is-complete span {
+	background: #edfaef;
+}
+
+.hprwc-checklist .is-missing {
+	color: #8a2424;
+}
+
+.hprwc-checklist .is-missing span {
+	background: #fcf0f1;
+}
+
+.hprwc-notification-box button.is-busy {
+	opacity: .65;
+	pointer-events: none;
+}
+
+@media (max-width: 782px) {
+	.hprwc-cards {
+		grid-template-columns: 1fr;
+	}
+}
