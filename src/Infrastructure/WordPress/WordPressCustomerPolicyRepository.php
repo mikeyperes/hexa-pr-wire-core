@@ -8,8 +8,11 @@ use HexaPrWire\Core\Customer\SubmissionMode;
 
 final class WordPressCustomerPolicyRepository implements CustomerPolicyRepository {
 	public const MODE_META = 'hprwc_submission_mode';
+	public const ACCESS_MODE_META = 'hprwc_publication_access_mode';
 	public const PUBLICATIONS_META = 'hprwc_allowed_publications';
 	public const PRICES_META = 'hprwc_publication_prices';
+	public const ACCESS_UNRESTRICTED = 'unrestricted';
+	public const ACCESS_RESTRICTED = 'restricted';
 
 	public function is_customer( int $user_id ): bool {
 		$user = get_userdata( $user_id );
@@ -26,8 +29,14 @@ final class WordPressCustomerPolicyRepository implements CustomerPolicyRepositor
 			: SubmissionMode::EDIT_EXISTING;
 	}
 
+	public function publication_access_mode( int $user_id ): string {
+		return self::ACCESS_RESTRICTED === (string) get_user_meta( $user_id, self::ACCESS_MODE_META, true )
+			? self::ACCESS_RESTRICTED
+			: self::ACCESS_UNRESTRICTED;
+	}
+
 	public function publication_access_configured( int $user_id ): bool {
-		return metadata_exists( 'user', $user_id, self::PUBLICATIONS_META );
+		return self::ACCESS_RESTRICTED === $this->publication_access_mode( $user_id );
 	}
 
 	public function allowed_publications( int $user_id ): array {
@@ -53,7 +62,8 @@ final class WordPressCustomerPolicyRepository implements CustomerPolicyRepositor
 		return $prices;
 	}
 
-	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [] ): void {
+	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = self::ACCESS_UNRESTRICTED ): void {
+		$publication_access_mode = self::ACCESS_RESTRICTED === sanitize_key( $publication_access_mode ) ? self::ACCESS_RESTRICTED : self::ACCESS_UNRESTRICTED;
 		$publication_ids = array_values( array_unique( array_filter( array_map( 'absint', $publication_ids ) ) ) );
 		$valid_publications = get_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false, 'fields' => 'ids', 'include' => $publication_ids ?: [ 0 ] ] );
 		$valid_publications = is_wp_error( $valid_publications ) ? [] : array_values( array_map( 'absint', $valid_publications ) );
@@ -68,6 +78,7 @@ final class WordPressCustomerPolicyRepository implements CustomerPolicyRepositor
 			}
 		}
 		update_user_meta( $user_id, self::MODE_META, SubmissionMode::normalize( $mode ) );
+		update_user_meta( $user_id, self::ACCESS_MODE_META, $publication_access_mode );
 		update_user_meta( $user_id, self::PUBLICATIONS_META, $valid_publications );
 		update_user_meta( $user_id, self::PRICES_META, $clean_prices );
 	}

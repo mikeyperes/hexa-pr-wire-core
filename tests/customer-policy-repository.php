@@ -32,11 +32,19 @@ $assert = static function ( bool $condition, string $message ): void {
 $repository = new \HexaPrWire\Core\Infrastructure\WordPress\WordPressCustomerPolicyRepository();
 $assert( $repository->is_customer( 7 ), 'the customer role is recognized' );
 $assert( 'create_publish' === $repository->mode( 7 ), 'legacy free-publishing metadata maps to the publish mode' );
-$assert( ! $repository->publication_access_configured( 7 ), 'legacy customers remain unconfigured until an administrator saves publication access' );
+$assert( 'unrestricted' === $repository->publication_access_mode( 7 ), 'legacy customers default to unrestricted publication access' );
+$assert( ! $repository->publication_access_configured( 7 ), 'unrestricted customers do not enforce an allowlist' );
 $repository->save( 7, 'full_access', [ 11 ], [ 11 => '0', 12 => '199.995', 99 => '50', 13 => '-1' ] );
-$assert( $repository->publication_access_configured( 7 ), 'saving a customer profile makes publication access explicit' );
-$assert( [ 11 ] === $repository->allowed_publications( 7 ), 'allowed publications are validated' );
+$assert( ! $repository->publication_access_configured( 7 ), 'ordinary saves do not activate publication restrictions' );
+$assert( [ 11 ] === $repository->allowed_publications( 7 ), 'unrestricted saves preserve validated publication selections' );
 $assert( [ 11 => '0.00', 12 => '200.00' ] === $repository->publication_prices( 7 ), 'prices are normalized independently of the entitlement list' );
 $assert( 'full_access' === $repository->mode( 7 ), 'explicit modes replace the legacy flag' );
+$repository->save( 7, 'edit_existing', [ 12, 99 ], [], 'restricted' );
+$assert( 'restricted' === $repository->publication_access_mode( 7 ), 'restrictions activate only after an explicit restricted save' );
+$assert( $repository->publication_access_configured( 7 ), 'restricted customers enforce the stored allowlist' );
+$assert( [ 12 ] === $repository->allowed_publications( 7 ), 'restricted publication selections remain validated' );
+$repository->save( 7, 'edit_existing', [ 11 ], [], 'unrestricted' );
+$assert( ! $repository->publication_access_configured( 7 ), 'explicit unrestricted mode disables allowlist enforcement' );
+$assert( [ 11 ] === $repository->allowed_publications( 7 ), 'unrestricted mode does not erase the saved allowlist' );
 
 fwrite( STDOUT, "Customer policy repository tests passed.\n" );

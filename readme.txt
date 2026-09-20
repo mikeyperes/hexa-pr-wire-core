@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,11 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.0.3 =
+* Add an explicit unrestricted/restricted publication-access control.
+* Keep unrelated customer and pricing saves from activating restrictions.
+* Preserve validated allowlist selections independently in unrestricted mode.
 
 = 2.0.2 =
 * Keep legacy customer publication access unrestricted until an administrator saves explicit limits.

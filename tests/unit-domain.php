@@ -45,10 +45,11 @@ $repository = new class implements \HexaPrWire\Core\Contracts\CustomerPolicyRepo
 	public array $configured = [ 7 => true, 8 => true, 9 => true, 10 => true ];
 	public function is_customer( int $user_id ): bool { return isset( $this->modes[ $user_id ] ); }
 	public function mode( int $user_id ): string { return $this->modes[ $user_id ] ?? 'edit_existing'; }
+	public function publication_access_mode( int $user_id ): string { return ( $this->configured[ $user_id ] ?? false ) ? 'restricted' : 'unrestricted'; }
 	public function publication_access_configured( int $user_id ): bool { return $this->configured[ $user_id ] ?? false; }
 	public function allowed_publications( int $user_id ): array { return $this->allowed[ $user_id ] ?? []; }
 	public function publication_prices( int $user_id ): array { return []; }
-	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [] ): void {}
+	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = 'unrestricted' ): void {}
 };
 
 $policy = new \HexaPrWire\Core\Customer\AccessPolicy( $repository );

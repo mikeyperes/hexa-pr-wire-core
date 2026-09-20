@@ -23,10 +23,11 @@ $assert = static function ( bool $condition, string $message ): void {
 $repo = new class implements \HexaPrWire\Core\Contracts\CustomerPolicyRepository {
 	public function is_customer( int $user_id ): bool { return false; }
 	public function mode( int $user_id ): string { return 'edit_existing'; }
+	public function publication_access_mode( int $user_id ): string { return 'unrestricted'; }
 	public function publication_access_configured( int $user_id ): bool { return false; }
 	public function allowed_publications( int $user_id ): array { return []; }
 	public function publication_prices( int $user_id ): array { return []; }
-	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [] ): void {}
+	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = 'unrestricted' ): void {}
 };
 $groups = new \HexaPrWire\Core\Fields\FieldGroups( new \HexaPrWire\Core\Fields\ReleaseLocation( new \HexaPrWire\Core\Customer\AccessPolicy( $repo ) ) );
 $definitions = [ $groups->publication_group(), $groups->taxonomy_group(), $groups->public_release_group(), $groups->checklist_group(), $groups->private_release_group() ];

@@ -36,8 +36,8 @@ final class CustomerProfile implements Module {
 		$prices = $this->policies->publication_prices( (int) $user->ID );
 		$terms = get_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false, 'orderby' => 'name' ] );
 		$terms = is_wp_error( $terms ) ? [] : $terms;
-		$configured = $this->policies->publication_access_configured( (int) $user->ID );
-		$allowed = $configured ? $this->policies->allowed_publications( (int) $user->ID ) : array_map( static fn( \WP_Term $term ): int => (int) $term->term_id, $terms );
+		$access_mode = $this->policies->publication_access_mode( (int) $user->ID );
+		$allowed = $this->policies->allowed_publications( (int) $user->ID );
 		?>
 		<h2 id="hprwc-customer-access">Hexa PR Wire Customer Access</h2>
 		<?php wp_nonce_field( self::NONCE, 'hprwc_customer_nonce' ); ?>
@@ -57,6 +57,10 @@ final class CustomerProfile implements Module {
 			<tr>
 				<th>Allowed publications and customer pricing</th>
 				<td><div class="hprwc-entitlements">
+					<fieldset><legend class="screen-reader-text">Publication access</legend>
+						<label><input type="radio" name="hprwc_publication_access_mode" value="unrestricted" <?php checked( 'unrestricted', $access_mode ); ?>> Unrestricted — all current and future publications</label><br>
+						<label><input type="radio" name="hprwc_publication_access_mode" value="restricted" <?php checked( 'restricted', $access_mode ); ?>> Restricted — only checked publications below</label>
+					</fieldset>
 					<table class="widefat striped"><thead><tr><th>Allow</th><th>Publication</th><th>Customer price</th></tr></thead><tbody>
 					<?php foreach ( $terms as $term ) : ?>
 						<tr><td><input type="checkbox" name="hprwc_allowed_publications[]" value="<?php echo esc_attr( $term->term_id ); ?>" <?php checked( in_array( (int) $term->term_id, $allowed, true ) ); ?>></td>
@@ -64,7 +68,7 @@ final class CustomerProfile implements Module {
 						<td><label class="screen-reader-text" for="hprwc_price_<?php echo esc_attr( $term->term_id ); ?>">Price for <?php echo esc_html( $term->name ); ?></label><input class="small-text" type="number" min="0" step="0.01" id="hprwc_price_<?php echo esc_attr( $term->term_id ); ?>" name="hprwc_publication_prices[<?php echo esc_attr( $term->term_id ); ?>]" value="<?php echo esc_attr( $prices[ $term->term_id ] ?? '' ); ?>"></td></tr>
 					<?php endforeach; ?>
 					</tbody></table>
-					<p class="description"><?php echo esc_html( $configured ? 'Only checked publications are available to this customer.' : 'Legacy account: all publications remain available until this profile is saved.' ); ?> Blank prices mean no publication-specific override. Billing resolves these values through the <code>hprwc_customer_publication_price</code> API filter.</p>
+					<p class="description">Publication restrictions change only when “Restricted” is deliberately selected. Prices save independently and do not activate restrictions.</p>
 				</div></td>
 			</tr>
 			<tr><th><label for="hprwc_notification_emails">Notification emails</label></th><td><textarea class="large-text" rows="4" id="hprwc_notification_emails" name="hprwc_notification_emails"><?php echo esc_textarea( implode( "\n", $this->notification_emails( (int) $user->ID ) ) ); ?></textarea><p class="description">One address per line. The account email is always included at send time.</p></td></tr>
@@ -83,9 +87,12 @@ final class CustomerProfile implements Module {
 			return;
 		}
 		$mode = isset( $_POST['hprwc_submission_mode'] ) && is_scalar( $_POST['hprwc_submission_mode'] ) ? sanitize_key( wp_unslash( (string) $_POST['hprwc_submission_mode'] ) ) : SubmissionMode::EDIT_EXISTING;
+		$access_mode = isset( $_POST['hprwc_publication_access_mode'] ) && is_scalar( $_POST['hprwc_publication_access_mode'] )
+			? sanitize_key( wp_unslash( (string) $_POST['hprwc_publication_access_mode'] ) )
+			: $this->policies->publication_access_mode( $user_id );
 		$allowed = isset( $_POST['hprwc_allowed_publications'] ) && is_array( $_POST['hprwc_allowed_publications'] ) ? wp_unslash( $_POST['hprwc_allowed_publications'] ) : [];
 		$prices = isset( $_POST['hprwc_publication_prices'] ) && is_array( $_POST['hprwc_publication_prices'] ) ? wp_unslash( $_POST['hprwc_publication_prices'] ) : [];
-		$this->policies->save( $user_id, $mode, $allowed, $prices );
+		$this->policies->save( $user_id, $mode, $allowed, $prices, $access_mode );
 		$this->save_emails( $user_id, $this->posted_string( 'hprwc_notification_emails' ) );
 		update_user_meta( $user_id, 'email_subject', sanitize_text_field( $this->posted_string( 'hprwc_email_subject' ) ) );
 		update_user_meta( $user_id, 'welcome_message', wp_kses_post( $this->posted_string( 'hprwc_welcome_message' ) ) );
@@ -114,7 +121,9 @@ final class CustomerProfile implements Module {
 		}
 		if ( 'hprwc_publications' === $column ) {
 			$mode = $this->policies->mode( $user_id );
-			return SubmissionMode::is_full( $mode ) ? 'All' : (string) count( $this->policies->allowed_publications( $user_id ) );
+			return SubmissionMode::is_full( $mode ) || ! $this->policies->publication_access_configured( $user_id )
+				? 'All'
+				: (string) count( $this->policies->allowed_publications( $user_id ) );
 		}
 		if ( 'hprwc_drafts' === $column ) {
 			$count = $this->release_counts()[ $user_id ]['draft'] ?? 0;

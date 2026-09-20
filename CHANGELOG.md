@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.3 — 2026-09-20
+
+- Added an explicit unrestricted/restricted publication-access control.
+- Prevented unrelated profile and pricing saves from activating publication restrictions.
+- Preserved validated allowlist selections independently when access is unrestricted.
+
 ## 2.0.2 — 2026-09-20
 
 - Preserved unrestricted publication access for legacy customers until an administrator saves explicit entitlements.
