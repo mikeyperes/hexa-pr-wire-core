@@ -44,7 +44,7 @@ foreach ( [ 'CustomerActions', 'CustomerProfile', 'EditorChecklist', 'EditorStyl
 
 $main = (string) file_get_contents( $root . '/hexa-pr-wire-core.php' );
 $readme = (string) file_get_contents( $root . '/readme.txt' );
-$assert( str_contains( $main, 'Version: 2.0.1' ) && str_contains( $main, "HPRWC_VERSION', '2.0.1" ), 'plugin header and runtime version agree' );
+$assert( str_contains( $main, 'Version: 2.0.2' ) && str_contains( $main, "HPRWC_VERSION', '2.0.2" ), 'plugin header and runtime version agree' );
 $assert( ! str_contains( $readme, 'Stable tag: 1.0.1' ), 'readme is no longer pinned to the legacy release' );
 
 $migration = (string) file_get_contents( $root . '/src/Migration/LegacyMigration.php' );
@@ -53,5 +53,11 @@ $assert( str_contains( $migration, "'prepared' === ( \$existing['status'] ?? '' 
 $assert( str_contains( $migration, "\$state = \$this->legacy_state();" ), 'migration validates the current live state on every attempt' );
 $assert( str_contains( $migration, "'rollback_failed'" ), 'rollback failures retain explicit status' );
 $assert( str_contains( $migration, 'Code_Snippets\\clean_snippets_cache' ), 'snippet rollback clears Code Snippets caches' );
+
+$access = (string) file_get_contents( $root . '/src/Customer/AccessController.php' );
+$policy = (string) file_get_contents( $root . '/src/Customer/AccessPolicy.php' );
+$assert( ! str_contains( $access, "add_action( 'save_post_post', [ \$this, 'enforce_publication_assignments' ]" ), 'ordinary post saves do not strip unchanged publication assignments' );
+$assert( str_contains( $access, "'publication' !== \$taxonomy || \$this->is_billing_fulfillment()" ), 'Billing fulfillment bypasses customer taxonomy normalization' );
+$assert( str_contains( $policy, 'publication_access_configured' ), 'legacy publication access remains backward compatible until configured' );
 
 fwrite( STDOUT, "Static contract tests passed.\n" );

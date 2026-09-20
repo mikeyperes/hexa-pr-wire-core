@@ -28,7 +28,7 @@ The plugin registers the released `hexa/plugin-core` 3.0.6 package under `Hexa\P
 | Create and publish | Yes | Yes | No |
 | Full access | Yes | Yes | Yes |
 
-Non-full customers can see and assign only the publication terms selected on their user profile. The policy is enforced in classic admin, REST, post queries, media queries, capabilities, and taxonomy assignment.
+Non-full customers can see and assign only the publication terms selected on their user profile. Existing accounts remain unrestricted until an administrator saves their first explicit publication selection; after that, the checked set is authoritative and an empty set means no access. Existing post assignments remain stable during edits. The policy is enforced in classic admin, REST, post queries, media queries, capabilities, and taxonomy assignment.
 
 ## Commands
 

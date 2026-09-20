@@ -26,6 +26,10 @@ final class WordPressCustomerPolicyRepository implements CustomerPolicyRepositor
 			: SubmissionMode::EDIT_EXISTING;
 	}
 
+	public function publication_access_configured( int $user_id ): bool {
+		return metadata_exists( 'user', $user_id, self::PUBLICATIONS_META );
+	}
+
 	public function allowed_publications( int $user_id ): array {
 		$stored = get_user_meta( $user_id, self::PUBLICATIONS_META, true );
 		$stored = is_array( $stored ) ? $stored : [];

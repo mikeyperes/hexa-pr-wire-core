@@ -23,6 +23,7 @@ $assert = static function ( bool $condition, string $message ): void {
 $repo = new class implements \HexaPrWire\Core\Contracts\CustomerPolicyRepository {
 	public function is_customer( int $user_id ): bool { return false; }
 	public function mode( int $user_id ): string { return 'edit_existing'; }
+	public function publication_access_configured( int $user_id ): bool { return false; }
 	public function allowed_publications( int $user_id ): array { return []; }
 	public function publication_prices( int $user_id ): array { return []; }
 	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [] ): void {}

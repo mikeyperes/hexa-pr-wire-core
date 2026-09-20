@@ -22,7 +22,6 @@ final class AccessController implements Module {
 		add_action( 'pre_get_posts', [ $this, 'scope_post_queries' ], 20 );
 		add_filter( 'ajax_query_attachments_args', [ $this, 'scope_media_query' ], 20 );
 		add_filter( 'get_terms_args', [ $this, 'scope_publication_terms' ], 20, 2 );
-		add_action( 'save_post_post', [ $this, 'enforce_publication_assignments' ], 100, 3 );
 		add_action( 'set_object_terms', [ $this, 'enforce_term_assignment' ], 100, 6 );
 		add_action( 'load-post-new.php', [ $this, 'redirect_disallowed_new_post' ] );
 		add_action( 'admin_menu', [ $this, 'limit_customer_menus' ], 999 );
@@ -101,7 +100,9 @@ final class AccessController implements Module {
 		}
 		$requested_terms = $request->get_param( 'publication' );
 		if ( is_array( $requested_terms ) ) {
-			$request->set_param( 'publication', $this->policy->filter_publications( $user_id, $requested_terms ) );
+			$existing_terms = $is_new ? [] : wp_get_object_terms( absint( $request['id'] ?? 0 ), 'publication', [ 'fields' => 'ids' ] );
+			$existing_terms = is_wp_error( $existing_terms ) ? [] : array_map( 'absint', $existing_terms );
+			$request->set_param( 'publication', $this->policy->filter_publications_for_existing_post( $user_id, $requested_terms, $existing_terms ) );
 		}
 		return $prepared_post;
 	}
@@ -135,44 +136,50 @@ final class AccessController implements Module {
 		if ( ! in_array( 'publication', $taxonomies, true ) || ! $this->policy->is_customer( $user_id ) || SubmissionMode::is_full( $this->policy->mode( $user_id ) ) ) {
 			return $args;
 		}
+		if ( ! $this->policies->publication_access_configured( $user_id ) ) {
+			return $args;
+		}
 		$allowed = $this->policies->allowed_publications( $user_id );
 		$current = array_values( array_filter( array_map( 'absint', (array) ( $args['include'] ?? [] ) ) ) );
 		$args['include'] = $current ? array_values( array_intersect( $current, $allowed ) ) : ( $allowed ?: [ 0 ] );
 		return $args;
 	}
 
-	public function enforce_publication_assignments( int $post_id, \WP_Post $post, bool $update ): void {
-		unset( $update );
-		if ( $this->normalizing_terms || wp_is_post_revision( $post_id ) ) {
-			return;
-		}
-		$user_id = get_current_user_id();
-		if ( ! $this->policy->is_customer( $user_id ) || ! $this->policy->can_edit_post( $user_id, $post ) || SubmissionMode::is_full( $this->policy->mode( $user_id ) ) ) {
-			return;
-		}
-		$assigned = wp_get_object_terms( $post_id, 'publication', [ 'fields' => 'ids' ] );
-		if ( is_wp_error( $assigned ) ) {
-			return;
-		}
-		$allowed = $this->policy->filter_publications( $user_id, array_map( 'absint', $assigned ) );
-		if ( $allowed === array_values( array_map( 'absint', $assigned ) ) ) {
-			return;
-		}
-		$this->normalizing_terms = true;
-		wp_set_object_terms( $post_id, $allowed, 'publication', false );
-		$this->normalizing_terms = false;
-	}
-
 	/** @param string|int|array<int|string,mixed> $terms @param int[] $term_taxonomy_ids @param int[] $old_term_taxonomy_ids */
 	public function enforce_term_assignment( int $object_id, mixed $terms, array $term_taxonomy_ids, string $taxonomy, bool $append, array $old_term_taxonomy_ids ): void {
-		unset( $terms, $term_taxonomy_ids, $append, $old_term_taxonomy_ids );
-		if ( $this->normalizing_terms || 'publication' !== $taxonomy ) {
+		unset( $terms, $term_taxonomy_ids, $append );
+		if ( $this->normalizing_terms || 'publication' !== $taxonomy || $this->is_billing_fulfillment() ) {
 			return;
 		}
 		$post = get_post( $object_id );
-		if ( $post instanceof \WP_Post ) {
-			$this->enforce_publication_assignments( $object_id, $post, true );
+		$user_id = get_current_user_id();
+		if ( ! $post instanceof \WP_Post || ! $this->policy->is_customer( $user_id ) || ! $this->policy->can_edit_post( $user_id, $post ) || SubmissionMode::is_full( $this->policy->mode( $user_id ) ) ) {
+			return;
 		}
+		$assigned = wp_get_object_terms( $object_id, 'publication', [ 'fields' => 'ids' ] );
+		if ( is_wp_error( $assigned ) ) {
+			return;
+		}
+		$assigned = array_values( array_map( 'absint', $assigned ) );
+		$existing = $this->term_ids_from_taxonomy_ids( $old_term_taxonomy_ids );
+		$allowed = $this->policy->filter_publications_for_existing_post( $user_id, $assigned, $existing );
+		if ( $allowed !== $assigned ) {
+			$this->normalizing_terms = true;
+			wp_set_object_terms( $object_id, $allowed, 'publication', false );
+			$this->normalizing_terms = false;
+		}
+	}
+
+	/** @param int[] $term_taxonomy_ids @return int[] */
+	private function term_ids_from_taxonomy_ids( array $term_taxonomy_ids ): array {
+		global $wpdb;
+		$term_taxonomy_ids = array_values( array_unique( array_filter( array_map( 'absint', $term_taxonomy_ids ) ) ) );
+		if ( ! $term_taxonomy_ids ) {
+			return [];
+		}
+		$placeholders = implode( ',', array_fill( 0, count( $term_taxonomy_ids ), '%d' ) );
+		$query = $wpdb->prepare( "SELECT term_id FROM {$wpdb->term_taxonomy} WHERE taxonomy=%s AND term_taxonomy_id IN ({$placeholders})", 'publication', ...$term_taxonomy_ids );
+		return array_values( array_map( 'absint', (array) $wpdb->get_col( $query ) ) );
 	}
 
 	public function redirect_disallowed_new_post(): void {

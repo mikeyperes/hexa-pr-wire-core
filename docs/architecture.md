@@ -10,7 +10,7 @@
 - `Contracts`: module, repository, and mail boundaries.
 - `Content`: the `publication` CPT and taxonomy definitions.
 - `Fields`: stable ACF group/field definitions and release location rule.
-- `Customer`: roles, modes, access policy, and enforcement.
+- `Customer`: roles, modes, backward-compatible entitlement defaults, access policy, and enforcement that preserves existing post assignments.
 - `Admin`: shared-tab dashboard, customer profile/actions, checklist, navigation, editor styles, and Force Sync.
 - `Workflow`: ownership, link generation, notification settings, submission notices, and delivery emails.
 - `Infrastructure/WordPress`: customer/publication repositories and mail adapter.

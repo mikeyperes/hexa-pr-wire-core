@@ -5,6 +5,7 @@ namespace HexaPrWire\Core\Contracts;
 interface CustomerPolicyRepository {
 	public function is_customer( int $user_id ): bool;
 	public function mode( int $user_id ): string;
+	public function publication_access_configured( int $user_id ): bool;
 	/** @return int[] */
 	public function allowed_publications( int $user_id ): array;
 	/** @return array<int,string> */

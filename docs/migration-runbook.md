@@ -1,6 +1,6 @@
 # Migration runbook
 
-1. Deploy version 2.0.1 while legacy snippets and UI definitions remain enabled.
+1. Deploy the current Core release while legacy snippets and UI definitions remain enabled.
 2. Run `wp hprwc parity`; stop without mutation on any failed check.
 3. Run `wp hprwc migrate` and review the dry-run selector and before/after hashes.
 4. Run `wp hprwc migrate --execute`.

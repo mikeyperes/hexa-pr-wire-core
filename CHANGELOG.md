@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2 — 2026-09-20
+
+- Preserved unrestricted publication access for legacy customers until an administrator saves explicit entitlements.
+- Preserved existing release publication assignments while blocking new unauthorized assignments.
+- Kept Billing's payment-created draft assignment outside customer taxonomy normalization.
+
 ## 2.0.1 — 2026-09-20
 
 - Corrected ACF UI deactivation verification for ACF's `acf-disabled` status.

@@ -33,10 +33,11 @@ final class CustomerProfile implements Module {
 			return;
 		}
 		$is_customer = $this->policies->is_customer( (int) $user->ID );
-		$allowed = $this->policies->allowed_publications( (int) $user->ID );
 		$prices = $this->policies->publication_prices( (int) $user->ID );
 		$terms = get_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false, 'orderby' => 'name' ] );
 		$terms = is_wp_error( $terms ) ? [] : $terms;
+		$configured = $this->policies->publication_access_configured( (int) $user->ID );
+		$allowed = $configured ? $this->policies->allowed_publications( (int) $user->ID ) : array_map( static fn( \WP_Term $term ): int => (int) $term->term_id, $terms );
 		?>
 		<h2 id="hprwc-customer-access">Hexa PR Wire Customer Access</h2>
 		<?php wp_nonce_field( self::NONCE, 'hprwc_customer_nonce' ); ?>
@@ -63,7 +64,7 @@ final class CustomerProfile implements Module {
 						<td><label class="screen-reader-text" for="hprwc_price_<?php echo esc_attr( $term->term_id ); ?>">Price for <?php echo esc_html( $term->name ); ?></label><input class="small-text" type="number" min="0" step="0.01" id="hprwc_price_<?php echo esc_attr( $term->term_id ); ?>" name="hprwc_publication_prices[<?php echo esc_attr( $term->term_id ); ?>]" value="<?php echo esc_attr( $prices[ $term->term_id ] ?? '' ); ?>"></td></tr>
 					<?php endforeach; ?>
 					</tbody></table>
-					<p class="description">Blank means no publication-specific override. Billing can resolve these values through the <code>hprwc_customer_publication_price</code> API filter.</p>
+					<p class="description"><?php echo esc_html( $configured ? 'Only checked publications are available to this customer.' : 'Legacy account: all publications remain available until this profile is saved.' ); ?> Blank prices mean no publication-specific override. Billing resolves these values through the <code>hprwc_customer_publication_price</code> API filter.</p>
 				</div></td>
 			</tr>
 			<tr><th><label for="hprwc_notification_emails">Notification emails</label></th><td><textarea class="large-text" rows="4" id="hprwc_notification_emails" name="hprwc_notification_emails"><?php echo esc_textarea( implode( "\n", $this->notification_emails( (int) $user->ID ) ) ); ?></textarea><p class="description">One address per line. The account email is always included at send time.</p></td></tr>

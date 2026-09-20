@@ -31,7 +31,7 @@ final class AccessPolicy {
 	}
 
 	public function can_use_publication( int $user_id, int $term_id ): bool {
-		if ( ! $this->is_customer( $user_id ) || SubmissionMode::is_full( $this->mode( $user_id ) ) ) {
+		if ( ! $this->is_customer( $user_id ) || SubmissionMode::is_full( $this->mode( $user_id ) ) || ! $this->policies->publication_access_configured( $user_id ) ) {
 			return true;
 		}
 		return in_array( $term_id, $this->policies->allowed_publications( $user_id ), true );
@@ -40,5 +40,14 @@ final class AccessPolicy {
 	/** @param int[] $term_ids @return int[] */
 	public function filter_publications( int $user_id, array $term_ids ): array {
 		return array_values( array_filter( array_unique( array_map( 'absint', $term_ids ) ), fn( int $id ): bool => $this->can_use_publication( $user_id, $id ) ) );
+	}
+
+	/** @param int[] $requested_ids @param int[] $existing_ids @return int[] */
+	public function filter_publications_for_existing_post( int $user_id, array $requested_ids, array $existing_ids ): array {
+		$existing_ids = array_values( array_unique( array_filter( array_map( 'absint', $existing_ids ) ) ) );
+		return array_values( array_filter(
+			array_unique( array_filter( array_map( 'absint', $requested_ids ) ) ),
+			fn( int $id ): bool => in_array( $id, $existing_ids, true ) || $this->can_use_publication( $user_id, $id )
+		) );
 	}
 }
