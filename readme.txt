@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.1.1
+Stable tag: 2.1.2
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.1.2 =
+* Made Core namespace rendering compatible with RSS hooks that manage their own output buffers.
 
 = 2.1.1 =
 * Prevented duplicate Media RSS and Hexa PR Wire namespace declarations from making publication feeds invalid XML.

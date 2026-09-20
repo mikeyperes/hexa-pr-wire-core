@@ -20,7 +20,7 @@ function plugin_dir_path( string $file ): string { return rtrim( dirname( $file 
 function plugin_dir_url( string $file ): string { return 'https://example.test/wp-content/plugins/' . basename( dirname( $file ) ) . '/'; }
 function plugin_basename( string $file ): string { return basename( dirname( $file ) ) . '/' . basename( $file ); }
 function get_plugin_data( string $file, bool $markup = true, bool $translate = true ): array {
-	return [ 'Name' => 'Hexa PR Wire Core', 'Version' => '2.1.1', 'Author' => 'Hexa PR Wire', 'PluginURI' => 'https://hexaprwire.com/', 'Description' => 'Test fixture' ];
+	return [ 'Name' => 'Hexa PR Wire Core', 'Version' => '2.1.2', 'Author' => 'Hexa PR Wire', 'PluginURI' => 'https://hexaprwire.com/', 'Description' => 'Test fixture' ];
 }
 function did_action( string $hook ): int { return 0; }
 function sanitize_key( mixed $value ): string { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ?: '' ); }

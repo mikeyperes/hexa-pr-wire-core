@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.2 — 2026-09-20
+
+- Made Core namespace rendering compatible with RSS hooks that manage their own output buffers.
+
 ## 2.1.1 — 2026-09-20
 
 - Prevented duplicate Media RSS and Hexa PR Wire namespace declarations from making publication feeds invalid XML.

@@ -24,7 +24,8 @@ $assert( str_contains( $api, 'media_retained_for_review' ) && ! str_contains( $a
 $assert( str_contains( $api, "'logo_attachment_id'" ) && str_contains( $api, "'icon_attachment_id'" ), 'source logo and icon receipts are returned' );
 $assert( str_contains( $registry, 'public function approve(' ) && str_contains( $registry, 'public function restore(' ), 'destination approvals support bounded apply and rollback' );
 $assert( 1 === substr_count( $feed, 'xmlns:media="http://search.yahoo.com/mrss/"' ), 'source feed declares Media RSS exactly once' );
-$assert( str_contains( $feed, "preg_replace( '/\\s+xmlns:(?:media|hpr)=" ), 'source feed removes duplicate hook-provided namespaces' );
+$assert( str_contains( $feed, "preg_replace( '/\\s*xmlns:(?:media|hpr)=" ), 'source feed removes duplicate hook-provided namespaces' );
+$assert( str_contains( $feed, 'ob_get_level() > $preamble_level' ), 'source feed tolerates namespace hooks that close their own output buffer' );
 $assert( str_contains( $feed, '<media:content' ) && str_contains( $feed, '<hpr:canonicalUrl>' ), 'source feed exposes remote image and canonical release metadata' );
 $assert( str_contains( $bootstrap, 'new OnboardingApi(' ), 'Core boots the onboarding module' );
 

@@ -23,16 +23,8 @@ final class FeedRenderer {
 		}
 		status_header( 200 );
 		header( 'Content-Type: ' . feed_content_type( 'rss-http' ) . '; charset=' . get_option( 'blog_charset' ), true );
-		echo '<?xml version="1.0" encoding="' . esc_attr( get_option( 'blog_charset' ) ) . '"?>';
-		echo '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xmlns:hpr="https://hexaprwire.com/ns/press-release/1.0"';
-		ob_start();
-		do_action( 'rss2_ns' );
-		$namespaces = (string) ob_get_clean();
-		$namespaces = (string) preg_replace( '/\s+xmlns:(?:media|hpr)=(?:"[^"]*"|\'[^\']*\')/i', '', $namespaces );
-		if ( '' !== trim( $namespaces ) ) {
-			echo ' ' . ltrim( $namespaces );
-		}
-		echo '><channel>';
+		echo $this->preamble();
+		echo '<channel>';
 		echo '<title>' . esc_html( get_bloginfo_rss( 'name' ) ) . ' - Feed</title>';
 		echo '<atom:link href="' . esc_url( get_self_link() ) . '" rel="self" type="application/rss+xml" />';
 		echo '<link>' . esc_url( home_url( '/' ) ) . '</link>';
@@ -51,6 +43,28 @@ final class FeedRenderer {
 		echo '</channel></rss>';
 		wp_reset_postdata();
 		exit;
+	}
+
+	private function preamble(): string {
+		ob_start();
+		echo '<?xml version="1.0" encoding="' . esc_attr( get_option( 'blog_charset' ) ) . '"?>';
+		echo '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom"';
+		$preamble_level = ob_get_level();
+		ob_start();
+		do_action( 'rss2_ns' );
+		if ( ob_get_level() > $preamble_level ) {
+			$hook_namespaces = (string) ob_get_clean();
+			if ( '' !== trim( $hook_namespaces ) ) {
+				echo ' ' . ltrim( $hook_namespaces );
+			}
+		}
+		$preamble = (string) ob_get_clean();
+		$preamble = (string) preg_replace( '/\s*xmlns:(?:media|hpr)=(?:"[^"]*"|\'[^\']*\')/i', '', $preamble );
+		$preamble = (string) preg_replace( '/(?<!\s)xmlns:/', ' xmlns:', $preamble );
+
+		return ltrim( rtrim( $preamble ) )
+			. ' xmlns:media="http://search.yahoo.com/mrss/"'
+			. ' xmlns:hpr="https://hexaprwire.com/ns/press-release/1.0">';
 	}
 
 	private function item( \WP_Post $post ): void {
