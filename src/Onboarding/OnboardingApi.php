@@ -666,7 +666,7 @@ final class OnboardingApi implements Module {
 			'current_hierarchy_revision'     => $this->current_hierarchy_revision(),
 			'source_contract_version'        => self::CONTRACT_VERSION,
 			'press_release_contract_version' => $press_contract,
-			'feed_endpoint'                  => add_query_arg( [ 'publication' => $term instanceof \WP_Term ? $term->slug : '' ], home_url( '/feed/rss_publication/' ) ),
+			'feed_endpoint'                  => add_query_arg( [ 'feed' => 'rss_publication', 'publication' => $term instanceof \WP_Term ? $term->slug : '' ], home_url( '/' ) ),
 			'logo_attachment_id'             => $logo['attachment_id'],
 			'logo_url'                       => $logo['url'],
 			'logo_mime_type'                 => $logo['mime_type'],
