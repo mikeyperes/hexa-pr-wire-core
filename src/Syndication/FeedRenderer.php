@@ -25,7 +25,13 @@ final class FeedRenderer {
 		header( 'Content-Type: ' . feed_content_type( 'rss-http' ) . '; charset=' . get_option( 'blog_charset' ), true );
 		echo '<?xml version="1.0" encoding="' . esc_attr( get_option( 'blog_charset' ) ) . '"?>';
 		echo '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xmlns:hpr="https://hexaprwire.com/ns/press-release/1.0"';
+		ob_start();
 		do_action( 'rss2_ns' );
+		$namespaces = (string) ob_get_clean();
+		$namespaces = (string) preg_replace( '/\s+xmlns:(?:media|hpr)=(?:"[^"]*"|\'[^\']*\')/i', '', $namespaces );
+		if ( '' !== trim( $namespaces ) ) {
+			echo ' ' . ltrim( $namespaces );
+		}
 		echo '><channel>';
 		echo '<title>' . esc_html( get_bloginfo_rss( 'name' ) ) . ' - Feed</title>';
 		echo '<atom:link href="' . esc_url( get_self_link() ) . '" rel="self" type="application/rss+xml" />';

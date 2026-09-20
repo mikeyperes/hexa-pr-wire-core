@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1 — 2026-09-20
+
+- Prevented duplicate Media RSS and Hexa PR Wire namespace declarations from making publication feeds invalid XML.
+
 ## 2.1.0 — 2026-09-20
 
 - Added an administrator-only source onboarding contract with immutable hierarchy and plan binding.
