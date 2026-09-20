@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0 — 2026-09-20
+
+- Added an administrator-only source onboarding contract with immutable hierarchy and plan binding.
+- Added idempotent publication record, taxonomy mapping, source media, destination approval and rollback handling.
+- Added Media RSS featured images and versioned press-release metadata to source feeds for the native Distributor.
+
 ## 2.0.3 — 2026-09-20
 
 - Added an explicit unrestricted/restricted publication-access control.

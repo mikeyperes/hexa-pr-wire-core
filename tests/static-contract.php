@@ -44,7 +44,7 @@ foreach ( [ 'CustomerActions', 'CustomerProfile', 'EditorChecklist', 'EditorStyl
 
 $main = (string) file_get_contents( $root . '/hexa-pr-wire-core.php' );
 $readme = (string) file_get_contents( $root . '/readme.txt' );
-$assert( str_contains( $main, 'Version: 2.0.3' ) && str_contains( $main, "HPRWC_VERSION', '2.0.3" ), 'plugin header and runtime version agree' );
+$assert( str_contains( $main, 'Version: 2.1.0' ) && str_contains( $main, "HPRWC_VERSION', '2.1.0" ), 'plugin header and runtime version agree' );
 $assert( ! str_contains( $readme, 'Stable tag: 1.0.1' ), 'readme is no longer pinned to the legacy release' );
 
 $migration = (string) file_get_contents( $root . '/src/Migration/LegacyMigration.php' );

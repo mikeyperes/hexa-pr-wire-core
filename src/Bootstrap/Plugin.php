@@ -32,6 +32,7 @@ use HexaPrWire\Core\Integrations\BillingPricingBridge;
 use HexaPrWire\Core\Integrations\ElementorPublicationQuery;
 use HexaPrWire\Core\Integrations\ForceSyncModule;
 use HexaPrWire\Core\Migration\StatusReport;
+use HexaPrWire\Core\Onboarding\OnboardingApi;
 use HexaPrWire\Core\PublicationResolver;
 use HexaPrWire\Core\Seo\CanonicalService;
 use HexaPrWire\Core\Syndication\DeletionManifest;
@@ -104,6 +105,7 @@ final class Plugin {
 			->add( new PublicationShortcodes( $publications, $urls ) )
 			->add( new ElementorPublicationQuery( $publications ) )
 			->add( new BillingPricingBridge( $policies, $access ) )
+			->add( new OnboardingApi( $this->destinations ) )
 			->add( new ForceSyncModule( $this->resolver, $this->credentials, $this->destinations, $this->force_sync ) )
 			->add( new GitHubPluginUpdater( UpdaterConfig::from_plugin_file(
 				HPRWC_FILE,

@@ -69,6 +69,81 @@ final class DestinationRegistry {
 		return '' !== $expected && '' !== $actual && hash_equals( $expected, $actual );
 	}
 
+	/** @return array{host:string,approved_at:string}|null */
+	public function entry( int $publication_id ): ?array {
+		$approved = get_option( self::OPTION, [] );
+		$entry = is_array( $approved ) ? ( $approved[ $publication_id ] ?? null ) : null;
+
+		if ( ! is_array( $entry ) ) {
+			return null;
+		}
+
+		$host = $this->normalize_host( (string) ( $entry['host'] ?? '' ) );
+		if ( '' === $host ) {
+			return null;
+		}
+
+		return [
+			'host'        => $host,
+			'approved_at' => sanitize_text_field( (string) ( $entry['approved_at'] ?? '' ) ),
+		];
+	}
+
+	/**
+	 * Approve one exact publication/host pair after an administrator-reviewed
+	 * onboarding operation.
+	 *
+	 * @return array{host:string,approved_at:string}|false
+	 */
+	public function approve( int $publication_id, string $host ) {
+		if ( $publication_id <= 0 || ! current_user_can( 'manage_options' ) ) {
+			return false;
+		}
+
+		$host = $this->normalize_host( $host );
+		if ( ! $this->is_valid_public_host( $host ) ) {
+			return false;
+		}
+
+		$approved = get_option( self::OPTION, [] );
+		$approved = is_array( $approved ) ? $approved : [];
+		$entry = [
+			'host'        => $host,
+			'approved_at' => gmdate( 'c' ),
+		];
+		$approved[ $publication_id ] = $entry;
+
+		return update_option( self::OPTION, $approved, false ) || $this->is_approved( $publication_id, $host ) ? $entry : false;
+	}
+
+	/**
+	 * Restore one publication's exact pre-onboarding registry entry.
+	 *
+	 * @param array{host:string,approved_at:string}|null $entry
+	 */
+	public function restore( int $publication_id, ?array $entry ): bool {
+		if ( $publication_id <= 0 || ! current_user_can( 'manage_options' ) ) {
+			return false;
+		}
+
+		$approved = get_option( self::OPTION, [] );
+		$approved = is_array( $approved ) ? $approved : [];
+		if ( null === $entry ) {
+			unset( $approved[ $publication_id ] );
+		} else {
+			$host = $this->normalize_host( (string) ( $entry['host'] ?? '' ) );
+			if ( ! $this->is_valid_public_host( $host ) ) {
+				return false;
+			}
+			$approved[ $publication_id ] = [
+				'host'        => $host,
+				'approved_at' => sanitize_text_field( (string) ( $entry['approved_at'] ?? '' ) ),
+			];
+		}
+
+		return update_option( self::OPTION, $approved, false ) || $this->entry( $publication_id ) === $entry;
+	}
+
 	/**
 	 * Remove unapproved force targets and expose a visible mapping warning.
 	 *
@@ -103,5 +178,11 @@ final class DestinationRegistry {
 
 		return is_string( $host ) ? $host : '';
 	}
-}
 
+	private function is_valid_public_host( string $host ): bool {
+		return '' !== $host
+			&& false !== strpos( $host, '.' )
+			&& false === filter_var( $host, FILTER_VALIDATE_IP )
+			&& 1 === preg_match( '/^[a-z0-9](?:[a-z0-9.\-]*[a-z0-9])?$/', $host );
+	}
+}

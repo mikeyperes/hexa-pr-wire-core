@@ -24,7 +24,7 @@ final class FeedRenderer {
 		status_header( 200 );
 		header( 'Content-Type: ' . feed_content_type( 'rss-http' ) . '; charset=' . get_option( 'blog_charset' ), true );
 		echo '<?xml version="1.0" encoding="' . esc_attr( get_option( 'blog_charset' ) ) . '"?>';
-		echo '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom"';
+		echo '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xmlns:hpr="https://hexaprwire.com/ns/press-release/1.0"';
 		do_action( 'rss2_ns' );
 		echo '><channel>';
 		echo '<title>' . esc_html( get_bloginfo_rss( 'name' ) ) . ' - Feed</title>';
@@ -54,6 +54,11 @@ final class FeedRenderer {
 		$url = get_permalink( $post );
 		$content = apply_filters( 'the_content', $post->post_content );
 		$content .= '<br><br><small><em>This article was originally published at: <a href="' . esc_url( $url ) . '">' . esc_html( $url ) . '</a></em></small>';
+		$image_id = get_post_thumbnail_id( $post );
+		$image_url = $image_id > 0 ? (string) wp_get_attachment_url( $image_id ) : '';
+		$image_alt = $image_id > 0 ? trim( (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true ) ) : '';
+		$release_date = trim( (string) get_post_meta( $post->ID, 'press_release_date', true ) );
+		$release_location = trim( (string) get_post_meta( $post->ID, 'press_release_location', true ) );
 		echo '<item>';
 		echo '<title>' . esc_html( get_the_title( $post ) ) . '</title>';
 		echo '<link>' . esc_url( $url ) . '</link>';
@@ -65,6 +70,16 @@ final class FeedRenderer {
 		echo '<author_url><![CDATA[' . $this->cdata( get_author_posts_url( (int) $post->post_author ) ) . ']]></author_url>';
 		echo '<post_slug><![CDATA[' . $this->cdata( $slug ) . ']]></post_slug>';
 		echo '<post_url><![CDATA[' . $this->cdata( $url ) . ']]></post_url>';
+		echo '<hpr:sourceId><![CDATA[post:' . (int) $post->ID . ']]></hpr:sourceId>';
+		echo '<hpr:canonicalUrl><![CDATA[' . $this->cdata( $url ) . ']]></hpr:canonicalUrl>';
+		echo '<hpr:deck><![CDATA[' . $this->cdata( get_the_excerpt( $post ) ) . ']]></hpr:deck>';
+		echo '<hpr:releaseDate><![CDATA[' . $this->cdata( $release_date ) . ']]></hpr:releaseDate>';
+		echo '<hpr:releaseLocation><![CDATA[' . $this->cdata( $release_location ) . ']]></hpr:releaseLocation>';
+		if ( '' !== $image_url ) {
+			echo '<media:content url="' . esc_url( $image_url ) . '" medium="image">';
+			echo '<media:title type="plain"><![CDATA[' . $this->cdata( '' !== $image_alt ? $image_alt : get_the_title( $post ) ) . ']]></media:title>';
+			echo '</media:content>';
+		}
 		$category_slugs = [];
 		$terms = wp_get_post_terms( $post->ID, 'category' );
 		if ( ! is_wp_error( $terms ) ) {
