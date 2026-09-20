@@ -47,15 +47,19 @@ final class LegacyMigration {
 		}
 
 		$state = $this->legacy_state();
-		$manifest = [
-			'version' => HPRWC_VERSION,
-			'site' => home_url( '/' ),
-			'created_gmt' => gmdate( 'c' ),
-			'status' => 'prepared',
-			'before' => $state,
-			'before_sha256' => hash( 'sha256', wp_json_encode( $state ) ),
-		];
-		update_option( self::MANIFEST_OPTION, $manifest, false );
+		if ( is_array( $existing ) && 'prepared' === ( $existing['status'] ?? '' ) && is_array( $existing['before'] ?? null ) ) {
+			$manifest = $existing;
+		} else {
+			$manifest = [
+				'version' => HPRWC_VERSION,
+				'site' => home_url( '/' ),
+				'created_gmt' => gmdate( 'c' ),
+				'status' => 'prepared',
+				'before' => $state,
+				'before_sha256' => hash( 'sha256', wp_json_encode( $state ) ),
+			];
+			update_option( self::MANIFEST_OPTION, $manifest, false );
+		}
 
 		try {
 			foreach ( array_keys( $state['snippets'] ) as $snippet_id ) {
@@ -83,6 +87,7 @@ final class LegacyMigration {
 				throw new RuntimeException( 'Legacy state did not match the expected disabled state.' );
 			}
 			$manifest['status'] = 'applied';
+			$manifest['applied_version'] = HPRWC_VERSION;
 			$manifest['applied_gmt'] = gmdate( 'c' );
 			$manifest['after'] = $after;
 			$manifest['after_sha256'] = hash( 'sha256', wp_json_encode( $after ) );
@@ -90,11 +95,22 @@ final class LegacyMigration {
 			Activity::add( 'Legacy snippets and UI definitions disabled after Core parity.', 'success', [ 'manifest' => $manifest['after_sha256'] ], 'migration' );
 			return $manifest;
 		} catch ( \Throwable $throwable ) {
-			$this->restore( $manifest );
-			$manifest['status'] = 'rolled_back_after_failure';
-			$manifest['error'] = $throwable->getMessage();
-			update_option( self::MANIFEST_OPTION, $manifest, false );
-			throw $throwable;
+			try {
+				$this->restore( $manifest );
+				$manifest['status'] = 'rolled_back_after_failure';
+				$manifest['error'] = $throwable->getMessage();
+				update_option( self::MANIFEST_OPTION, $manifest, false );
+				throw $throwable;
+			} catch ( \Throwable $rollback_error ) {
+				if ( $rollback_error === $throwable ) {
+					throw $throwable;
+				}
+				$manifest['status'] = 'rollback_failed';
+				$manifest['error'] = $throwable->getMessage();
+				$manifest['rollback_error'] = $rollback_error->getMessage();
+				update_option( self::MANIFEST_OPTION, $manifest, false );
+				throw new RuntimeException( $throwable->getMessage() . ' Rollback also failed: ' . $rollback_error->getMessage(), 0, $throwable );
+			}
 		}
 	}
 
@@ -149,13 +165,13 @@ final class LegacyMigration {
 		$after['cpt_ui_publication'] = [];
 		foreach ( $after['acf_taxonomies'] as &$taxonomy ) {
 			if ( 'publish' === $taxonomy['status'] ) {
-				$taxonomy['status'] = 'draft';
+				$taxonomy['status'] = 'acf-disabled';
 			}
 		}
 		unset( $taxonomy );
 		foreach ( $after['acf_groups'] as &$group ) {
 			if ( 'publish' === $group['status'] ) {
-				$group['status'] = 'draft';
+				$group['status'] = 'acf-disabled';
 			}
 		}
 		unset( $group );
@@ -180,7 +196,8 @@ final class LegacyMigration {
 		update_option( 'cptui_post_types', $cptui, false );
 		foreach ( [ 'acf_taxonomies', 'acf_groups' ] as $key ) {
 			foreach ( (array) ( $before[ $key ] ?? [] ) as $item ) {
-				$this->set_post_status( (int) $item['ID'], (string) $item['status'] );
+				$post_type = 'acf_taxonomies' === $key ? 'acf-taxonomy' : 'acf-field-group';
+				$this->set_acf_status( (int) $item['ID'], $post_type, (string) $item['status'] );
 			}
 		}
 		flush_rewrite_rules( false );
@@ -193,12 +210,16 @@ final class LegacyMigration {
 		if ( null === $current || (bool) $current === $active ) {
 			return;
 		}
-		if ( $active && function_exists( 'Code_Snippets\\activate_snippet' ) ) {
-			\Code_Snippets\activate_snippet( $id );
-		} elseif ( ! $active && function_exists( 'Code_Snippets\\deactivate_snippet' ) ) {
+		if ( ! $active && function_exists( 'Code_Snippets\\deactivate_snippet' ) ) {
 			\Code_Snippets\deactivate_snippet( $id );
 		} else {
-			$wpdb->update( $table, [ 'active' => $active ? 1 : 0 ], [ 'id' => $id ], [ '%d' ], [ '%d' ] );
+			$updated = $wpdb->update( $table, [ 'active' => $active ? 1 : 0 ], [ 'id' => $id ], [ '%d' ], [ '%d' ] );
+			if ( false === $updated ) {
+				throw new RuntimeException( 'Could not update Code Snippet ' . $id . ' during rollback.' );
+			}
+			if ( function_exists( 'Code_Snippets\\clean_snippets_cache' ) ) {
+				\Code_Snippets\clean_snippets_cache( $table );
+			}
 		}
 		$verified = $wpdb->get_var( $wpdb->prepare( "SELECT active FROM {$table} WHERE id=%d", $id ) );
 		if ( (bool) $verified !== $active ) {
@@ -206,9 +227,20 @@ final class LegacyMigration {
 		}
 	}
 
-	private function set_post_status( int $post_id, string $status ): void {
-		$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => sanitize_key( $status ) ], true );
-		if ( is_wp_error( $result ) || $status !== get_post_status( $post_id ) ) {
+	private function set_acf_status( int $post_id, string $post_type, string $status ): void {
+		if ( in_array( $status, [ 'publish', 'acf-disabled' ], true ) ) {
+			$activate = 'publish' === $status;
+			if ( 'acf-taxonomy' === $post_type && function_exists( 'acf_update_taxonomy_active_status' ) ) {
+				$result = acf_update_taxonomy_active_status( $post_id, $activate );
+			} elseif ( 'acf-field-group' === $post_type && function_exists( 'acf_update_field_group_active_status' ) ) {
+				$result = acf_update_field_group_active_status( $post_id, $activate );
+			} else {
+				throw new RuntimeException( 'The supported ACF status interface is unavailable for ' . $post_type . '.' );
+			}
+		} else {
+			$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => sanitize_key( $status ) ], true );
+		}
+		if ( ! $result || is_wp_error( $result ) || $status !== get_post_status( $post_id ) ) {
 			throw new RuntimeException( 'Could not set legacy UI record ' . $post_id . ' to ' . $status . '.' );
 		}
 	}
@@ -221,14 +253,14 @@ final class LegacyMigration {
 		} else {
 			throw new RuntimeException( 'The supported ACF deactivation interface is unavailable for ' . $post_type . '.' );
 		}
-		if ( ! $result || 'draft' !== get_post_status( $post_id ) ) {
+		if ( ! $result || 'acf-disabled' !== get_post_status( $post_id ) ) {
 			throw new RuntimeException( 'Could not disable legacy ACF record ' . $post_id . '.' );
 		}
 	}
 
 	/** @return array<int,array{ID:int,status:string,title:string,key:string}> */
 	private function acf_groups(): array {
-		$posts = get_posts( [ 'post_type' => 'acf-field-group', 'post_status' => [ 'publish', 'draft', 'trash', 'private' ], 'posts_per_page' => -1, 'orderby' => 'ID', 'order' => 'ASC' ] );
+		$posts = get_posts( [ 'post_type' => 'acf-field-group', 'post_status' => [ 'publish', 'acf-disabled', 'draft', 'trash', 'private' ], 'posts_per_page' => -1, 'orderby' => 'ID', 'order' => 'ASC' ] );
 		$items = [];
 		foreach ( $posts as $post ) {
 			$key = preg_replace( '/__trashed$/', '', (string) $post->post_name );
@@ -242,7 +274,7 @@ final class LegacyMigration {
 
 	/** @return array<int,array{ID:int,status:string,title:string,key:string}> */
 	private function acf_taxonomies(): array {
-		$posts = get_posts( [ 'post_type' => 'acf-taxonomy', 'post_status' => [ 'publish', 'draft', 'trash', 'private' ], 'posts_per_page' => -1, 'orderby' => 'ID', 'order' => 'ASC' ] );
+		$posts = get_posts( [ 'post_type' => 'acf-taxonomy', 'post_status' => [ 'publish', 'acf-disabled', 'draft', 'trash', 'private' ], 'posts_per_page' => -1, 'orderby' => 'ID', 'order' => 'ASC' ] );
 		$items = [];
 		foreach ( $posts as $post ) {
 			$content = maybe_unserialize( $post->post_content );

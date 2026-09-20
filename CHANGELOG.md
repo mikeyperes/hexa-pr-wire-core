@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 — 2026-09-20
+
+- Corrected ACF UI deactivation verification for ACF's `acf-disabled` status.
+- Preserved prepared migration manifests across interrupted execution and hardened rollback reporting.
+- Restored Code Snippets directly from the rollback snapshot without same-request PHP redeclaration failures.
+
 ## 2.0.0 — 2026-09-20
 
 - Refactored the plugin into namespaced, single-responsibility modules.

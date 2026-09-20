@@ -44,7 +44,14 @@ foreach ( [ 'CustomerActions', 'CustomerProfile', 'EditorChecklist', 'EditorStyl
 
 $main = (string) file_get_contents( $root . '/hexa-pr-wire-core.php' );
 $readme = (string) file_get_contents( $root . '/readme.txt' );
-$assert( str_contains( $main, 'Version: 2.0.0' ) && str_contains( $main, "HPRWC_VERSION', '2.0.0" ), 'plugin header and runtime version agree' );
+$assert( str_contains( $main, 'Version: 2.0.1' ) && str_contains( $main, "HPRWC_VERSION', '2.0.1" ), 'plugin header and runtime version agree' );
 $assert( ! str_contains( $readme, 'Stable tag: 1.0.1' ), 'readme is no longer pinned to the legacy release' );
+
+$migration = (string) file_get_contents( $root . '/src/Migration/LegacyMigration.php' );
+$assert( str_contains( $migration, "'acf-disabled'" ), 'migration uses ACF native disabled status' );
+$assert( str_contains( $migration, "'prepared' === ( \$existing['status'] ?? '' )" ), 'prepared rollback manifests are preserved' );
+$assert( str_contains( $migration, "\$state = \$this->legacy_state();" ), 'migration validates the current live state on every attempt' );
+$assert( str_contains( $migration, "'rollback_failed'" ), 'rollback failures retain explicit status' );
+$assert( str_contains( $migration, 'Code_Snippets\\clean_snippets_cache' ), 'snippet rollback clears Code Snippets caches' );
 
 fwrite( STDOUT, "Static contract tests passed.\n" );

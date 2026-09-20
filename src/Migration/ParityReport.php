@@ -26,7 +26,8 @@ final class ParityReport {
 	/** @return array<string,mixed> */
 	public function run( bool $post_migration = false ): array {
 		$checks = [];
-		$this->check( $checks, 'plugin_version', defined( 'HPRWC_VERSION' ) && '2.0.0' === HPRWC_VERSION, defined( 'HPRWC_VERSION' ) ? HPRWC_VERSION : 'missing' );
+		$expected_version = is_readable( HPRWC_DIR . 'VERSION' ) ? trim( (string) file_get_contents( HPRWC_DIR . 'VERSION' ) ) : '';
+		$this->check( $checks, 'plugin_version', '' !== $expected_version && defined( 'HPRWC_VERSION' ) && $expected_version === HPRWC_VERSION, defined( 'HPRWC_VERSION' ) ? HPRWC_VERSION : 'missing' );
 		$this->check( $checks, 'publication_cpt', post_type_exists( 'publication' ), post_type_exists( 'publication' ) ? 'registered' : 'missing' );
 		$this->check( $checks, 'publication_taxonomy', taxonomy_exists( 'publication' ) && is_object_in_taxonomy( 'post', 'publication' ), taxonomy_exists( 'publication' ) ? 'registered' : 'missing' );
 		$this->check( $checks, 'customer_role', (bool) get_role( 'hexa_pr_wire_user' ), get_role( 'hexa_pr_wire_user' ) ? 'registered' : 'missing' );
