@@ -5,6 +5,8 @@ define( 'ABSPATH', __DIR__ . '/wordpress-fixture/' );
 $GLOBALS['hprwc_test_hooks'] = [];
 $GLOBALS['hprwc_test_shortcodes'] = [];
 
+if ( ! function_exists( 'did_action' ) ) { function did_action( $hook ) { return 0; } }
+if ( ! function_exists( 'doing_action' ) ) { function doing_action( $hook = null ) { return false; } }
 function add_action( string $hook, mixed $callback, int $priority = 10, int $accepted_args = 1 ): bool {
 	$GLOBALS['hprwc_test_hooks'][] = [ 'action', $hook, $priority, $accepted_args, $callback ];
 	return true;
@@ -20,7 +22,7 @@ function plugin_dir_path( string $file ): string { return rtrim( dirname( $file 
 function plugin_dir_url( string $file ): string { return 'https://example.test/wp-content/plugins/' . basename( dirname( $file ) ) . '/'; }
 function plugin_basename( string $file ): string { return basename( dirname( $file ) ) . '/' . basename( $file ); }
 function get_plugin_data( string $file, bool $markup = true, bool $translate = true ): array {
-	return [ 'Name' => 'Hexa PR Wire Core', 'Version' => '2.1.3', 'Author' => 'Hexa PR Wire', 'PluginURI' => 'https://hexaprwire.com/', 'Description' => 'Test fixture' ];
+	return [ 'Name' => 'Hexa PR Wire Core', 'Version' => '2.2.0', 'Author' => 'Hexa PR Wire', 'PluginURI' => 'https://hexaprwire.com/', 'Description' => 'Test fixture' ];
 }
 function did_action( string $hook ): int { return 0; }
 function sanitize_key( mixed $value ): string { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ?: '' ); }
@@ -35,7 +37,7 @@ require_once dirname( __DIR__ ) . '/hexa-pr-wire-core.php';
 \HexaPrWire\Core\Plugin::instance()->register();
 
 $hooks = array_column( $GLOBALS['hprwc_test_hooks'], 1 );
-foreach ( [ 'init', 'acf/init', 'user_has_cap', 'map_meta_cap', 'transition_post_status', 'rest_api_init', 'elementor/query/publication_links' ] as $required ) {
+foreach ( [ 'init', 'user_has_cap', 'map_meta_cap', 'transition_post_status', 'rest_api_init', 'elementor/query/publication_links' ] as $required ) {
 	if ( ! in_array( $required, $hooks, true ) ) {
 		fwrite( STDERR, "FAIL: bootstrap did not register {$required}.\n" );
 		exit( 1 );

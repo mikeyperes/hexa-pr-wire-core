@@ -45,11 +45,11 @@ final class ParityReport {
 		$this->check( $checks, 'shared_core_health', ! empty( $core['healthy'] ), $core['issues'] ?? [] );
 
 		foreach ( self::GROUP_KEYS as $key ) {
-			$group = function_exists( 'acf_get_local_field_group' ) ? acf_get_local_field_group( $key ) : false;
+			$group = \Hexa\PluginCore\Fields\Field::available() ? \Hexa\PluginCore\Fields\FieldGroups::get_group( $key ) : false;
 			$this->check( $checks, 'acf_group_' . $key, is_array( $group ) && ! empty( $group['active'] ), is_array( $group ) ? 'local active' : 'missing' );
 		}
 		foreach ( self::FIELD_KEYS as $key ) {
-			$field = function_exists( 'acf_get_local_field' ) ? acf_get_local_field( $key ) : false;
+			$field = \Hexa\PluginCore\Fields\Field::available() ? \Hexa\PluginCore\Fields\FieldGroups::get_field( $key ) : false;
 			$this->check( $checks, 'acf_field_' . $key, is_array( $field ), is_array( $field ) ? (string) ( $field['name'] ?? 'registered' ) : 'missing' );
 		}
 

@@ -151,6 +151,17 @@ final class AccessController implements Module {
 		if ( $this->normalizing_terms || 'publication' !== $taxonomy || $this->is_billing_fulfillment() ) {
 			return;
 		}
+		// A single-outlet order is locked to the purchased outlet for everyone except administrators.
+		$locked = (int) get_post_meta( $object_id, \HexaPrWire\Core\Admin\PublicationPicker::LOCK_META, true );
+		if ( $locked > 0 && ! current_user_can( 'manage_options' ) ) {
+			$current = wp_get_object_terms( $object_id, 'publication', [ 'fields' => 'ids' ] );
+			if ( ! is_wp_error( $current ) && [ $locked ] !== array_values( array_map( 'absint', $current ) ) ) {
+				$this->normalizing_terms = true;
+				wp_set_object_terms( $object_id, [ $locked ], 'publication', false );
+				$this->normalizing_terms = false;
+			}
+			return;
+		}
 		$post = get_post( $object_id );
 		$user_id = get_current_user_id();
 		if ( ! $post instanceof \WP_Post || ! $this->policy->is_customer( $user_id ) || ! $this->policy->can_edit_post( $user_id, $post ) || SubmissionMode::is_full( $this->policy->mode( $user_id ) ) ) {

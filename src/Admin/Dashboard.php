@@ -140,6 +140,36 @@ final class Dashboard implements Module {
 			[ 'Taxonomy terms', (int) wp_count_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false ] ), 'edit-tags.php?taxonomy=publication&post_type=post' ],
 			[ 'Mapped terms', is_wp_error( $mapped ) ? 0 : count( $mapped ), 'edit-tags.php?taxonomy=publication&post_type=post' ],
 		] );
+		$this->syndication_panel();
+	}
+
+	private function syndication_panel(): void {
+		$author = get_user_by( 'login', \HexaPrWire\Core\Syndication\AuthorProfile::LOGIN );
+		$last = get_option( \HexaPrWire\Core\Syndication\AuthorProfile::LAST_PUSH_OPTION, [] );
+		echo '<div class="hprwc-panel"><h2>Syndication</h2>';
+		if ( ! empty( $_GET['author_push'] ) ) {
+			echo '<div class="notice notice-success inline"><p>Author profile push started. Outlets refresh within a minute.</p></div>';
+		}
+		echo '<p>Publishing or updating a release pushes it to its outlets immediately; trashing one removes it from them. Outlets also pull every 4 hours.</p>';
+		echo '<h3>Hexa PR Wire author</h3><p>Every outlet copies this profile (name, email, bio, links, photo). ';
+		echo $author instanceof \WP_User ? '<a href="' . esc_url( admin_url( 'user-edit.php?user_id=' . $author->ID ) ) . '">Edit the author profile</a>. Saving it pushes the change to every outlet.' : 'The <code>hexaprwire</code> user is missing.';
+		echo '</p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hprwc_push_author">';
+		wp_nonce_field( 'hprwc_push_author' );
+		echo '<button class="button">Push author profile to all outlets</button></form>';
+		if ( is_array( $last ) && ! empty( $last['time_gmt'] ) ) {
+			echo '<p class="description">Last push ' . esc_html( (string) $last['time_gmt'] ) . ': ' . (int) $last['ok'] . ' of ' . (int) $last['total'] . ' outlets refreshed.</p>';
+		}
+		$deleted = array_slice( array_reverse( \HexaPrWire\Core\Syndication\DeletionLedger::all() ), 0, 10 );
+		if ( [] !== $deleted ) {
+			echo '<h3>Recent downstream deletions</h3><table class="widefat striped"><thead><tr><th>Release</th><th>Removed</th><th>Outlets</th></tr></thead><tbody>';
+			foreach ( $deleted as $entry ) {
+				$results = (array) ( $entry['results'] ?? [] );
+				$ok = count( array_filter( $results, static fn( $result ): bool => ! empty( $result['ok'] ) ) );
+				echo '<tr><td>' . esc_html( (string) $entry['title'] ) . ' <code>' . esc_html( (string) $entry['id'] ) . '</code></td><td>' . esc_html( (string) $entry['deleted_gmt'] ) . '</td><td>' . (int) $ok . ' of ' . count( (array) $entry['hosts'] ) . ' confirmed</td></tr>';
+			}
+			echo '</tbody></table>';
+		}
+		echo '</div>';
 	}
 
 	private function releases(): void {

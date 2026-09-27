@@ -10,6 +10,24 @@ final class FeedRenderer {
 
 	/** @param array<int,array<string,mixed>> $query_sets */
 	public function render_multiple( array $query_sets ): void {
+		$this->send( $this->build( $query_sets ) );
+	}
+
+	public function send( string $xml ): void {
+		status_header( 200 );
+		header( 'Content-Type: ' . feed_content_type( 'rss-http' ) . '; charset=' . get_option( 'blog_charset' ), true );
+		echo $xml; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		exit;
+	}
+
+	/**
+	 * The feed XML for the given queries. Items carry exactly the release's own
+	 * image: third-party `rss2_item` output (e.g. FIFU adding the outlet logo)
+	 * is not part of the Hexa PR Wire feed contract.
+	 *
+	 * @param array<int,array<string,mixed>> $query_sets
+	 */
+	public function build( array $query_sets ): string {
 		$queries = [];
 		foreach ( $query_sets as $query_args ) {
 			$queries[] = new \WP_Query( array_merge( [
@@ -21,8 +39,9 @@ final class FeedRenderer {
 				'ignore_sticky_posts' => true,
 			], $query_args ) );
 		}
-		status_header( 200 );
-		header( 'Content-Type: ' . feed_content_type( 'rss-http' ) . '; charset=' . get_option( 'blog_charset' ), true );
+		global $post;
+		$original_post = $post;
+		ob_start();
 		echo $this->preamble();
 		echo '<channel>';
 		echo '<title>' . esc_html( get_bloginfo_rss( 'name' ) ) . ' - Feed</title>';
@@ -41,8 +60,9 @@ final class FeedRenderer {
 			}
 		}
 		echo '</channel></rss>';
+		$post = $original_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 		wp_reset_postdata();
-		exit;
+		return (string) ob_get_clean();
 	}
 
 	private function preamble(): string {
@@ -68,6 +88,7 @@ final class FeedRenderer {
 	}
 
 	private function item( \WP_Post $post ): void {
+		$GLOBALS['post'] = $post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 		setup_postdata( $post );
 		$author = get_userdata( (int) $post->post_author );
 		$slug = (string) $post->post_name;
@@ -114,7 +135,6 @@ final class FeedRenderer {
 		}
 		echo '<description><![CDATA[' . $this->cdata( get_the_excerpt( $post ) ) . ']]></description>';
 		echo '<content:encoded><![CDATA[' . $this->cdata( $content ) . ']]></content:encoded>';
-		do_action( 'rss2_item' );
 		echo '</item>';
 	}
 

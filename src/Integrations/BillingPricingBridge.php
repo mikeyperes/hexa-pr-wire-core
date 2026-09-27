@@ -113,6 +113,7 @@ final class BillingPricingBridge implements Module {
 			$term_id = absint( $item->get_meta( '_hprwc_publication_term_id' ) );
 			if ( $term_id > 0 ) {
 				wp_set_object_terms( $post_id, [ $term_id ], 'publication', false );
+				update_post_meta( $post_id, \HexaPrWire\Core\Admin\PublicationPicker::LOCK_META, $term_id );
 				Activity::add( 'Payment-created draft assigned to its purchased publication.', 'success', [ 'order_id' => $order_id, 'post_id' => $post_id, 'term_id' => $term_id ], 'billing' );
 				break;
 			}

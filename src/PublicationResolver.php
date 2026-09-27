@@ -179,8 +179,8 @@ final class PublicationResolver {
 	private function mapped_publication_id( int $term_id ): int {
 		$value = get_term_meta( $term_id, 'publication', true );
 
-		if ( function_exists( 'get_field' ) ) {
-			$acf_value = get_field( 'publication', self::TAXONOMY . '_' . $term_id, false );
+		if ( \Hexa\PluginCore\Fields\Field::available() ) {
+			$acf_value = \Hexa\PluginCore\Fields\Field::get( 'publication', self::TAXONOMY . '_' . $term_id, false );
 			if ( false !== $acf_value && null !== $acf_value && '' !== $acf_value ) {
 				$value = $acf_value;
 			}
@@ -198,8 +198,8 @@ final class PublicationResolver {
 	}
 
 	private function publication_field( string $field_name, int $publication_id ) {
-		if ( function_exists( 'get_field' ) ) {
-			return get_field( $field_name, $publication_id );
+		if ( \Hexa\PluginCore\Fields\Field::available() ) {
+			return \Hexa\PluginCore\Fields\Field::get( $field_name, $publication_id );
 		}
 
 		return get_post_meta( $publication_id, $field_name, true );

@@ -268,13 +268,13 @@ final class OnboardingApi implements Module {
 		];
 		foreach ( $fields as $key => $value ) {
 			update_post_meta( $publication_id, $key, $value );
-			if ( function_exists( 'update_field' ) && ! str_starts_with( $key, '_' ) ) {
-				update_field( $key, $value, $publication_id );
+			if ( \Hexa\PluginCore\Fields\Field::available() && ! str_starts_with( $key, '_' ) ) {
+				\Hexa\PluginCore\Fields\Field::update( $key, $value, $publication_id );
 			}
 		}
 		update_term_meta( $term_id, 'publication', $publication_id );
-		if ( function_exists( 'update_field' ) ) {
-			update_field( 'publication', $publication_id, PublicationResolver::TAXONOMY . '_' . $term_id );
+		if ( \Hexa\PluginCore\Fields\Field::available() ) {
+			\Hexa\PluginCore\Fields\Field::update( 'publication', $publication_id, PublicationResolver::TAXONOMY . '_' . $term_id );
 		}
 
 		$approved = $this->destinations->approve( $publication_id, (string) wp_parse_url( $origin, PHP_URL_HOST ) );

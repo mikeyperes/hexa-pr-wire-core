@@ -9,9 +9,9 @@ final class ReleaseLocation implements Module {
 	public function __construct( private AccessPolicy $policy ) {}
 
 	public function register(): void {
-		add_filter( 'acf/location/rule_types', [ $this, 'rule_types' ] );
-		add_filter( 'acf/location/rule_values/hprwc_release', [ $this, 'rule_values' ] );
-		add_filter( 'acf/location/rule_match/hprwc_release', [ $this, 'rule_match' ], 10, 3 );
+		\Hexa\PluginCore\Fields\Hooks::on( 'location/rule_types', [ $this, 'rule_types' ] );
+		\Hexa\PluginCore\Fields\Hooks::on( 'location/rule_values/hprwc_release', [ $this, 'rule_values' ] );
+		\Hexa\PluginCore\Fields\Hooks::on( 'location/rule_match/hprwc_release', [ $this, 'rule_match' ], 10, 3 );
 	}
 
 	/** @param array<string,mixed> $choices @return array<string,mixed> */

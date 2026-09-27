@@ -10,7 +10,7 @@ final class CanonicalService implements Module {
 	public function __construct( private PublicationRepository $publications, private PublicationUrl $urls ) {}
 
 	public function register(): void {
-		add_action( 'acf/save_post', [ $this, 'synchronize' ], 25 );
+		\Hexa\PluginCore\Fields\Hooks::on( 'save_post', [ $this, 'synchronize' ], 25 );
 		add_action( 'save_post_post', [ $this, 'synchronize' ], 90 );
 	}
 

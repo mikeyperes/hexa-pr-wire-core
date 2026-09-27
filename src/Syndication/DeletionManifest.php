@@ -14,7 +14,7 @@ final class DeletionManifest implements Module {
 	public function register_route(): void {
 		register_rest_route( 'hprwc/v1', '/deletions', [
 			'methods' => \WP_REST_Server::READABLE,
-			'callback' => fn() => rest_ensure_response( [ 'slugs' => $this->slugs(), 'updated_gmt' => (string) get_option( 'hprwc_deletion_manifest_updated', '' ) ] ),
+			'callback' => fn() => rest_ensure_response( [ 'slugs' => $this->slugs(), 'sources' => $this->sources(), 'updated_gmt' => (string) get_option( 'hprwc_deletion_manifest_updated', '' ) ] ),
 			'permission_callback' => '__return_true',
 		] );
 	}
@@ -26,12 +26,31 @@ final class DeletionManifest implements Module {
 		exit;
 	}
 
-	/** @return string[] */
+	/**
+	 * Releases removed from hexaprwire.com, matched on outlets by `_hpr_source_id`.
+	 *
+	 * @return array<int,array{id:string,slug:string}>
+	 */
+	public function sources(): array {
+		$sources = [];
+		foreach ( DeletionLedger::all() as $entry ) {
+			$sources[] = [ 'id' => (string) $entry['id'], 'slug' => (string) $entry['slug'] ];
+		}
+		return $sources;
+	}
+
+	/** Manual purge list plus recorded deletions (for older Distributors that match by slug). @return string[] */
 	public function slugs(): array {
 		$count = min( 10000, max( 0, (int) get_option( 'options_slugs', 0 ) ) );
 		$slugs = [];
 		for ( $index = 0; $index < $count; $index++ ) {
 			$slug = sanitize_title( (string) get_option( "options_slugs_{$index}_slug", '' ) );
+			if ( '' !== $slug ) {
+				$slugs[] = $slug;
+			}
+		}
+		foreach ( DeletionLedger::all() as $entry ) {
+			$slug = sanitize_title( (string) $entry['slug'] );
 			if ( '' !== $slug ) {
 				$slugs[] = $slug;
 			}

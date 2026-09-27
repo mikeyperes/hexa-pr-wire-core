@@ -81,6 +81,7 @@ final class Plugin {
 		$this->credentials = new CredentialRepository();
 		$this->destinations = new DestinationRegistry();
 		$this->force_sync = new ForceSyncService( $this->resolver, $this->credentials, $this->destinations );
+		$outlets = new \HexaPrWire\Core\Syndication\OutletClient( $this->credentials, $this->resolver, $this->destinations );
 
 		$modules
 				->add( new RoleLifecycle() )
@@ -99,7 +100,7 @@ final class Plugin {
 			->add( new CanonicalService( $publications, $urls ) )
 			->add( new SubmissionNotifications( $notification_settings, $mailer ) )
 			->add( new DeliveryNotifications( $notification_settings, $mailer ) )
-			->add( new FeedRegistry( new FeedRenderer() ) )
+			->add( new FeedRegistry( new FeedRenderer(), $this->credentials ) )
 			->add( new DeletionManifest() )
 			->add( new PressReleaseContent() )
 			->add( new PublicationShortcodes( $publications, $urls ) )
@@ -107,6 +108,9 @@ final class Plugin {
 			->add( new BillingPricingBridge( $policies, $access ) )
 			->add( new OnboardingApi( $this->destinations ) )
 			->add( new ForceSyncModule( $this->resolver, $this->credentials, $this->destinations, $this->force_sync ) )
+			->add( new \HexaPrWire\Core\Syndication\OutletPush( $this->resolver, $this->destinations, $this->force_sync, $outlets ) )
+			->add( new \HexaPrWire\Core\Syndication\AuthorProfile( $outlets ) )
+			->add( new \HexaPrWire\Core\Admin\PublicationPicker() )
 			->add( new GitHubPluginUpdater( UpdaterConfig::from_plugin_file(
 				HPRWC_FILE,
 				'mikeyperes/hexa-pr-wire-core',
