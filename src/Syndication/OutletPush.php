@@ -11,8 +11,12 @@ use HexaPrWire\Core\Support\Activity;
 /**
  * Real-time syndication: publishing or updating a release makes each selected
  * outlet pull it now; trashing or deleting one makes each outlet apply
- * hexaprwire.com's deletion list now. Runs in the background (WP-Cron) so the
- * editor never waits on outlets. Outlets still pull every 4 hours as a safety net.
+ * hexaprwire.com's deletion list now.
+ *
+ * The push runs right after the editor's response is sent (LiteSpeed or
+ * FastCGI finish-request), so nobody waits and nothing depends on the server
+ * cron. A cron event is queued as a safety net and cleared once the push has
+ * run. Outlets also pull every 4 hours.
  */
 final class OutletPush implements Module {
 	public const PUSH_HOOK = 'hprwc_push_release';
@@ -24,6 +28,10 @@ final class OutletPush implements Module {
 		private ForceSyncService $force_sync,
 		private OutletClient $client
 	) {}
+
+	/** @var array<string,callable> */
+	private array $deferred = [];
+	private bool $shutdown_registered = false;
 
 	public function register(): void {
 		add_action( 'wp_after_insert_post', [ $this, 'after_save' ], 20, 4 );
@@ -40,7 +48,11 @@ final class OutletPush implements Module {
 			return;
 		}
 		if ( apply_filters( 'hprwc_push_on_publish', true, $post ) ) {
-			self::schedule( self::PUSH_HOOK, $post_id, 10 );
+			self::schedule( self::PUSH_HOOK, $post_id, 120 );
+			$this->defer( 'push:' . $post_id, function () use ( $post_id ): void {
+				$this->push( $post_id );
+				wp_clear_scheduled_hook( self::PUSH_HOOK, [ $post_id ] );
+			} );
 		}
 	}
 
@@ -67,7 +79,11 @@ final class OutletPush implements Module {
 			return;
 		}
 		DeletionLedger::record( $post, $this->client->hosts( $post_id ) );
-		self::schedule( self::DELETE_HOOK, $post_id, 5 );
+		self::schedule( self::DELETE_HOOK, $post_id, 120 );
+		$this->defer( 'delete:' . $post_id, function () use ( $post_id ): void {
+			$this->push_deletion( $post_id );
+			wp_clear_scheduled_hook( self::DELETE_HOOK, [ $post_id ] );
+		} );
 	}
 
 	public function push_deletion( int $post_id ): void {
@@ -90,8 +106,33 @@ final class OutletPush implements Module {
 		if ( ! wp_next_scheduled( $hook, [ $post_id ] ) ) {
 			wp_schedule_single_event( time() + $delay, $hook, [ $post_id ] );
 		}
-		if ( function_exists( 'spawn_cron' ) ) {
-			spawn_cron();
+	}
+
+	/** Run a job once, after the current response has been sent. */
+	private function defer( string $key, callable $job ): void {
+		$this->deferred[ $key ] = $job;
+		if ( $this->shutdown_registered ) {
+			return;
 		}
+		$this->shutdown_registered = true;
+		register_shutdown_function( function (): void {
+			ignore_user_abort( true );
+			if ( function_exists( 'litespeed_finish_request' ) ) {
+				litespeed_finish_request();
+			} elseif ( function_exists( 'fastcgi_finish_request' ) ) {
+				fastcgi_finish_request();
+			}
+			if ( function_exists( 'set_time_limit' ) ) {
+				@set_time_limit( 600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			}
+			foreach ( $this->deferred as $job ) {
+				try {
+					$job();
+				} catch ( \Throwable $throwable ) {
+					Activity::add( 'Outlet push failed: ' . $throwable->getMessage(), 'error', [], 'syndication' );
+				}
+			}
+			$this->deferred = [];
+		} );
 	}
 }

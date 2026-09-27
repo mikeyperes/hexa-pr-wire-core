@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.2.1 =
+* Releases push to their outlets right after the editor's save response is sent (LiteSpeed/FastCGI finish-request), instead of waiting for the 15-minute server cron; deletions likewise. The cron event remains as a safety net and is cleared once the push has run.
 
 = 2.2.0 =
 * Real-time syndication: publishing or updating a release makes each selected outlet pull it immediately (background, via each outlet's Force Sync link); trashing or deleting a release makes each outlet apply the deletion list immediately. Outlets still pull every 4 hours.

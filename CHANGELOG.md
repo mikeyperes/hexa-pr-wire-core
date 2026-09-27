@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.1 — 2026-09-27
+
+- Releases push to their outlets right after the editor's save response is sent (LiteSpeed/FastCGI finish-request), instead of waiting for the 15-minute server cron; deletions likewise. The cron event remains as a safety net and is cleared once the push has run.
+
 ## 2.2.0 — 2026-09-27
 
 - Real-time syndication: publishing or updating a release makes each selected outlet pull it immediately (background, via each outlet's Force Sync link); trashing or deleting a release makes each outlet apply the deletion list immediately. Outlets still pull every 4 hours.
