@@ -19,7 +19,7 @@ Core does not own WooCommerce checkout/order fulfillment, destination imports, g
 
 ## Shared Core
 
-The plugin registers the released `hexa/plugin-core` 3.0.6 package under `Hexa\PluginCore\`. Reusable bootstrap, ACF/CPT/taxonomy registries, admin tabs/components, guarded AJAX, activity logging, and GitHub updater mechanics come from that package. Hexa PR Wire business policy stays under `HexaPrWire\Core\`.
+The plugin bundles the released `hexa/plugin-core` 3.3.0 package and requires 3.0.6 or newer under `Hexa\PluginCore\`, so a newer compatible copy bundled by another Hexa plugin can be selected. Reusable bootstrap, ACF/CPT/taxonomy registries, admin tabs/components, guarded AJAX, activity logging, and GitHub updater mechanics come from that package. Hexa PR Wire business policy stays under `HexaPrWire\Core\`.
 
 ## Customer modes
 

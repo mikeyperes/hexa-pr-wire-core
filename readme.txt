@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.1.2
+Stable tag: 2.1.3
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.1.3 =
+* Removed the exact Hexa WP Core 3.0.6 ceiling: Core now requires 3.0.6 or newer and bundles 3.3.0, so hexaprwire.com can run current Hexa plugins together. The parity report accepts any selected Core from 3.0.6 up.
 
 = 2.1.2 =
 * Made Core namespace rendering compatible with RSS hooks that manage their own output buffers.

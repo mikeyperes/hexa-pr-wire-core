@@ -59,6 +59,10 @@ hexa-wordpress-plugin-core/
     SiteStructure/      -> Hexa\PluginCore\SiteStructure
     SchemaDetection/    -> Hexa\PluginCore\SchemaDetection
     SchemaTools/        -> Hexa\PluginCore\SchemaTools
+    DirectorySearch/    -> Hexa\PluginCore\DirectorySearch
+    Calendar/           -> Hexa\PluginCore\Calendar
+    QueryFilter/        -> Hexa\PluginCore\QueryFilter
+    PublicComponents/   -> Hexa\PluginCore\PublicComponents
     SearchDisplay/      -> Hexa\PluginCore\SearchDisplay
     SearchQuery/        -> Hexa\PluginCore\SearchQuery
     SmartSearch/        -> Hexa\PluginCore\SmartSearch
@@ -98,6 +102,18 @@ Version 1.2.0 adds an automatically registered static-front-page query invariant
 Version 2.1.4 keeps Getting Started parent-step and full-checklist runs available when only child tasks are awaiting input. Runnable subtasks execute in their registered order while each input-dependent child validates itself, so an early dependency-provisioning task can install required packages before later actions run. Template selection continues to distinguish selected from loaded states and expose loading, success, and failure feedback. `TemplateSelectionControl` retains its no-design toggle, responsive column constraints, accessible visual grid, scaled preview viewports, selected-state behavior, host save hooks, and AJAX-tab reinitialization.
 
 Version 3.0.0 establishes the coordinated major release for the expanded Core data-normalization, operations, provisioning, checklist-state, fleet-synchronization, and reusable admin infrastructure shipped in this source tree.
+
+Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
+
+Version 3.3.0 makes content-type field groups work without ACF. `ContentTypes\NativeFieldGroups` registers each enabled group as a native meta box and post meta when ACF is not active, storing values under the same meta keys ACF uses so existing data remains readable and carries over if ACF is activated later. The Content Model screen shows the active field storage.
+
+Version 3.2.2 gives calendar overflow disclosures distinct collapsed and expanded labels, so the control changes from the event count to `Show less` while open and supports host-defined `labels.less` text.
+
+Version 3.2.0 adds `Hexa\PluginCore\Calendar`, a lightweight library-free month-grid calendar (`[hexa_calendar]`, `GET /wp-json/hexa-plugin-core/v1/calendar/{profile}`) whose items link to profile-defined URLs, and `Hexa\PluginCore\QueryFilter`, the one shared visitor-filter structure (taxonomy, custom field/ACF, date range, callback, and host-registered types) now used by both `Calendar` and `DirectorySearch`. Shared public-component helpers move into `Hexa\PluginCore\PublicComponents`; the `DirectorySearch` public API is unchanged (the former filter constants and `DirectorySearchRequest::filter_options()` remain as deprecated aliases) and gains date-range filters.
+
+Version 3.1.0 adds `Hexa\PluginCore\DirectorySearch`, a declarative public directory search over published posts or role-scoped users (all/any/exact terms, whole/prefix/contains matching, `*` wildcards, meta/taxonomy/callback filters, field/callback sorts, card templates, `[hexa_directory]`, and `GET /wp-json/hexa-plugin-core/v1/directory/{profile}`), and moves term matching into the shared `SearchQuery\SearchMatchSql` helper used by the native results engine.
+
+Version 3.0.7 adds the shared dynamic admin-notice component for consistent no-refresh save feedback and makes generic plugin deactivation preserve site or network scope with an explicit network-capability guard.
 
 Version 3.0.6 preserves each plugin's inactive, site-active, or network-active state across native updates, normalizes the installed package into its canonical folder, clears discovery caches before restoration, and verifies the restored activation scope with explicit errors when installation or reactivation fails.
 
@@ -142,7 +158,7 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `LiteSpeedCache`: array-driven host profiles, generic audit/apply/verify and casting, effective/stored provenance, and one-batch writes through the official LiteSpeed Conf API; Core supplies no recommended values.
 - `MediaUploads`: reusable image MIME, extension, and size policy plus guarded WordPress Media Library storage.
 - `ObjectCache`: provider-specific object-cache status and activation adapters, including verified LiteSpeed Redis checks.
-- `PluginChecks`: shared required-plugin definitions, status checks, reusable collapsible plugin inventory tables, presence-based green/red Font Awesome SVG title indicators, Required/Optional badges, AJAX install/activate/deactivate/delete actions, subtle secondary row controls, update-cache refresh, and activity-log UI.
+- `PluginChecks`: shared required-plugin definitions, status checks, reusable collapsible plugin inventory tables, presence-based green/red Font Awesome SVG title indicators, Required/Optional badges, AJAX install/activate/deactivate/delete actions, activation-scope-aware deactivation, subtle secondary row controls, update-cache refresh, and activity-log UI.
 - `PluginProvisioning`: shared plugin discovery, site/network activation status checks, WordPress.org installs, GitHub ZIP installs, folder normalization, and activation.
 - `PluginUpdates`: shared GitHub/update configuration objects and host plugin updater.
 - `QuerySafety`: suppressed-filter/request eligibility checks, exact static-front-page detection, and parse-before-mutation invariant capture with final-priority repair.
@@ -154,10 +170,14 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `SearchDisplay`: five reusable front-end WordPress search-form templates with shared markup, CSS, and accessible interactions.
 - `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, selected post types and sources, one-query-only SQL hooks, and guarded JetEngine search-template bridging.
 - `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.
+- `DirectorySearch`: declarative public directory search over posts or users with filters, sorts, card templates, a public REST endpoint, and a server-rendered shortcode that upgrades to live search.
+- `Calendar`: lightweight public month-grid calendar profiles over dated posts (or a host provider) with linked items, shared filters, bounded month navigation, a public REST endpoint, and a server-rendered shortcode.
+- `QueryFilter`: the shared declarative visitor-filter structure (taxonomy, custom field/ACF, date range, callback, extensible types) with SQL, parsing, controls, and URL arguments.
+- `PublicComponents`: shared profile sanitizers, profile stores, URL/base-path helpers, shortcode-inert output, and public REST caching for public components.
 - `SystemEnvironment`: safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting.
 - `Taxonomies`: reusable taxonomy definitions, callback-backed registration, and shared reference UI for host-owned editorial taxonomies.
 - `WpAdminUiCleanup`: shared admin UI cleanup definitions, AJAX toggles, target-screen CSS/JS, postbox hide/collapse behavior, and footer filters.
-- `WpAdminComponents`: shared visual primitives such as cards, subcards, buttons, pills, tooltips, collapsible sections, three-column visual template selectors, selectable media gallery details, color controls, font-family controls, and scoped CSS override editors and references.
+- `WpAdminComponents`: shared visual primitives such as cards, subcards, buttons, pills, tooltips, collapsible sections, dynamic save notices, three-column visual template selectors, selectable media gallery details, color controls, font-family controls, and scoped CSS override editors and references.
 - `WpAdminAjax`: WordPress admin-AJAX nonce, capability, request parsing, action registration, and handler guards.
 - `WpAdminTabs`: admin tab definitions, registry, host hook integration, and the automatic Hexa core documentation tab.
 - `WpConfigFile`: safe `wp-config.php` constant and `ini_set()` reads/writes with validation and rollback backup handling.
@@ -691,6 +711,18 @@ echo \Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer::render(
 Host plugins own saved settings and shortcode registration. They must call this renderer for both admin previews and front-end output. Do not copy its markup or assets into the host plugin.
 
 `SearchDisplay` is not the content-picker typeahead API. Use `SmartSearch` for AJAX result suggestions inside tools and admin workflows.
+
+## Directory Search
+
+Use `Hexa\PluginCore\DirectorySearch` for public listing pages (directories of posts or users) with live search, filters, sorts, and host card templates. Register a profile with `DirectorySearchRegistry::register()`, add `DirectorySearchModule` to `CoreBootstrap`, and place `[hexa_directory id="…"]`. Full protocol: `docs/directory-search.md`.
+
+## Calendar
+
+Use `Hexa\PluginCore\Calendar` for a lightweight public month-grid calendar. Register a profile with `CalendarRegistry::register()` (post types, start/end date fields, link, filters), add `CalendarModule` to `CoreBootstrap`, and place `[hexa_calendar id="…"]`. Days are not interactive; each item links to the URL the profile defines. Full protocol: `docs/calendar.md`.
+
+## Query Filters
+
+Declare visitor filters once with `Hexa\PluginCore\QueryFilter` definitions (`taxonomy`, `meta` for custom and ACF fields, `date_range`, `callback`, or a registered custom type). `DirectorySearch` and `Calendar` share the same parsing, SQL, and controls. Full protocol: `docs/query-filters.md`.
 
 ## Smart Search / X-Search
 

@@ -47,6 +47,7 @@ final class ContentTypeRegistry implements ModuleInterface {
         $registrar = new ContentTypeRegistrar( $this );
         add_action( 'init', [ $registrar, 'register_post_types' ], (int) $this->config['hook_priority'] );
         add_action( 'acf/init', [ $registrar, 'register_acf_groups' ], (int) $this->config['hook_priority'] );
+        ( new NativeFieldGroups( $this ) )->register( (int) $this->config['hook_priority'] );
         ( new ContentTypeAjaxController( $this, $this->config ) )->register();
     }
 

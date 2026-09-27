@@ -37,8 +37,11 @@ final class ParityReport {
 		$selected_hash = (string) ( $core['selected']['hash'] ?? '' );
 		$expected_hash = is_readable( HPRWC_DIR . 'vendor/hexa/plugin-core/PACKAGE_HASH' ) ? trim( (string) file_get_contents( HPRWC_DIR . 'vendor/hexa/plugin-core/PACKAGE_HASH' ) ) : '';
 		$actual_hash = class_exists( '\\HexaPluginCorePackageRegistry' ) ? \HexaPluginCorePackageRegistry::source_hash( HPRWC_DIR . 'vendor/hexa/plugin-core' ) : '';
-		$this->check( $checks, 'shared_core_version', '3.0.6' === $selected_version, $selected_version ?: 'missing' );
-		$this->check( $checks, 'shared_core_integrity', '' !== $expected_hash && hash_equals( $expected_hash, $actual_hash ) && hash_equals( $expected_hash, $selected_hash ), $actual_hash ?: 'missing' );
+		$vendored_version = is_readable( HPRWC_DIR . 'vendor/hexa/plugin-core/VERSION' ) ? trim( (string) file_get_contents( HPRWC_DIR . 'vendor/hexa/plugin-core/VERSION' ) ) : '';
+		$this->check( $checks, 'shared_core_version', '' !== $selected_version && version_compare( $selected_version, '3.0.6', '>=' ), $selected_version ?: 'missing' );
+		// Another plugin may supply a newer selected Core; only an identical version must be byte-identical.
+		$selected_matches = $selected_version !== $vendored_version || hash_equals( $expected_hash, $selected_hash );
+		$this->check( $checks, 'shared_core_integrity', '' !== $expected_hash && hash_equals( $expected_hash, $actual_hash ) && $selected_matches, $actual_hash ?: 'missing' );
 		$this->check( $checks, 'shared_core_health', ! empty( $core['healthy'] ), $core['issues'] ?? [] );
 
 		foreach ( self::GROUP_KEYS as $key ) {

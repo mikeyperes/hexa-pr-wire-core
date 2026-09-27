@@ -2,7 +2,7 @@
 
 ## Boundary
 
-`HexaPrWire\Core` owns source-side Hexa PR Wire business behavior. Reusable WordPress mechanics come from vendored `Hexa\PluginCore` 3.0.6. Billing continues to own WooCommerce commerce and payment-created drafts. Distributor continues to own destination imports.
+`HexaPrWire\Core` owns source-side Hexa PR Wire business behavior. Reusable WordPress mechanics come from vendored `Hexa\PluginCore` 3.3.0 (minimum 3.0.6, no maximum). Billing continues to own WooCommerce commerce and payment-created drafts. Distributor continues to own destination imports.
 
 ## Modules
 

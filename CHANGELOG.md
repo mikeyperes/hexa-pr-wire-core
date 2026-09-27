@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.3 — 2026-09-26
+
+- Removed the exact Hexa WP Core 3.0.6 ceiling: Core now requires 3.0.6 or newer and bundles 3.3.0, so hexaprwire.com can run current Hexa plugins together. The parity report accepts any selected Core from 3.0.6 up.
+
 ## 2.1.2 — 2026-09-20
 
 - Made Core namespace rendering compatible with RSS hooks that manage their own output buffers.
