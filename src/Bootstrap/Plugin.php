@@ -98,7 +98,7 @@ final class Plugin {
 			->add( new OwnershipService() )
 			->add( new DeliveryLinkGenerator( $publications, $urls ) )
 			->add( new CanonicalService( $publications, $urls ) )
-			->add( new SubmissionNotifications( $notification_settings, $mailer ) )
+			->add( new SubmissionNotifications( $notification_settings, $mailer, $policies ) )
 			->add( new DeliveryNotifications( $notification_settings, $mailer ) )
 			->add( new FeedRegistry( new FeedRenderer(), $this->credentials ) )
 			->add( new DeletionManifest() )

@@ -30,7 +30,9 @@ The plugin bundles the released `hexa/plugin-core` 3.4.1 package and requires 3.
 | Create and publish | Yes | Yes | No |
 | Full access | Yes | Yes | Yes |
 
-Administrators explicitly choose `Unrestricted` or `Restricted` publication access for each non-full customer. Existing accounts default to unrestricted, and routine profile saves or price changes never activate restrictions. The validated checkbox selection is retained independently so switching modes does not erase the prepared allowlist. When restricted, the checked set is authoritative and an empty set means no access. Existing post assignments remain stable during edits. The policy is enforced in classic admin, REST, post queries, media queries, capabilities, and taxonomy assignment.
+Administrator recipients are emailed when a release enters pending review and when a customer publishes a release directly.
+
+Administrators explicitly choose `Unrestricted`, `Restricted` or `All except excluded` publication access for each non-full customer. `All except excluded` allows every current and future publication except the excluded ones; excluding a group also excludes its outlets. Existing accounts default to unrestricted, and routine profile saves or price changes never activate restrictions. The validated checkbox selection is retained independently so switching modes does not erase the prepared allowlist. When restricted, the checked set is authoritative and an empty set means no access. Existing post assignments remain stable during edits. The policy is enforced in classic admin, REST, post queries, media queries, capabilities, and taxonomy assignment.
 
 ## Commands
 

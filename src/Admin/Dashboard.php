@@ -189,6 +189,7 @@ final class Dashboard implements Module {
 		}
 		$fields = [
 			'pending' => 'Pending-review alert',
+			'published' => 'Customer-published alert',
 			'draft' => 'Customer draft update',
 			'live' => 'Customer live-links email',
 			'onboarding' => 'Customer onboarding email',

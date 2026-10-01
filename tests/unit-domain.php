@@ -43,13 +43,15 @@ $repository = new class implements \HexaPrWire\Core\Contracts\CustomerPolicyRepo
 	public array $modes = [ 7 => 'edit_existing', 8 => 'create_pending', 9 => 'create_publish', 10 => 'full_access' ];
 	public array $allowed = [ 7 => [ 11 ], 8 => [ 11, 12 ], 9 => [ 12 ], 10 => [] ];
 	public array $configured = [ 7 => true, 8 => true, 9 => true, 10 => true ];
+	public array $excluded = [];
 	public function is_customer( int $user_id ): bool { return isset( $this->modes[ $user_id ] ); }
 	public function mode( int $user_id ): string { return $this->modes[ $user_id ] ?? 'edit_existing'; }
-	public function publication_access_mode( int $user_id ): string { return ( $this->configured[ $user_id ] ?? false ) ? 'restricted' : 'unrestricted'; }
+	public function publication_access_mode( int $user_id ): string { return isset( $this->excluded[ $user_id ] ) ? 'excluded' : ( ( $this->configured[ $user_id ] ?? false ) ? 'restricted' : 'unrestricted' ); }
 	public function publication_access_configured( int $user_id ): bool { return $this->configured[ $user_id ] ?? false; }
 	public function allowed_publications( int $user_id ): array { return $this->allowed[ $user_id ] ?? []; }
+	public function excluded_publications( int $user_id, bool $with_descendants = true ): array { return $this->excluded[ $user_id ] ?? []; }
 	public function publication_prices( int $user_id ): array { return []; }
-	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = 'unrestricted' ): void {}
+	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = 'unrestricted', ?array $excluded_publication_ids = null ): void {}
 };
 
 $policy = new \HexaPrWire\Core\Customer\AccessPolicy( $repository );
@@ -58,6 +60,9 @@ $assert( $policy->can_create( 8 ) && ! $policy->can_publish( 8 ), 'pending custo
 $assert( $policy->can_create( 9 ) && $policy->can_publish( 9 ), 'publisher customers can create and publish' );
 $assert( $policy->can_use_publication( 7, 11 ) && ! $policy->can_use_publication( 7, 12 ), 'publication entitlements are enforced' );
 $assert( $policy->can_use_publication( 10, 999 ), 'full-access customers can use every publication' );
+$repository->excluded[9] = [ 11 ];
+$assert( ! $policy->can_use_publication( 9, 11 ) && $policy->can_use_publication( 9, 999 ), 'excluded customers can use every publication except excluded ones' );
+unset( $repository->excluded[9] );
 $assert( $policy->can_edit_post( 7, new WP_Post( 1, 7 ) ), 'customers can edit their own releases' );
 $assert( ! $policy->can_edit_post( 7, new WP_Post( 2, 8 ) ), 'constrained customers cannot edit another customer release' );
 $assert( $policy->can_edit_post( 10, new WP_Post( 3, 8 ) ), 'full-access customers can edit other releases' );

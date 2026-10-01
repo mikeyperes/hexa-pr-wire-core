@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.0 — 2026-10-01
+
+- Publication access gains a third mode, “All except excluded”: a customer can use every current and future publication except the ones excluded on their profile; excluding a group also excludes its current and future outlets.
+- Administrator recipients are emailed when a customer publishes or schedules a release directly (new “Customer-published alert” template), not only when a release enters pending review.
+
 ## 2.2.1 — 2026-09-27
 
 - Releases push to their outlets right after the editor's save response is sent (LiteSpeed/FastCGI finish-request), instead of waiting for the 15-minute server cron; deletions likewise. The cron event remains as a safety net and is cleared once the push has run.

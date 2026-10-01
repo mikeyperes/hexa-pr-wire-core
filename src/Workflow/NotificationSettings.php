@@ -11,6 +11,8 @@ final class NotificationSettings {
 		$defaults = [
 			'pending_subject' => 'Release pending review: {title}',
 			'pending_message' => "A Hexa PR Wire release is ready for review.\n\nTitle: {title}\nCustomer: {full_name}\nEdit: {edit_url}",
+			'published_subject' => 'Customer release published: {title}',
+			'published_message' => "A Hexa PR Wire customer published a release without review.\n\nTitle: {title}\nCustomer: {full_name}\nView: {permalink}\nEdit: {edit_url}",
 			'draft_subject' => (string) get_option( 'options_notify_draft_update_subject', '' ) ?: 'Update to your press release: {title}',
 			'draft_message' => (string) get_option( 'options_notify_draft_update_message', '' ) ?: "Hello {first_name},<br><br>Your Hexa PR Wire draft has been updated.<br><br><a href=\"{edit_url}\">Review your draft</a>.",
 			'live_subject' => 'Your Press Release is Live: {title}',
@@ -24,10 +26,10 @@ final class NotificationSettings {
 
 	public function save( array $input ): void {
 		$current = $this->all();
-		foreach ( [ 'pending_subject', 'draft_subject', 'live_subject', 'onboarding_subject' ] as $key ) {
+		foreach ( [ 'pending_subject', 'published_subject', 'draft_subject', 'live_subject', 'onboarding_subject' ] as $key ) {
 			$current[ $key ] = sanitize_text_field( (string) ( $input[ $key ] ?? $current[ $key ] ) );
 		}
-		foreach ( [ 'pending_message', 'draft_message', 'live_message', 'onboarding_message' ] as $key ) {
+		foreach ( [ 'pending_message', 'published_message', 'draft_message', 'live_message', 'onboarding_message' ] as $key ) {
 			$current[ $key ] = wp_kses_post( (string) ( $input[ $key ] ?? $current[ $key ] ) );
 		}
 		$current['admin_emails'] = implode( "\n", $this->normalize_emails( (string) ( $input['admin_emails'] ?? '' ) ) );

@@ -34,6 +34,9 @@ final class AccessPolicy {
 		if ( ! $this->is_customer( $user_id ) || SubmissionMode::is_full( $this->mode( $user_id ) ) || ! $this->policies->publication_access_configured( $user_id ) ) {
 			return true;
 		}
+		if ( CustomerPolicyRepository::ACCESS_EXCLUDED === $this->policies->publication_access_mode( $user_id ) ) {
+			return ! in_array( $term_id, $this->policies->excluded_publications( $user_id ), true );
+		}
 		return in_array( $term_id, $this->policies->allowed_publications( $user_id ), true );
 	}
 

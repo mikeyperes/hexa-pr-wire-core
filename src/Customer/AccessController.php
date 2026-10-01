@@ -7,6 +7,7 @@ use HexaPrWire\Core\Infrastructure\WordPress\WordPressCustomerPolicyRepository;
 
 final class AccessController implements Module {
 	private bool $normalizing_terms = false;
+	private bool $scoping_terms = false;
 
 	public function __construct(
 		private AccessPolicy $policy,
@@ -136,12 +137,24 @@ final class AccessController implements Module {
 		if ( ! in_array( 'publication', $taxonomies, true ) || ! $this->policy->is_customer( $user_id ) || SubmissionMode::is_full( $this->policy->mode( $user_id ) ) ) {
 			return $args;
 		}
-		if ( ! $this->policies->publication_access_configured( $user_id ) ) {
+		if ( $this->scoping_terms || ! $this->policies->publication_access_configured( $user_id ) ) {
 			return $args;
 		}
-		$allowed = $this->policies->allowed_publications( $user_id );
-		$current = array_values( array_filter( array_map( 'absint', (array) ( $args['include'] ?? [] ) ) ) );
-		$args['include'] = $current ? array_values( array_intersect( $current, $allowed ) ) : ( $allowed ?: [ 0 ] );
+		// Resolving excluded groups reads the term hierarchy, which may itself query terms.
+		$this->scoping_terms = true;
+		$current = wp_parse_id_list( $args['include'] ?? [] );
+		if ( WordPressCustomerPolicyRepository::ACCESS_EXCLUDED === $this->policies->publication_access_mode( $user_id ) ) {
+			$excluded = $this->policies->excluded_publications( $user_id );
+			if ( $current ) {
+				$args['include'] = array_values( array_diff( $current, $excluded ) ) ?: [ 0 ];
+			} else {
+				$args['exclude'] = array_values( array_unique( array_merge( wp_parse_id_list( $args['exclude'] ?? [] ), $excluded ) ) );
+			}
+		} else {
+			$allowed = $this->policies->allowed_publications( $user_id );
+			$args['include'] = $current ? array_values( array_intersect( $current, $allowed ) ) : ( $allowed ?: [ 0 ] );
+		}
+		$this->scoping_terms = false;
 		return $args;
 	}
 

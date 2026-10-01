@@ -27,7 +27,8 @@ $repo = new class implements \HexaPrWire\Core\Contracts\CustomerPolicyRepository
 	public function publication_access_configured( int $user_id ): bool { return false; }
 	public function allowed_publications( int $user_id ): array { return []; }
 	public function publication_prices( int $user_id ): array { return []; }
-	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = 'unrestricted' ): void {}
+	public function excluded_publications( int $user_id, bool $with_descendants = true ): array { return []; }
+	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = 'unrestricted', ?array $excluded_publication_ids = null ): void {}
 };
 $groups = new \HexaPrWire\Core\Fields\FieldGroups( new \HexaPrWire\Core\Fields\ReleaseLocation( new \HexaPrWire\Core\Customer\AccessPolicy( $repo ) ) );
 $definitions = [ $groups->publication_group(), $groups->taxonomy_group(), $groups->public_release_group(), $groups->checklist_group(), $groups->private_release_group() ];

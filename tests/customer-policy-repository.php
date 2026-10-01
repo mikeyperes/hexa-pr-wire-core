@@ -13,6 +13,7 @@ function metadata_exists( string $type, int $user_id, string $key ): bool { retu
 function update_user_meta( int $user_id, string $key, mixed $value ): bool { $GLOBALS['hprwc_user_meta'][ $user_id ][ $key ] = $value; return true; }
 function get_terms( array $args ): array { return array_values( array_intersect( [ 11, 12, 13 ], array_map( 'intval', (array) ( $args['include'] ?? [] ) ) ) ); }
 function is_wp_error( mixed $value ): bool { return false; }
+function get_term_children( int $term_id, string $taxonomy ): array { return 12 === $term_id ? [ 13 ] : []; }
 function absint( mixed $value ): int { return abs( (int) $value ); }
 function sanitize_key( mixed $value ): string { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ?: '' ); }
 
@@ -46,5 +47,11 @@ $assert( [ 12 ] === $repository->allowed_publications( 7 ), 'restricted publicat
 $repository->save( 7, 'edit_existing', [ 11 ], [], 'unrestricted' );
 $assert( ! $repository->publication_access_configured( 7 ), 'explicit unrestricted mode disables allowlist enforcement' );
 $assert( [ 11 ] === $repository->allowed_publications( 7 ), 'unrestricted mode does not erase the saved allowlist' );
+$repository->save( 7, 'create_publish', [ 11 ], [], 'excluded', [ 12, 99 ] );
+$assert( 'excluded' === $repository->publication_access_mode( 7 ) && $repository->publication_access_configured( 7 ), 'exclusion mode enforces publication access' );
+$assert( [ 12 ] === $repository->excluded_publications( 7, false ), 'excluded selections remain validated' );
+$assert( [ 12, 13 ] === $repository->excluded_publications( 7 ), 'excluding a group excludes its outlets' );
+$repository->save( 7, 'create_publish', [ 11 ], [], 'unrestricted' );
+$assert( [ 12 ] === $repository->excluded_publications( 7, false ), 'saves without exclusions keep the stored exclusions' );
 
 fwrite( STDOUT, "Customer policy repository tests passed.\n" );
