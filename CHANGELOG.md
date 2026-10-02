@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.1 — 2026-10-02
+
+- The customer-published alert goes to the administrator recipients and the submitting customer's own account email.
+
 ## 2.3.0 — 2026-10-01
 
 - Publication access gains a third mode, “All except excluded”: a customer can use every current and future publication except the ones excluded on their profile; excluding a group also excludes its current and future outlets.

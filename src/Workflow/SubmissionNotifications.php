@@ -33,8 +33,14 @@ final class SubmissionNotifications implements Module {
 			return;
 		}
 		$config = $this->settings->all();
+		$recipients = $this->settings->admin_emails();
+		// A customer-published release also goes to that customer's own account email.
+		$author = 'published' === $kind ? get_userdata( (int) $post->post_author ) : false;
+		if ( $author instanceof \WP_User && is_email( $author->user_email ) ) {
+			$recipients[] = $author->user_email;
+		}
 		$sent = $this->mailer->send(
-			$this->settings->admin_emails(),
+			array_values( array_unique( $recipients ) ),
 			$this->settings->interpolate( (string) $config[ $kind . '_subject' ], $post ),
 			nl2br( esc_html( $this->settings->interpolate( (string) $config[ $kind . '_message' ], $post ) ) )
 		);
