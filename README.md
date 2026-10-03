@@ -32,7 +32,7 @@ The plugin bundles the released `hexa/plugin-core` 3.4.1 package and requires 3.
 
 Administrator recipients are emailed when a release enters pending review and when a customer publishes a release directly.
 
-With HWS Base Tools 13.3.9+ and its View As feature enabled, administrators get a **View as user** top-bar menu on release editors and single release pages. It lists the author and Submitted By account (one entry when they match) and searches other users by name, username or email. Each action opens that same page in a new isolated tab with the selected user's actual permissions; the administrator tab keeps its login. Base Tools supplies the session banner and End View As action.
+View As User is owned and configured entirely by HWS Base Tools 13.3.10+. Enable its feature and select locations and optional owner metadata fields there. Hexa PR Wire Core does not provide a separate picker.
 
 Administrators explicitly choose `Unrestricted`, `Restricted` or `All except excluded` publication access for each non-full customer. `All except excluded` allows every current and future publication except the excluded ones; excluding a group also excludes its outlets. Existing accounts default to unrestricted, and routine profile saves or price changes never activate restrictions. The validated checkbox selection is retained independently so switching modes does not erase the prepared allowlist. When restricted, the checked set is authoritative and an empty set means no access. Existing post assignments remain stable during edits. The policy is enforced in classic admin, REST, post queries, media queries, capabilities, and taxonomy assignment.
 

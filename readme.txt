@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.3.2
+Stable tag: 2.3.3
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.3.3 =
+* Moved View As toolbar ownership and settings to HWS Base Tools 13.3.10+.
 
 = 2.3.2 =
 * Administrator release toolbar: View as the author or Submitted By user (deduplicated), or search any account. Opens the same page in an isolated new tab using HWS Base Tools 13.3.9+ with View As enabled.
