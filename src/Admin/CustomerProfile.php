@@ -41,9 +41,9 @@ final class CustomerProfile implements Module {
 		$allowed = $this->policies->allowed_publications( $user_id );
 		$excluded = $this->policies->excluded_publications( $user_id, false );
 		$modes = [
-			'unrestricted' => [ 'Every publication', 'Can publish to all current and future publications. The list below only sets prices.' ],
-			'restricted' => [ 'Only the ones you pick', 'Can publish only to publications switched on under “Can publish”. New publications stay off until you add them.' ],
-			'excluded' => [ 'Everything except blocked', 'Can publish everywhere except publications switched on under “Blocked”. Blocking a group blocks all of its outlets, including future ones.' ],
+			'unrestricted' => [ 'Every publication', 'All current and future publications.' ],
+			'restricted' => [ 'Only selected publications', 'Only the ones switched on below. New publications stay off.' ],
+			'excluded' => [ 'All except blocked', 'Everything except the ones switched on below. Blocking a group blocks its outlets.' ],
 		];
 		?>
 		<h2 id="hprwc-customer-access">Hexa PR Wire Customer Access</h2>
@@ -67,41 +67,44 @@ final class CustomerProfile implements Module {
 			</section>
 
 			<section class="hprwc-card hprwc-entitlements" data-mode="<?php echo esc_attr( $access_mode ); ?>">
-				<header><h3>Publications &amp; pricing</h3><p>First choose the rule for where this customer can publish, then fine-tune individual publications and prices in the list.</p></header>
-				<div class="hprwc-step"><span class="hprwc-step-number">1</span><div><strong>Where can they publish?</strong></div></div>
+				<header><h3>Publications &amp; pricing</h3><p>Choose where this customer can publish, then adjust individual publications and prices.</p></header>
+
+				<p class="hprwc-section-label">Where can they publish?</p>
 				<div class="hprwc-modes" role="radiogroup" aria-label="Publication access">
 					<?php foreach ( $modes as $value => [ $title, $help ] ) : ?>
-						<label class="hprwc-mode"><input type="radio" name="hprwc_publication_access_mode" value="<?php echo esc_attr( $value ); ?>" <?php checked( $value, $access_mode ); ?>><span><strong><?php echo esc_html( $title ); ?></strong><small><?php echo esc_html( $help ); ?></small></span></label>
+						<label class="hprwc-mode"><input type="radio" name="hprwc_publication_access_mode" value="<?php echo esc_attr( $value ); ?>" <?php checked( $value, $access_mode ); ?>><span class="hprwc-mode-title"><?php echo esc_html( $title ); ?></span><span class="hprwc-mode-help"><?php echo esc_html( $help ); ?></span></label>
 					<?php endforeach; ?>
 				</div>
-				<div class="hprwc-step"><span class="hprwc-step-number">2</span><div><strong>Publications</strong>
-					<p class="hprwc-hint" data-for="unrestricted">Every publication is open to this customer. Enter a price only where they should pay something other than the standard store price.</p>
-					<p class="hprwc-hint" data-for="restricted">Switch on each publication they can publish to. Anything left off is unavailable.</p>
-					<p class="hprwc-hint" data-for="excluded">Switch on each publication to block. Everything left off stays available.</p>
-				</div></div>
-				<div class="hprwc-toolbar">
-					<input type="search" class="hprwc-search" placeholder="Search publications…" aria-label="Search publications">
-					<span class="hprwc-summary" aria-live="polite"></span>
-					<span class="hprwc-bulk"><button type="button" class="button" data-bulk="1">Switch all on</button> <button type="button" class="button" data-bulk="0">Switch all off</button></span>
+
+				<p class="hprwc-section-label">Publications</p>
+				<p class="hprwc-hint" data-for="unrestricted">Every publication is open. Set a price only where this customer pays something other than the default.</p>
+				<p class="hprwc-hint" data-for="restricted">Switch on each publication this customer can publish to. Anything left off is unavailable.</p>
+				<p class="hprwc-hint" data-for="excluded">Switch on each publication to block. Everything left off stays available.</p>
+				<div class="hprwc-list">
+					<div class="hprwc-list-bar">
+						<input type="search" class="hprwc-search" placeholder="Search publications" aria-label="Search publications">
+						<span class="hprwc-summary" aria-live="polite"></span>
+						<span class="hprwc-bulk"><button type="button" class="button-link" data-bulk="1">Switch all on</button><button type="button" class="button-link" data-bulk="0">Switch all off</button></span>
+					</div>
+					<div class="hprwc-list-head"><span class="hprwc-list-name"><span class="hprwc-col-allow">Can publish</span><span class="hprwc-col-exclude">Blocked</span><span class="hprwc-col-none">Publication</span></span><span class="hprwc-list-price">Customer price</span></div>
+					<ul class="hprwc-rows">
+					<?php foreach ( $this->publication_rows( $terms ) as [ $term, $depth, $outlets ] ) :
+						$id = (int) $term->term_id; ?>
+						<li class="hprwc-pub<?php echo $depth ? ' is-outlet' : ''; ?><?php echo $outlets ? ' is-group' : ''; ?>" data-term="<?php echo esc_attr( (string) $id ); ?>" data-parent="<?php echo esc_attr( (string) $term->parent ); ?>" data-name="<?php echo esc_attr( strtolower( $term->name ) ); ?>" style="--hprwc-depth:<?php echo esc_attr( (string) $depth ); ?>">
+							<span class="hprwc-pub-main">
+								<span class="hprwc-col-allow"><?php $this->toggle( 'hprwc_allowed_publications[]', $id, in_array( $id, $allowed, true ), 'Allow ' . $term->name ); ?></span>
+								<span class="hprwc-col-exclude"><?php $this->toggle( 'hprwc_excluded_publications[]', $id, in_array( $id, $excluded, true ), 'Block ' . $term->name ); ?></span>
+								<span class="hprwc-pub-name"><?php echo esc_html( $term->name ); ?></span>
+								<?php if ( $outlets ) : ?><span class="hprwc-tag"><?php echo esc_html( sprintf( _n( '%d outlet', '%d outlets', $outlets ), $outlets ) ); ?></span><?php endif; ?>
+								<span class="hprwc-inherited">Blocked by group</span>
+							</span>
+							<span class="hprwc-price"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]{0,2}" name="hprwc_publication_prices[<?php echo esc_attr( (string) $id ); ?>]" value="<?php echo esc_attr( (string) ( $prices[ $id ] ?? '' ) ); ?>" placeholder="Default" aria-label="Price for <?php echo esc_attr( $term->name ); ?>"></span>
+						</li>
+					<?php endforeach; ?>
+						<li class="hprwc-empty" hidden>No publications match your search.</li>
+					</ul>
 				</div>
-				<div class="hprwc-table-scroll">
-					<table class="hprwc-publications">
-						<thead><tr><th>Publication</th><th class="hprwc-col-allow">Can publish</th><th class="hprwc-col-exclude">Blocked</th><th class="hprwc-col-price">Customer price</th></tr></thead>
-						<tbody>
-						<?php foreach ( $this->publication_rows( $terms ) as [ $term, $depth, $outlets ] ) :
-							$id = (int) $term->term_id; ?>
-							<tr class="hprwc-pub<?php echo $depth ? ' is-outlet' : ''; ?>" data-term="<?php echo esc_attr( (string) $id ); ?>" data-parent="<?php echo esc_attr( (string) $term->parent ); ?>" data-name="<?php echo esc_attr( strtolower( $term->name ) ); ?>">
-								<td class="hprwc-pub-name" style="--hprwc-depth:<?php echo esc_attr( (string) $depth ); ?>"><?php echo esc_html( $term->name ); ?><?php if ( $outlets ) : ?> <span class="hprwc-tag">Group · <?php echo esc_html( sprintf( _n( '%d outlet', '%d outlets', $outlets ), $outlets ) ); ?></span><?php endif; ?></td>
-								<td class="hprwc-col-allow"><?php $this->toggle( 'hprwc_allowed_publications[]', $id, in_array( $id, $allowed, true ), 'Allow ' . $term->name ); ?></td>
-								<td class="hprwc-col-exclude"><?php $this->toggle( 'hprwc_excluded_publications[]', $id, in_array( $id, $excluded, true ), 'Block ' . $term->name ); ?><span class="hprwc-inherited">Blocked by group</span></td>
-								<td class="hprwc-col-price"><span class="hprwc-price"><span aria-hidden="true">$</span><input type="number" min="0" step="0.01" id="hprwc_price_<?php echo esc_attr( (string) $id ); ?>" name="hprwc_publication_prices[<?php echo esc_attr( (string) $id ); ?>]" value="<?php echo esc_attr( (string) ( $prices[ $id ] ?? '' ) ); ?>" placeholder="Standard" aria-label="Price for <?php echo esc_attr( $term->name ); ?>"></span></td>
-							</tr>
-						<?php endforeach; ?>
-						<tr class="hprwc-empty" hidden><td colspan="4">No publications match your search.</td></tr>
-						</tbody>
-					</table>
-				</div>
-				<p class="description">Leave a price empty to charge the standard store price. Prices save on their own and never change access.</p>
+				<p class="description">An empty price means the customer pays the default store price. Prices never change access.</p>
 			</section>
 
 			<section class="hprwc-card">

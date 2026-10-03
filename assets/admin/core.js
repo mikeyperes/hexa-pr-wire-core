@@ -31,6 +31,11 @@
 			refresh();
 		});
 		$box.on('change', '.hprwc-switch input', refresh);
+		$box.on('click', '.hprwc-pub-name', function () {
+			if (column()) {
+				$(this).closest('.hprwc-pub').find('.hprwc-col-' + column() + ' input').trigger('click');
+			}
+		});
 		$box.on('input', '.hprwc-search', function () {
 			const query = this.value.trim().toLowerCase();
 			let visible = 0;
