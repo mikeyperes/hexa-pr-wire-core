@@ -50,8 +50,8 @@ final class Dashboard implements Module {
 
 	public function assets( string $hook ): void {
 		if ( str_contains( $hook, self::PAGE ) || in_array( $hook, [ 'profile.php', 'user-edit.php', 'user-new.php', 'users.php' ], true ) ) {
-			wp_enqueue_style( 'hprwc-admin', HPRWC_URL . 'assets/admin/core.css', [], HPRWC_VERSION );
-			wp_enqueue_script( 'hprwc-admin', HPRWC_URL . 'assets/admin/core.js', [ 'jquery' ], HPRWC_VERSION, true );
+			wp_enqueue_style( 'hprwc-admin', HPRWC_URL . 'assets/admin/core.css', [], HPRWC_VERSION . '.' . filemtime( HPRWC_DIR . 'assets/admin/core.css' ) );
+			wp_enqueue_script( 'hprwc-admin', HPRWC_URL . 'assets/admin/core.js', [ 'jquery' ], HPRWC_VERSION . '.' . filemtime( HPRWC_DIR . 'assets/admin/core.js' ), true );
 		}
 	}
 

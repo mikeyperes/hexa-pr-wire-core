@@ -32,56 +32,149 @@ final class CustomerProfile implements Module {
 		if ( ! current_user_can( 'edit_users' ) ) {
 			return;
 		}
-		$is_customer = $this->policies->is_customer( (int) $user->ID );
-		$prices = $this->policies->publication_prices( (int) $user->ID );
+		$user_id = (int) $user->ID;
+		$is_customer = $this->policies->is_customer( $user_id );
+		$prices = $this->policies->publication_prices( $user_id );
 		$terms = get_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false, 'orderby' => 'name' ] );
 		$terms = is_wp_error( $terms ) ? [] : $terms;
-		$access_mode = $this->policies->publication_access_mode( (int) $user->ID );
-		$allowed = $this->policies->allowed_publications( (int) $user->ID );
-		$excluded = $this->policies->excluded_publications( (int) $user->ID, false );
+		$access_mode = $this->policies->publication_access_mode( $user_id );
+		$allowed = $this->policies->allowed_publications( $user_id );
+		$excluded = $this->policies->excluded_publications( $user_id, false );
+		$modes = [
+			'unrestricted' => [ 'Every publication', 'Can publish to all current and future publications. The list below only sets prices.' ],
+			'restricted' => [ 'Only the ones you pick', 'Can publish only to publications switched on under “Can publish”. New publications stay off until you add them.' ],
+			'excluded' => [ 'Everything except blocked', 'Can publish everywhere except publications switched on under “Blocked”. Blocking a group blocks all of its outlets, including future ones.' ],
+		];
 		?>
 		<h2 id="hprwc-customer-access">Hexa PR Wire Customer Access</h2>
 		<?php wp_nonce_field( self::NONCE, 'hprwc_customer_nonce' ); ?>
-		<table class="form-table" role="presentation">
-			<tr>
-				<th scope="row">Customer role</th>
-				<td><strong><?php echo $is_customer ? 'Hexa PR Wire Customer' : 'Not assigned'; ?></strong><p class="description">Assign the “Hexa PR Wire Customer” role above to enforce these controls.</p></td>
-			</tr>
-			<tr>
-				<th><label for="hprwc_submission_mode">Submission permission</label></th>
-				<td><select name="hprwc_submission_mode" id="hprwc_submission_mode">
-					<?php foreach ( SubmissionMode::choices() as $value => $label ) : ?>
-						<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $this->policies->mode( (int) $user->ID ), $value ); ?>><?php echo esc_html( $label ); ?></option>
+		<div class="hprwc-customer">
+			<section class="hprwc-card">
+				<header><h3>Account</h3><p>What this person is allowed to do with press releases.</p></header>
+				<div class="hprwc-field">
+					<span class="hprwc-label">Customer role</span>
+					<div><span class="hprwc-badge <?php echo $is_customer ? 'success' : 'warning'; ?>"><?php echo $is_customer ? 'Hexa PR Wire Customer' : 'Not a customer'; ?></span>
+					<?php if ( ! $is_customer ) : ?><p class="description">Set the Role above to “Hexa PR Wire Customer” for these settings to take effect.</p><?php endif; ?></div>
+				</div>
+				<div class="hprwc-field">
+					<label class="hprwc-label" for="hprwc_submission_mode">Release permission</label>
+					<div><select name="hprwc_submission_mode" id="hprwc_submission_mode">
+						<?php foreach ( SubmissionMode::choices() as $value => $label ) : ?>
+							<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $this->policies->mode( $user_id ), $value ); ?>><?php echo esc_html( $label ); ?></option>
+						<?php endforeach; ?>
+					</select><p class="description">Applies everywhere the customer can touch a release: editor, post lists, media and the API.</p></div>
+				</div>
+			</section>
+
+			<section class="hprwc-card hprwc-entitlements" data-mode="<?php echo esc_attr( $access_mode ); ?>">
+				<header><h3>Publications &amp; pricing</h3><p>First choose the rule for where this customer can publish, then fine-tune individual publications and prices in the list.</p></header>
+				<div class="hprwc-step"><span class="hprwc-step-number">1</span><div><strong>Where can they publish?</strong></div></div>
+				<div class="hprwc-modes" role="radiogroup" aria-label="Publication access">
+					<?php foreach ( $modes as $value => [ $title, $help ] ) : ?>
+						<label class="hprwc-mode"><input type="radio" name="hprwc_publication_access_mode" value="<?php echo esc_attr( $value ); ?>" <?php checked( $value, $access_mode ); ?>><span><strong><?php echo esc_html( $title ); ?></strong><small><?php echo esc_html( $help ); ?></small></span></label>
 					<?php endforeach; ?>
-				</select><p class="description">Permissions are enforced on classic editor, REST, direct saves, post lists, media, and publication assignment.</p></td>
-			</tr>
-			<tr>
-				<th>Allowed publications and customer pricing</th>
-				<td><div class="hprwc-entitlements">
-					<fieldset><legend class="screen-reader-text">Publication access</legend>
-						<label><input type="radio" name="hprwc_publication_access_mode" value="unrestricted" <?php checked( 'unrestricted', $access_mode ); ?>> Unrestricted — all current and future publications</label><br>
-						<label><input type="radio" name="hprwc_publication_access_mode" value="restricted" <?php checked( 'restricted', $access_mode ); ?>> Restricted — only publications checked under “Allow”</label><br>
-						<label><input type="radio" name="hprwc_publication_access_mode" value="excluded" <?php checked( 'excluded', $access_mode ); ?>> All except excluded — all current and future publications except those checked under “Exclude” (excluding a group excludes its outlets)</label>
-					</fieldset>
-					<table class="widefat striped"><thead><tr><th>Allow</th><th>Exclude</th><th>Publication</th><th>Customer price</th></tr></thead><tbody>
-					<?php foreach ( $terms as $term ) : ?>
-						<tr><td><input type="checkbox" name="hprwc_allowed_publications[]" value="<?php echo esc_attr( $term->term_id ); ?>" <?php checked( in_array( (int) $term->term_id, $allowed, true ) ); ?>></td>
-						<td><input type="checkbox" name="hprwc_excluded_publications[]" value="<?php echo esc_attr( $term->term_id ); ?>" <?php checked( in_array( (int) $term->term_id, $excluded, true ) ); ?>></td>
-						<td><?php echo esc_html( $term->name ); ?></td>
-						<td><label class="screen-reader-text" for="hprwc_price_<?php echo esc_attr( $term->term_id ); ?>">Price for <?php echo esc_html( $term->name ); ?></label><input class="small-text" type="number" min="0" step="0.01" id="hprwc_price_<?php echo esc_attr( $term->term_id ); ?>" name="hprwc_publication_prices[<?php echo esc_attr( $term->term_id ); ?>]" value="<?php echo esc_attr( $prices[ $term->term_id ] ?? '' ); ?>"></td></tr>
-					<?php endforeach; ?>
-					</tbody></table>
-					<p class="description">Publication restrictions change only when “Restricted” or “All except excluded” is deliberately selected. Prices save independently and do not activate restrictions.</p>
-				</div></td>
-			</tr>
-			<tr><th><label for="hprwc_notification_emails">Notification emails</label></th><td><textarea class="large-text" rows="4" id="hprwc_notification_emails" name="hprwc_notification_emails"><?php echo esc_textarea( implode( "\n", $this->notification_emails( (int) $user->ID ) ) ); ?></textarea><p class="description">One address per line. The account email is always included at send time.</p></td></tr>
-			<tr><th><label for="hprwc_email_subject">Onboarding subject override</label></th><td><input class="regular-text" id="hprwc_email_subject" name="hprwc_email_subject" value="<?php echo esc_attr( (string) get_user_meta( $user->ID, 'email_subject', true ) ); ?>"></td></tr>
-			<tr><th><label for="hprwc_welcome_message">Onboarding message override</label></th><td><textarea class="large-text" rows="6" id="hprwc_welcome_message" name="hprwc_welcome_message"><?php echo esc_textarea( (string) get_user_meta( $user->ID, 'welcome_message', true ) ); ?></textarea></td></tr>
-			<tr><th><label for="hprwc_private_notes">Private notes</label></th><td><textarea class="large-text" rows="5" id="hprwc_private_notes" name="hprwc_private_notes"><?php echo esc_textarea( (string) get_user_meta( $user->ID, 'private_notes', true ) ); ?></textarea></td></tr>
-			<tr><th>Imported source</th><td><code><?php echo esc_html( (string) get_user_meta( $user->ID, 'imported_source', true ) ?: '—' ); ?></code></td></tr>
-			<tr><th>Welcome email</th><td><label><input type="checkbox" name="hprwc_send_welcome" value="1"> Send the resolved onboarding email after saving this profile</label></td></tr>
-		</table>
+				</div>
+				<div class="hprwc-step"><span class="hprwc-step-number">2</span><div><strong>Publications</strong>
+					<p class="hprwc-hint" data-for="unrestricted">Every publication is open to this customer. Enter a price only where they should pay something other than the standard store price.</p>
+					<p class="hprwc-hint" data-for="restricted">Switch on each publication they can publish to. Anything left off is unavailable.</p>
+					<p class="hprwc-hint" data-for="excluded">Switch on each publication to block. Everything left off stays available.</p>
+				</div></div>
+				<div class="hprwc-toolbar">
+					<input type="search" class="hprwc-search" placeholder="Search publications…" aria-label="Search publications">
+					<span class="hprwc-summary" aria-live="polite"></span>
+					<span class="hprwc-bulk"><button type="button" class="button" data-bulk="1">Switch all on</button> <button type="button" class="button" data-bulk="0">Switch all off</button></span>
+				</div>
+				<div class="hprwc-table-scroll">
+					<table class="hprwc-publications">
+						<thead><tr><th>Publication</th><th class="hprwc-col-allow">Can publish</th><th class="hprwc-col-exclude">Blocked</th><th class="hprwc-col-price">Customer price</th></tr></thead>
+						<tbody>
+						<?php foreach ( $this->publication_rows( $terms ) as [ $term, $depth, $outlets ] ) :
+							$id = (int) $term->term_id; ?>
+							<tr class="hprwc-pub<?php echo $depth ? ' is-outlet' : ''; ?>" data-term="<?php echo esc_attr( (string) $id ); ?>" data-parent="<?php echo esc_attr( (string) $term->parent ); ?>" data-name="<?php echo esc_attr( strtolower( $term->name ) ); ?>">
+								<td class="hprwc-pub-name" style="--hprwc-depth:<?php echo esc_attr( (string) $depth ); ?>"><?php echo esc_html( $term->name ); ?><?php if ( $outlets ) : ?> <span class="hprwc-tag">Group · <?php echo esc_html( sprintf( _n( '%d outlet', '%d outlets', $outlets ), $outlets ) ); ?></span><?php endif; ?></td>
+								<td class="hprwc-col-allow"><?php $this->toggle( 'hprwc_allowed_publications[]', $id, in_array( $id, $allowed, true ), 'Allow ' . $term->name ); ?></td>
+								<td class="hprwc-col-exclude"><?php $this->toggle( 'hprwc_excluded_publications[]', $id, in_array( $id, $excluded, true ), 'Block ' . $term->name ); ?><span class="hprwc-inherited">Blocked by group</span></td>
+								<td class="hprwc-col-price"><span class="hprwc-price"><span aria-hidden="true">$</span><input type="number" min="0" step="0.01" id="hprwc_price_<?php echo esc_attr( (string) $id ); ?>" name="hprwc_publication_prices[<?php echo esc_attr( (string) $id ); ?>]" value="<?php echo esc_attr( (string) ( $prices[ $id ] ?? '' ) ); ?>" placeholder="Standard" aria-label="Price for <?php echo esc_attr( $term->name ); ?>"></span></td>
+							</tr>
+						<?php endforeach; ?>
+						<tr class="hprwc-empty" hidden><td colspan="4">No publications match your search.</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<p class="description">Leave a price empty to charge the standard store price. Prices save on their own and never change access.</p>
+			</section>
+
+			<section class="hprwc-card">
+				<header><h3>Notifications</h3><p>Who gets emailed about this customer's releases.</p></header>
+				<div class="hprwc-field">
+					<label class="hprwc-label" for="hprwc_notification_emails">Extra recipients</label>
+					<div><textarea rows="3" id="hprwc_notification_emails" name="hprwc_notification_emails" placeholder="name@example.com"><?php echo esc_textarea( implode( "\n", $this->notification_emails( $user_id ) ) ); ?></textarea><p class="description">One address per line. The account email always gets a copy.</p></div>
+				</div>
+			</section>
+
+			<section class="hprwc-card">
+				<header><h3>Welcome email</h3><p>The onboarding email this customer receives. Leave the fields empty to use the standard text from Hexa PR Wire settings.</p></header>
+				<div class="hprwc-field">
+					<label class="hprwc-label" for="hprwc_email_subject">Subject</label>
+					<div><input id="hprwc_email_subject" name="hprwc_email_subject" value="<?php echo esc_attr( (string) get_user_meta( $user_id, 'email_subject', true ) ); ?>" placeholder="Standard subject"></div>
+				</div>
+				<div class="hprwc-field">
+					<label class="hprwc-label" for="hprwc_welcome_message">Message</label>
+					<div><textarea rows="6" id="hprwc_welcome_message" name="hprwc_welcome_message" placeholder="Standard message"><?php echo esc_textarea( (string) get_user_meta( $user_id, 'welcome_message', true ) ); ?></textarea><p class="description">Placeholders: {first_name}, {last_name}, {full_name}, {dashboard_url}.</p></div>
+				</div>
+				<div class="hprwc-field">
+					<span class="hprwc-label">Send now</span>
+					<div class="hprwc-inline"><?php $this->toggle( 'hprwc_send_welcome', 1, false, 'Send the welcome email' ); ?><span>Send the welcome email when this profile is saved</span></div>
+				</div>
+			</section>
+
+			<section class="hprwc-card">
+				<header><h3>Internal</h3><p>Only administrators see this.</p></header>
+				<div class="hprwc-field">
+					<label class="hprwc-label" for="hprwc_private_notes">Private notes</label>
+					<div><textarea rows="4" id="hprwc_private_notes" name="hprwc_private_notes"><?php echo esc_textarea( (string) get_user_meta( $user_id, 'private_notes', true ) ); ?></textarea></div>
+				</div>
+				<div class="hprwc-field">
+					<span class="hprwc-label">Imported from</span>
+					<div><code><?php echo esc_html( (string) get_user_meta( $user_id, 'imported_source', true ) ?: '—' ); ?></code></div>
+				</div>
+			</section>
+		</div>
 		<?php
+	}
+
+	private function toggle( string $name, int $value, bool $checked, string $label ): void {
+		printf(
+			'<label class="hprwc-switch"><input type="checkbox" name="%1$s" value="%2$s" %3$s><span class="hprwc-switch-track" aria-hidden="true"></span><span class="screen-reader-text">%4$s</span></label>',
+			esc_attr( $name ),
+			esc_attr( (string) $value ),
+			checked( $checked, true, false ),
+			esc_html( $label )
+		);
+	}
+
+	/**
+	 * Groups first with their outlets nested beneath them.
+	 *
+	 * @param \WP_Term[] $terms
+	 * @return array<int,array{0:\WP_Term,1:int,2:int}>
+	 */
+	private function publication_rows( array $terms ): array {
+		$ids = array_map( static fn( \WP_Term $term ): int => (int) $term->term_id, $terms );
+		$children = [];
+		foreach ( $terms as $term ) {
+			$parent = in_array( (int) $term->parent, $ids, true ) ? (int) $term->parent : 0;
+			$children[ $parent ][] = $term;
+		}
+		$rows = [];
+		$walk = static function ( int $parent, int $depth ) use ( &$walk, &$rows, $children ): void {
+			foreach ( $children[ $parent ] ?? [] as $term ) {
+				$rows[] = [ $term, $depth, count( $children[ (int) $term->term_id ] ?? [] ) ];
+				$walk( (int) $term->term_id, $depth + 1 );
+			}
+		};
+		$walk( 0, 0 );
+		return $rows;
 	}
 
 	public function save( int $user_id ): void {
