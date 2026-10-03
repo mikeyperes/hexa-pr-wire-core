@@ -1,0 +1,54 @@
+#wpadminbar #wp-admin-bar-hprwc-view-as .ab-sub-wrapper {
+    width: 380px;
+    max-width: calc(100vw - 20px);
+}
+#wpadminbar #wp-admin-bar-hprwc-view-as .ab-item {
+    height: auto;
+    white-space: normal;
+}
+#wpadminbar .hprwc-view-as-picker {
+    padding: 8px 10px;
+}
+#wpadminbar .hprwc-view-as-picker label,
+#wpadminbar .hprwc-view-as-picker p {
+    display: block;
+    color: #f0f0f1;
+    line-height: 1.5;
+    white-space: normal;
+    margin: 4px 0;
+}
+#wpadminbar #hprwc-view-as-query {
+    box-sizing: border-box;
+    width: 100%;
+    height: 34px;
+    padding: 4px 8px;
+    background: #fff;
+    color: #1d2327;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    font-size: 13px;
+}
+#wpadminbar #hprwc-view-as-results {
+    max-height: 260px;
+    overflow-y: auto;
+}
+#wpadminbar #hprwc-view-as-results a {
+    display: block;
+    padding: 6px 4px;
+    line-height: 1.5;
+    white-space: normal;
+    height: auto;
+}
+#wpadminbar #hprwc-view-as-results a:focus,
+#wpadminbar #hprwc-view-as-results a:hover {
+    color: #72aee6;
+    background: #2c3338;
+}
+#wpadminbar #wp-admin-bar-hprwc-view-as:focus-within > .ab-sub-wrapper {
+    display: block;
+}
+@media screen and (max-width: 782px) {
+    #wpadminbar #wp-admin-bar-hprwc-view-as {
+        display: block;
+    }
+}

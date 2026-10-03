@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.2 — 2026-10-03
+
+- Added an administrator-only View as user toolbar on release editors and single release pages. Shows author and Submitted By once each, plus a searchable account picker. Each action opens the same page in a new tab through HWS Base Tools' isolated sessions, preserving the administrator login and the selected user's real permissions. Requires Base Tools 13.3.9+ and its View As feature enabled.
+
 ## 2.3.1 — 2026-10-02
 
 - The customer-published alert goes to the administrator recipients and the submitting customer's own account email.

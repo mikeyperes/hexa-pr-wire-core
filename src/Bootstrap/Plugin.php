@@ -12,6 +12,7 @@ use HexaPrWire\Core\Admin\CustomerProfile;
 use HexaPrWire\Core\Admin\Dashboard;
 use HexaPrWire\Core\Admin\EditorChecklist;
 use HexaPrWire\Core\Admin\EditorStyles;
+use HexaPrWire\Core\Admin\PostViewAs;
 use HexaPrWire\Core\Content\ContentModel;
 use HexaPrWire\Core\Cli\Commands;
 use HexaPrWire\Core\CredentialRepository;
@@ -94,6 +95,7 @@ final class Plugin {
 				->add( new CustomerActions( $access ) )
 				->add( new EditorChecklist() )
 				->add( new EditorStyles() )
+				->add( new PostViewAs() )
 			->add( new Dashboard( $notification_settings, new StatusReport() ) )
 			->add( new OwnershipService() )
 			->add( new DeliveryLinkGenerator( $publications, $urls ) )
