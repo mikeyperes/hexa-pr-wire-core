@@ -108,6 +108,10 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
+
+Version 3.16.0 lets any cleanup option apply only to non-administrators (`audience` => `non_admins`, with `audience_capability`), removes list-table columns (`columns` + `column_hooks`) and admin-bar nodes (`admin_bar_nodes`), adds the `rankmath_lock_modified_date()` and `litespeed_ui()` presets, and adds `Taxonomies\TermChoiceLimits`, which limits how many terms users without a capability may pick (radio buttons when the limit is one), enforced again on save.
+
 Version 3.15.0 adds the `meta_box_remove` cleanup mode, which removes editor meta boxes through WordPress's `remove_meta_box()` after every plugin has added its boxes (optionally per post type), an `auto_enabled` condition that turns an option on by itself with a shown reason, and `CleanupPresets` with the shared Comments box (on automatically while comments are closed) and FIFU box options, so host plugins stop re-implementing them.
 
 Version 3.14.4 synchronizes the registered native Elementor Search input's collapsed state when an outside click closes its result list, while preserving inside clicks and unregistered widgets. It includes the 3.14.3 native reopen lifecycle bridge.

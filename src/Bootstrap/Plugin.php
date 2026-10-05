@@ -10,6 +10,7 @@ use HexaPrWire\Core\Admin\CustomerNavigation;
 use HexaPrWire\Core\Admin\CustomerActions;
 use HexaPrWire\Core\Admin\CustomerProfile;
 use HexaPrWire\Core\Admin\Dashboard;
+use HexaPrWire\Core\Admin\CustomerTermLimits;
 use HexaPrWire\Core\Admin\EditorScreenCleanup;
 use HexaPrWire\Core\Admin\EditorChecklist;
 use HexaPrWire\Core\Admin\EditorStyles;
@@ -96,7 +97,8 @@ final class Plugin {
 				->add( new EditorChecklist() )
 				->add( new EditorStyles() )
 			->add( $editor_cleanup = new EditorScreenCleanup() )
-			->add( new Dashboard( $notification_settings, new StatusReport(), $editor_cleanup ) )
+			->add( $term_limits = new CustomerTermLimits() )
+			->add( new Dashboard( $notification_settings, new StatusReport(), $editor_cleanup, $term_limits ) )
 			->add( new OwnershipService() )
 			->add( new DeliveryLinkGenerator( $publications, $urls ) )
 			->add( new CanonicalService( $publications, $urls ) )

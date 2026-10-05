@@ -1,6 +1,13 @@
 (function ($) {
 	'use strict';
 
+	// At least one H2 and no heading of any other level. Keep in step with
+	// EditorChecklist::headings_use_h2() in PHP.
+	function headingsUseH2(content) {
+		return /<h2\b/i.test(content) && !/<h[13456]\b/i.test(content);
+	}
+	window.hprwcHeadingsUseH2 = headingsUseH2;
+
 	const $checklist = $('[data-hprwc-checklist]').first();
 	if (!$checklist.length) {
 		return;
@@ -36,7 +43,7 @@
 	function state() {
 		const content = editorContent();
 		return {
-			h2: !/<h(?:1|3|4|5|6)\b/i.test(content),
+			h2: headingsUseH2(content),
 			featured: hasFeaturedImage(),
 			location: fieldValue('field_64a72abb01ef9', 'press_release_location') !== '',
 			date: fieldValue('field_64a72abb01ec2', 'press_release_date') !== ''
@@ -67,7 +74,18 @@
 		window.setTimeout(render, 350);
 	});
 
-	if (window.wp && wp.data && typeof wp.data.subscribe === 'function') {
+	// Classic editor Visual tab: TinyMCE edits do not fire input events on #content.
+	function bindTinyMce(editor) {
+		if (editor && editor.id === 'content') {
+			editor.on('keyup change SetContent NodeChange undo redo', schedule);
+		}
+	}
+	if (window.tinymce) {
+		if (tinymce.get('content')) bindTinyMce(tinymce.get('content'));
+		tinymce.on('AddEditor', function (event) { bindTinyMce(event.editor); });
+	}
+
+	if (window.wp && wp.data && typeof wp.data.subscribe === 'function' && wp.data.select('core/editor')) {
 		let previous = '';
 		wp.data.subscribe(function () {
 			const current = editorContent() + '|' + (hasFeaturedImage() ? '1' : '0');

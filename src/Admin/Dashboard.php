@@ -27,7 +27,7 @@ final class Dashboard implements Module {
 
 	private TabRegistry $tabs;
 
-	public function __construct( private NotificationSettings $notifications, private StatusReport $status, private EditorScreenCleanup $editor_cleanup ) {
+	public function __construct( private NotificationSettings $notifications, private StatusReport $status, private EditorScreenCleanup $editor_cleanup, private CustomerTermLimits $term_limits ) {
 		$this->tabs = new TabRegistry();
 		foreach ( self::TABS as $id => $label ) {
 			$this->tabs->add( new TabDefinition( $id, $label, [ $this, $id ], 'manage_options' ) );
@@ -119,6 +119,7 @@ final class Dashboard implements Module {
 
 	private function editor(): void {
 		$this->editor_cleanup->render();
+		$this->term_limits->render();
 	}
 
 	private function overview(): void {

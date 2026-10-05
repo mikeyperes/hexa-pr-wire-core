@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.15.0
+Current release: 3.16.0
 ```
 
 Do not rename these.
@@ -216,7 +216,9 @@ Hexa\PluginCore\WpAdminUiCleanup
 
 Use `CleanupRegistry` to define admin cleanup options once, render toggle rows, save settings through AJAX, and apply behavior on the target admin screens.
 
-Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()` and `CleanupPresets::fifu_meta_box()` instead of redefining those boxes; pass overrides such as `section` or `label` as the argument.
+Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()`, `fifu_meta_box()`, `rankmath_lock_modified_date()` and `litespeed_ui()` instead of redefining them; pass overrides such as `section`, `label` or `audience` as the argument. `audience` => `non_admins` applies an option only to users without `audience_capability` (default `manage_options`). `columns` with `column_hooks` removes list-table columns; `admin_bar_nodes` removes admin-bar items.
+
+`Hexa\PluginCore\Taxonomies\TermChoiceLimits` takes rules (`taxonomy`, `max`, `capability`, `post_types`) and limits users without the capability: radio buttons for a hierarchical taxonomy with `max` 1, a stopped tag picker otherwise, and the limit re-applied on save.
 
 Required rules:
 

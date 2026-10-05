@@ -21,6 +21,13 @@ final class EditorScreenCleanup implements Module {
 			'sections' => [ 'editor' => [ 'title' => 'Release editor', 'description' => 'Boxes removed from the post editor screen.' ] ],
 			'options' => [
 				'hide_fifu_box' => CleanupPresets::fifu_meta_box( [ 'default' => true ] ),
+				'hide_lock_modified_date' => CleanupPresets::rankmath_lock_modified_date( [
+					'label' => 'Lock Modified Date (customers)',
+					'description' => "Removes Rank Math's Lock Modified Date switch from the Publish box for customers. Staff keep it.",
+					'audience' => 'non_admins',
+					'audience_capability' => 'edit_others_posts',
+					'default' => true,
+				] ),
 			],
 		] );
 	}

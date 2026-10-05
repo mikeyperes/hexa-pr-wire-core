@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.4.0
+Stable tag: 2.5.0
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,10 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.5.0 =
+* Release Requirements: "Headings use H2" now needs at least one H2 and no other heading level (it used to pass with no headings), and updates live in the Visual editor.
+* Editor Screens: Lock Modified Date (customers) option, on by default; customer limits for categories (one, as radio buttons, on by default) and tags (default 3), enforced on save.
 
 = 2.4.0 =
 * New Hexa PR Wire → Editor Screens tab with a FIFU Box toggle (on by default) that removes the FIFU box from the release editor, using Hexa WordPress Plugin Core 3.15.0's shared clean-up options.

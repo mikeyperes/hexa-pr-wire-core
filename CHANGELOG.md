@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.0 — 2026-10-05
+
+- Release Requirements: "Headings use H2" passes only when the release has at least one H2 and no H1/H3–H6. It used to pass for releases with no headings at all. The box now also updates live while typing in the Visual editor. One rule, tested in PHP and in the editor script (`tests/editor-checklist.php`).
+- Editor Screens: new "Lock Modified Date (customers)" option (on by default) removes Rank Math's switch for customers through Rank Math's own filter; staff keep it.
+- Editor Screens: customer limits. "Customers can pick only one category" (on by default) shows categories as radio buttons; "Most tags a customer can add" defaults to 3. Both are enforced again on save through Core's `TermChoiceLimits`.
+- Bundles Hexa WordPress Plugin Core 3.16.0.
+
 ## 2.4.0 — 2026-10-05
 
 - New Hexa PR Wire → Editor Screens tab. Its FIFU Box toggle (on by default) removes the FIFU (Featured Image from URL) box from the release editor through WordPress's `remove_meta_box`.

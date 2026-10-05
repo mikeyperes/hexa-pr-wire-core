@@ -41,12 +41,18 @@ final class EditorChecklist implements Module {
 		wp_enqueue_script( 'hprwc-editor-checklist', HPRWC_URL . 'assets/admin/editor-checklist.js', [ 'jquery', 'wp-data' ], HPRWC_VERSION, true );
 	}
 
+	/**
+	 * A release passes when it has at least one H2 heading and no heading of
+	 * any other level. Keep in step with headingsUseH2() in editor-checklist.js.
+	 */
+	public static function headings_use_h2( string $content ): bool {
+		return 1 === preg_match( '/<h2\b/i', $content ) && 0 === preg_match( '/<h[13456]\b/i', $content );
+	}
+
 	/** @return array<string,bool> */
 	private function state( \WP_Post $post ): array {
-		$content = (string) $post->post_content;
-		$invalid_headings = preg_match( '/<h(?:1|3|4|5|6)\b/i', $content );
 		return [
-			'h2' => ! (bool) $invalid_headings,
+			'h2' => self::headings_use_h2( (string) $post->post_content ),
 			'featured' => has_post_thumbnail( $post ),
 			'location' => '' !== trim( (string) get_post_meta( $post->ID, 'press_release_location', true ) ),
 			'date' => '' !== trim( (string) get_post_meta( $post->ID, 'press_release_date', true ) ),
