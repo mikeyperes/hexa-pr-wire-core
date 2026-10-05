@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\SearchQuery;
 
+use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
+
 /**
  * Applies a host-provided search configuration to one exact frontend query.
  *
@@ -10,6 +12,7 @@ namespace Hexa\PluginCore\SearchQuery;
  */
 final class SearchQueryEngine {
     public const EXPLICIT_QUERY_VAR = 'hexa_search_query_explicit';
+    public const TIME_WINDOW_QUERY_VAR = 'hexa_search_time_window';
 
     /** @var callable */
     private $settings_provider;
@@ -18,7 +21,9 @@ final class SearchQueryEngine {
 
     private bool $registered = false;
 
-    /** @var \WeakMap<object,array{raw_query:string,settings:array<string,mixed>}>|null */
+    private bool $search_dispatcher_registered = false;
+
+    /** @var \WeakMap<object,array{raw_query:string,settings:array<string,mixed>,meta_constraints:array<string|int,mixed>}>|null */
     private ?\WeakMap $prepared_queries = null;
 
     public function __construct( callable $settings_provider, string $marker_key = 'hexa_search' ) {
@@ -37,8 +42,21 @@ final class SearchQueryEngine {
 
         add_filter( 'query_vars', [ $this, 'register_query_var' ] );
         add_action( 'pre_get_posts', [ $this, 'prepare_query' ], 20 );
-        add_filter( 'posts_search', [ $this, 'filter_search_sql' ], 999, 2 );
+        $this->register_search_dispatcher();
         $this->registered = true;
+    }
+
+    /**
+     * Registers only the exact-query SQL dispatcher. Trusted component
+     * adapters use this without attaching the native main-query hooks.
+     */
+    public function register_search_dispatcher(): void {
+        if ( $this->search_dispatcher_registered ) {
+            return;
+        }
+
+        add_filter( 'posts_search', [ $this, 'filter_search_sql' ], 999, 2 );
+        $this->search_dispatcher_registered = true;
     }
 
     /** @param string[] $query_vars @return string[] */
@@ -58,9 +76,33 @@ final class SearchQueryEngine {
             return;
         }
 
+        $this->prepare_allowed_query( $query, false );
+    }
+
+    /**
+     * Prepares one exact query already authenticated by a trusted component
+     * adapter. REST/AJAX is allowed here because the adapter, rather than a
+     * visitor query variable, proves the query provenance.
+     *
+     * @param object $query
+     * @return array<string,mixed>|null The normalized settings when prepared.
+     */
+    public function prepare_explicit_query( $query ): ?array {
+        $this->forget_prepared_query( $query );
+
+        if ( ! $this->is_explicit_candidate_query( $query ) ) {
+            return null;
+        }
+
+        return $this->prepare_allowed_query( $query, true );
+    }
+
+    /** @param object $query @return array<string,mixed>|null */
+    private function prepare_allowed_query( $query, bool $explicit ): ?array {
+
         $provided = call_user_func( $this->settings_provider );
         if ( ! is_array( $provided ) ) {
-            return;
+            return null;
         }
 
         $settings = SearchQueryConfiguration::normalize(
@@ -69,11 +111,30 @@ final class SearchQueryEngine {
             (array) ( $provided['taxonomies'] ?? [] )
         );
 
-        if ( ! $this->configuration_allows_query( $query, $settings ) ) {
-            return;
+        if ( ! $this->configuration_allows_query( $query, $settings, $explicit ) ) {
+            return null;
         }
 
-        $query->set( 'post_type', $settings['post_types'] );
+        $raw_query = trim( (string) $query->get( 's' ) );
+        $time_window = NaturalTimeWindow::parse( $raw_query, (array) $settings['time_window'] );
+        $post_types = $settings['post_types'];
+        $meta_constraints = [];
+        if ( null !== $time_window ) {
+            $post_types = array_values( array_intersect(
+                (array) $settings['post_types'],
+                (array) $settings['time_window']['post_types']
+            ) );
+            $meta_constraints = NaturalTimeWindow::constraints( (array) $settings['time_window'], $time_window );
+            $raw_query = (string) $time_window['query'];
+        }
+
+        $query->set( 'post_type', [] !== $post_types ? $post_types : $settings['post_types'] );
+        $query->set( self::TIME_WINDOW_QUERY_VAR, $time_window );
+        if ( $explicit ) {
+            $query->set( 'post_status', 'publish' );
+            $query->set( 'has_password', false );
+            $query->set( 'ignore_sticky_posts', true );
+        }
         if ( $settings['results_per_page'] > 0 ) {
             $query->set( 'posts_per_page', $settings['results_per_page'] );
         }
@@ -84,9 +145,33 @@ final class SearchQueryEngine {
             $this->prepared_queries = new \WeakMap();
         }
         $this->prepared_queries[ $query ] = [
-            'raw_query' => trim( (string) $query->get( 's' ) ),
-            'settings'  => $settings,
+            'raw_query'        => $raw_query,
+            'settings'         => $settings,
+            'meta_constraints' => $meta_constraints,
         ];
+
+        return $settings;
+    }
+
+    /**
+     * Adds trusted, bounded post-meta constraints to one already prepared query.
+     * The constraints are consumed with the same exact-object search state and
+     * never accepted from visitor query variables.
+     *
+     * @param object $query
+     * @param array<string|int,mixed> $constraints
+     */
+    public function set_meta_constraints( $query, array $constraints ): void {
+        if ( ! is_object( $query )
+            || ! $this->prepared_queries instanceof \WeakMap
+            || ! isset( $this->prepared_queries[ $query ] )
+        ) {
+            return;
+        }
+
+        $prepared = $this->prepared_queries[ $query ];
+        $prepared['meta_constraints'] = self::merge_constraints( $prepared['meta_constraints'], $constraints );
+        $this->prepared_queries[ $query ] = $prepared;
     }
 
     /** @param mixed $search_sql @param mixed $query */
@@ -101,14 +186,20 @@ final class SearchQueryEngine {
         $prepared = $this->prepared_queries[ $query ];
         unset( $this->prepared_queries[ $query ] );
 
-        return $this->build_search_sql( $prepared['raw_query'], $prepared['settings'] );
+        return $this->build_search_sql(
+            $prepared['raw_query'],
+            $prepared['settings'],
+            null,
+            $prepared['meta_constraints']
+        );
     }
 
     /**
      * @param array<string,mixed> $settings
      * @param object|null $database wpdb-compatible object; injectable for tests.
+     * @param array<string|int,mixed> $meta_constraints
      */
-    public function build_search_sql( string $raw_query, array $settings, $database = null ): string {
+    public function build_search_sql( string $raw_query, array $settings, $database = null, array $meta_constraints = [] ): string {
         if ( null === $database ) {
             global $wpdb;
             $database = $wpdb;
@@ -124,9 +215,6 @@ final class SearchQueryEngine {
             (array) ( $settings['taxonomies'] ?? [] )
         );
         $terms = SearchTermParser::parse( $raw_query, (string) $settings['term_logic'] );
-        if ( [] === $terms ) {
-            return '';
-        }
 
         $groups = [];
         foreach ( $terms as $term ) {
@@ -136,17 +224,37 @@ final class SearchQueryEngine {
             }
         }
 
-        if ( [] === $groups ) {
+        $constraint_sql = MetaConstraintSql::compile( $database, $meta_constraints );
+        if ( [] === $groups && '' === $constraint_sql ) {
             return '';
         }
 
         $relation = 'any' === $settings['term_logic'] ? ' OR ' : ' AND ';
-        $sql = ' AND (' . implode( $relation, $groups ) . ')';
+        $sql = [] !== $groups ? ' AND (' . implode( $relation, $groups ) . ')' : '';
         if ( ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in() ) {
             $sql .= ' AND (' . $database->posts . ".post_password = '')";
         }
+        if ( '' !== $constraint_sql ) {
+            $sql .= ' AND (' . $constraint_sql . ')';
+        }
 
         return $sql . ' ';
+    }
+
+    /**
+     * @param array<string|int,mixed> $first
+     * @param array<string|int,mixed> $second
+     * @return array<string|int,mixed>
+     */
+    private static function merge_constraints( array $first, array $second ): array {
+        if ( [] === $first ) {
+            return $second;
+        }
+        if ( [] === $second ) {
+            return $first;
+        }
+
+        return [ 'relation' => 'AND', $first, $second ];
     }
 
     /** @param object $query */
@@ -191,16 +299,37 @@ final class SearchQueryEngine {
     }
 
     /** @param object $query @param array<string,mixed> $settings */
-    private function configuration_allows_query( $query, array $settings ): bool {
+    private function configuration_allows_query( $query, array $settings, bool $explicit = false ): bool {
         if ( ! $settings['enabled'] ) {
             return false;
         }
-        if ( 'shortcode' === $settings['scope'] && '1' !== (string) $query->get( $this->marker_key ) ) {
+        if ( ! $explicit && 'shortcode' === $settings['scope'] && '1' !== (string) $query->get( $this->marker_key ) ) {
             return false;
         }
 
         if ( function_exists( 'apply_filters' ) ) {
             return (bool) apply_filters( 'hexa_plugin_core_search_query_should_handle', true, $query, $settings );
+        }
+
+        return true;
+    }
+
+    /** @param mixed $query */
+    private function is_explicit_candidate_query( $query ): bool {
+        if ( ! is_object( $query ) || ! method_exists( $query, 'get' ) || ! method_exists( $query, 'set' ) ) {
+            return false;
+        }
+        if ( defined( 'WP_CLI' ) && WP_CLI ) {
+            return false;
+        }
+        if ( ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
+            return false;
+        }
+        if ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ) {
+            return false;
+        }
+        if ( '' === trim( (string) $query->get( 's' ) ) || $query->get( 'suppress_filters' ) || $query->get( 'hexa_search_query_disabled' ) ) {
+            return false;
         }
 
         return true;
@@ -273,6 +402,18 @@ final class SearchQueryEngine {
                 . ' WHERE hexa_sq_pm.post_id = ' . $database->posts . '.ID'
                 . ' AND (' . implode( ' OR ', $meta_conditions ) . ')'
                 . ' AND ' . $this->match_condition( $database, 'hexa_sq_pm.meta_value', $term, $matching ) . ')';
+        }
+
+        if ( ! empty( $settings['user_reference_fields'] ) ) {
+            $reference_conditions = [];
+            foreach ( $settings['user_reference_fields'] as $meta_key ) {
+                $reference_conditions[] = $database->prepare( 'hexa_sq_ur.meta_key = %s', $meta_key );
+            }
+            $conditions[] = 'EXISTS (SELECT 1 FROM ' . $database->postmeta . ' hexa_sq_ur'
+                . ' INNER JOIN ' . $database->users . ' hexa_sq_ru ON hexa_sq_ru.ID = CAST(hexa_sq_ur.meta_value AS UNSIGNED)'
+                . ' WHERE hexa_sq_ur.post_id = ' . $database->posts . '.ID'
+                . ' AND (' . implode( ' OR ', $reference_conditions ) . ')'
+                . ' AND ' . $this->match_condition( $database, 'hexa_sq_ru.display_name', $term, $matching ) . ')';
         }
 
         return array_values( array_filter( $conditions ) );

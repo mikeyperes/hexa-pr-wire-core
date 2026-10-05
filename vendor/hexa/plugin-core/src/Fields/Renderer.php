@@ -13,6 +13,13 @@ final class Renderer {
 
     private static bool $nonce_printed = false;
     private static bool $script_printed = false;
+    private static bool $standalone = false;
+
+    /** A field rendered outside a Fields form still needs the editing script. */
+    public static function standalone(): void {
+        self::$standalone = true;
+        add_action( 'admin_footer', [ self::class, 'print_script' ] );
+    }
 
     public static function nonce(): void {
         if ( self::$nonce_printed ) {
@@ -273,7 +280,7 @@ final class Renderer {
     }
 
     public static function print_script(): void {
-        if ( self::$script_printed || ! self::$nonce_printed ) {
+        if ( self::$script_printed || ! ( self::$nonce_printed || self::$standalone ) ) {
             return;
         }
         self::$script_printed = true;

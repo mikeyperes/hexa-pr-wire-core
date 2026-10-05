@@ -18,6 +18,8 @@ final class FieldGroups {
     private static array $acf_queue = [];
     private static bool $pending_hooked = false;
     private static bool $acf_hooked = false;
+    /** @var array<string,array<string,mixed>>|null Normalized database groups. */
+    private static ?array $database = null;
 
     /** @param array<string,mixed> $group */
     public static function add( array $group ): void {
@@ -66,18 +68,8 @@ final class FieldGroups {
      * `acf/init` with ACF, otherwise during `init`.
      */
     public static function ready( callable $callback, int $priority = 10 ): void {
-        $run = static function () use ( $callback, $priority ): void {
-            if ( Acf::active() && ! did_action( 'acf/init' ) ) {
-                add_action( 'acf/init', $callback, $priority );
-                return;
-            }
-            $callback();
-        };
-        if ( did_action( 'init' ) || doing_action( 'init' ) ) {
-            $run();
-            return;
-        }
-        add_action( 'init', $run, 0 );
+        // acf/init with ACF, hexa_fields/init at the same moment without it; priorities keep their order.
+        Hooks::on( 'init', $callback, $priority );
     }
 
     public static function flush_pending(): void {
@@ -103,11 +95,9 @@ final class FieldGroups {
         }
         if ( Acf::active() && function_exists( 'acf_get_field_group' ) ) {
             $group = acf_get_field_group( $key );
-            if ( is_array( $group ) ) {
-                return $group;
-            }
+            return is_array( $group ) ? $group : ( self::$groups[ $key ] ?? null );
         }
-        return self::$groups[ $key ] ?? null;
+        return self::$groups[ $key ] ?? self::database()[ $key ] ?? null;
     }
 
     /** @return array<int,array<string,mixed>> */
@@ -115,7 +105,32 @@ final class FieldGroups {
         if ( Acf::active() && function_exists( 'acf_get_field_groups' ) ) {
             return (array) acf_get_field_groups();
         }
-        return array_values( self::$groups );
+        return self::listed();
+    }
+
+    /**
+     * Code and database groups after the `load_field_groups` filter, as
+     * acf_get_field_groups() returns them.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private static function listed(): array {
+        return array_values( array_filter( (array) apply_filters( 'hexa_fields/load_field_groups', array_values( self::$groups + self::database() ) ), 'is_array' ) );
+    }
+
+    /**
+     * Groups created in the ACF admin screen (see Database), normalized, minus
+     * any key registered in code.
+     *
+     * @return array<string,array<string,mixed>>
+     */
+    private static function database( bool $including_overridden = false ): array {
+        if ( null === self::$database ) {
+            self::$database = array_map( [ self::class, 'normalize' ], Database::groups() );
+        }
+        // ACF lists a code group in place of a database group with the same key and never
+        // lists a trashed group, but still finds the fields of both.
+        return $including_overridden ? self::$database : array_filter( array_diff_key( self::$database, self::$groups ), static fn( array $group ): bool => empty( $group['trashed'] ) );
     }
 
     /** @return array<int,array<string,mixed>> Native groups only. */
@@ -133,7 +148,7 @@ final class FieldGroups {
         if ( Acf::active() && function_exists( 'acf_get_fields' ) ) {
             return (array) acf_get_fields( $group );
         }
-        $group = is_array( $group ) ? $group : ( self::$groups[ $group ] ?? null );
+        $group = is_array( $group ) ? $group : self::get_group( $group );
         return is_array( $group ) ? (array) $group['fields'] : [];
     }
 
@@ -154,19 +169,27 @@ final class FieldGroups {
 
         $is_key = str_starts_with( $selector, 'field_' );
         $screen = false === $context ? null : Storage::screen( Storage::context( $context ) );
-        $fallback = null;
-        foreach ( self::$groups as $group ) {
-            $applies = null === $screen || self::matches( $group, $screen );
-            $found = $is_key ? self::find_key( (array) $group['fields'], $selector, (string) $group['key'] ) : self::find_name( (array) $group['fields'], $selector, (string) $group['key'] );
-            if ( null === $found ) {
-                continue;
+        // Code-registered groups before database groups; a name matches top-level fields
+        // first and then, as ACF's field store does, any sub field.
+        $passes = $is_key ? [ [ true, false ], [ false, false ] ] : [ [ true, false ], [ false, false ], [ true, true ], [ false, true ] ];
+        foreach ( $passes as [ $in_code, $deep ] ) {
+            $fallback = null;
+            foreach ( $in_code ? self::$groups : self::database( true ) as $group ) {
+                $applies = null === $screen || self::matches( $group, $screen );
+                $found = $is_key ? self::find_key( (array) $group['fields'], $selector, (string) $group['key'] ) : self::find_name( (array) $group['fields'], $selector, (string) $group['key'], $deep );
+                if ( null === $found ) {
+                    continue;
+                }
+                if ( $applies ) {
+                    return $found;
+                }
+                $fallback ??= $found;
             }
-            if ( $applies ) {
-                return $found;
+            if ( null !== $fallback ) {
+                return $fallback;
             }
-            $fallback ??= $found;
         }
-        return $fallback;
+        return null;
     }
 
     /**
@@ -176,7 +199,7 @@ final class FieldGroups {
      * @return array<int,array<string,mixed>>
      */
     public static function for_screen( array $screen ): array {
-        $groups = array_filter( self::$groups, static fn( array $group ): bool => ! empty( $group['active'] ) && self::matches( $group, $screen ) );
+        $groups = array_filter( self::listed(), static fn( array $group ): bool => ! empty( $group['active'] ) && self::matches( $group, $screen ) );
         uasort( $groups, static fn( array $a, array $b ): int => (int) $a['menu_order'] <=> (int) $b['menu_order'] );
         return array_values( $groups );
     }
@@ -212,6 +235,22 @@ final class FieldGroups {
      * @param array<string,mixed> $group
      */
     private static function rule( array $rule, array $screen, array $group = [] ): bool {
+        $param = (string) ( $rule['param'] ?? '' );
+        $result = self::builtin_rule( $rule, $screen, $group );
+        // As acf_match_location_rule(): every result passes through ACF's location filters,
+        // which is also how hosts define their own rules (`location/rule_match/<param>`).
+        foreach ( [ 'location/match_rule/type=' . $param, 'location/match_rule', 'location/rule_match/' . $param, 'location/rule_match' ] as $hook ) {
+            $result = (bool) apply_filters( 'hexa_fields/' . $hook, $result, $rule, $screen, $group );
+        }
+        return $result;
+    }
+
+    /**
+     * @param array<string,mixed> $rule
+     * @param array<string,mixed> $screen
+     * @param array<string,mixed> $group
+     */
+    private static function builtin_rule( array $rule, array $screen, array $group = [] ): bool {
         $param = (string) ( $rule['param'] ?? '' );
         $value = (string) ( $rule['value'] ?? '' );
         $equal = '!=' !== (string) ( $rule['operator'] ?? '==' );
@@ -271,8 +310,8 @@ final class FieldGroups {
                 }
                 break;
             default:
-                // Host-defined rules, registered with Hooks::on( 'location/rule_match/<param>', ... ).
-                return (bool) apply_filters( 'hexa_fields/location/rule_match/' . $param, false, $rule, $screen, $group );
+                // Unknown to Core: host rules decide through the location filters in rule().
+                return false;
         }
         if ( null === $actual ) {
             return false;
@@ -290,9 +329,19 @@ final class FieldGroups {
             $group
         );
         $group['key'] = (string) $group['key'];
+        if ( '' === $group['key'] && '' !== self::slug( (string) $group['title'] ) ) {
+            $group['key'] = 'group_' . self::slug( (string) $group['title'] ); // As acf_add_local_field_group().
+        }
         $group['fields'] = self::normalize_fields( (array) $group['fields'], $group['key'] );
         $group['active'] = ! isset( $group['active'] ) || (bool) $group['active'];
         return $group;
+    }
+
+    /** acf_slugify( $title, '_' ). */
+    private static function slug( string $title ): string {
+        $slug = str_replace( [ '-', '/', ' ' ], '_', $title );
+        $slug = strtolower( function_exists( 'remove_accents' ) ? remove_accents( $slug ) : $slug );
+        return (string) preg_replace( '/[^a-z0-9_]/', '', $slug );
     }
 
     /**
@@ -309,7 +358,8 @@ final class FieldGroups {
             $field['type'] = (string) ( $field['type'] ?? 'text' );
             $field['key'] = (string) ( $field['key'] ?? '' );
             if ( '' === $field['key'] ) {
-                $field['key'] = 'field_' . substr( md5( $parent . '|' . $field['name'] . '|' . $field['type'] ), 0, 13 );
+                // As acf_add_local_field(): `field_<name>`.
+                $field['key'] = '' !== $field['name'] ? 'field_' . $field['name'] : 'field_' . substr( md5( $parent . '|' . $field['type'] . '|' . count( $normalized ) ), 0, 13 );
             }
             $field['label'] = (string) ( $field['label'] ?? $field['name'] );
             $field['parent'] = $parent;
@@ -330,8 +380,8 @@ final class FieldGroups {
             if ( $key === $field['key'] ) {
                 return $field;
             }
-            if ( ! empty( $field['sub_fields'] ) ) {
-                $found = self::find_key( (array) $field['sub_fields'], $key, $group );
+            foreach ( self::children( $field ) as $children ) {
+                $found = self::find_key( $children, $key, $group );
                 if ( null !== $found ) {
                     return $found;
                 }
@@ -341,13 +391,42 @@ final class FieldGroups {
     }
 
     /**
+     * Sub-field lists of a field: its sub fields and each flexible-content layout's.
+     *
+     * @param array<string,mixed> $field
+     * @return array<int,array<int,array<string,mixed>>>
+     */
+    private static function children( array $field ): array {
+        $lists = [];
+        if ( ! empty( $field['sub_fields'] ) ) {
+            $lists[] = (array) $field['sub_fields'];
+        }
+        foreach ( (array) ( $field['layouts'] ?? [] ) as $layout ) {
+            if ( is_array( $layout ) && ! empty( $layout['sub_fields'] ) ) {
+                $lists[] = (array) $layout['sub_fields'];
+            }
+        }
+        return $lists;
+    }
+
+    /**
      * @param array<int,array<string,mixed>> $fields
      * @return array<string,mixed>|null
      */
-    private static function find_name( array $fields, string $name, string $group ): ?array {
+    private static function find_name( array $fields, string $name, string $group, bool $deep = false ): ?array {
         foreach ( $fields as $field ) {
             if ( $name === $field['name'] ) {
                 return $field;
+            }
+        }
+        if ( $deep ) {
+            foreach ( $fields as $field ) {
+                foreach ( self::children( $field ) as $children ) {
+                    $found = self::find_name( $children, $name, $group, true );
+                    if ( null !== $found ) {
+                        return $found;
+                    }
+                }
             }
         }
         return null;

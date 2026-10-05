@@ -37,6 +37,26 @@ final class Form {
         return '' === $key ? self::$data : ( self::$data[ $key ] ?? null );
     }
 
+    /**
+     * One field outside a form, as acf_render_field_wrap(): it shows
+     * `$field['value']` and posts under `<prefix>[<key>]` (prefix `acf` by
+     * default) for the host to read and save.
+     *
+     * @param array<string,mixed> $field
+     */
+    public static function field( array $field, string $element = 'div', string $instruction = 'label' ): void {
+        if ( Acf::active() ) {
+            if ( function_exists( 'acf_render_field_wrap' ) ) {
+                acf_render_field_wrap( $field, $element, $instruction );
+            }
+            return;
+        }
+        $field = array_merge( [ 'key' => '', 'name' => '', 'label' => '', 'type' => 'text', 'instructions' => '', 'required' => 0, 'prefix' => 'acf' ], $field );
+        AdminScreens::assets();
+        Renderer::field( $field, $field['value'] ?? null, (string) $field['prefix'] . '[' . (string) $field['key'] . ']', 0 );
+        Renderer::standalone();
+    }
+
     /** @param array<string,mixed> $args acf_form() arguments. */
     public static function render( array $args = [] ): void {
         if ( Acf::active() ) {

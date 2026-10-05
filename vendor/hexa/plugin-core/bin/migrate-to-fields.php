@@ -33,10 +33,10 @@ $map = [
     'acf_add_local_field_group' => $groups . 'add', 'acf_remove_local_field_group' => $groups . 'remove',
     'acf_get_field_group' => $groups . 'get_group', 'acf_get_local_field_group' => $groups . 'get_group',
     'acf_get_fields' => $groups . 'fields', 'acf_get_field' => $groups . 'get_field', 'acf_get_local_field' => $groups . 'get_field',
-    'acf_get_field_groups' => $groups . 'all',
+    'acf_get_field_groups' => $groups . 'all', 'acf_get_local_field_groups' => $groups . 'all', 'acf_get_local_fields' => $groups . 'fields',
     'acf_add_options_page' => '\\Hexa\\PluginCore\\Fields\\OptionsPages::add', 'acf_add_options_sub_page' => '\\Hexa\\PluginCore\\Fields\\OptionsPages::add_sub',
     'acf_form_head' => '\\Hexa\\PluginCore\\Fields\\Form::head', 'acf_form' => '\\Hexa\\PluginCore\\Fields\\Form::render',
-    'acf_enqueue_scripts' => '\\Hexa\\PluginCore\\Fields\\Form::enqueue', 'acf_get_form_data' => '\\Hexa\\PluginCore\\Fields\\Form::data',
+    'acf_enqueue_scripts' => '\\Hexa\\PluginCore\\Fields\\Form::enqueue', 'acf_get_form_data' => '\\Hexa\\PluginCore\\Fields\\Form::data', 'acf_render_field_wrap' => '\\Hexa\\PluginCore\\Fields\\Form::field',
 ];
 $guards = array_merge( array_keys( $map ), [ 'acf' ] );
 $review_patterns = [
@@ -164,13 +164,16 @@ function migrate( string $source, array $map, array $guards ): array {
             $arg = next_index( $tokens, $next );
             if ( null !== $arg && is_array( $tokens[ $arg ] ) && T_CONSTANT_ENCAPSED_STRING === $tokens[ $arg ][0] && preg_match( '/^([\'"])acf\//', $tokens[ $arg ][1] ) ) {
                 $method = str_starts_with( $name, 'remove' ) ? 'off' : 'on';
-                $out .= '\\Hexa\\PluginCore\\Fields\\Hooks::' . $method;
+                // A registration can run while plugins load (even inside a function), before Core's
+                // classes are autoloadable; bootstrap.php's hexa_fields_on() works at any time.
+                $load_safe = 'on' === $method;
+                $out .= $load_safe ? '\\hexa_fields_on' : '\\Hexa\\PluginCore\\Fields\\Hooks::' . $method;
                 for ( $j = $i + 1; $j < $arg; $j++ ) {
                     $out .= is_array( $tokens[ $j ] ) ? $tokens[ $j ][1] : $tokens[ $j ];
                 }
                 $out .= preg_replace( '/^([\'"])acf\//', '$1', $tokens[ $arg ][1] );
-                $changes[] = sprintf( 'L%d %s( %s ) -> Hooks::%s', $line, $name, $tokens[ $arg ][1], $method );
-                if ( ! $in_function ) {
+                $changes[] = sprintf( 'L%d %s( %s ) -> %s', $line, $name, $tokens[ $arg ][1], $load_safe ? 'hexa_fields_on' : 'Hooks::' . $method );
+                if ( ! $in_function && ! $load_safe ) {
                     $early[] = $line;
                 }
                 $i = $arg;

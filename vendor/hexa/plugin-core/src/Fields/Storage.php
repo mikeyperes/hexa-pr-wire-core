@@ -78,35 +78,90 @@ final class Storage {
         }
     }
 
-    /** @param array{0:string,1:int|string} $context */
-    public static function get( array $context, string $name ): mixed {
+    /**
+     * A stored value, or with $hidden the field-key reference ACF keeps beside
+     * it: `_<name>` meta, or the `_options_<name>` option.
+     *
+     * @param array{0:string,1:int|string} $context
+     */
+    public static function get( array $context, string $name, bool $hidden = false ): mixed {
         [ $type, $id ] = $context;
+        $key = self::key( $context, $name, $hidden );
         if ( 'option' === $type ) {
-            return get_option( $id . '_' . $name, null );
+            return get_option( $key, null );
         }
-        if ( ! metadata_exists( $type, (int) $id, $name ) ) {
+        if ( ! metadata_exists( $type, (int) $id, $key ) ) {
             return null;
         }
-        return get_metadata( $type, (int) $id, $name, true );
+        return get_metadata( $type, (int) $id, $key, true );
     }
 
     /** @param array{0:string,1:int|string} $context */
-    public static function update( array $context, string $name, mixed $value ): bool {
+    public static function update( array $context, string $name, mixed $value, bool $hidden = false ): bool {
         [ $type, $id ] = $context;
+        $key = self::key( $context, $name, $hidden );
         if ( 'option' === $type ) {
-            $option = $id . '_' . $name;
-            return update_option( $option, $value ) || get_option( $option ) === $value;
+            return update_option( $key, $value ) || get_option( $key ) === $value;
         }
-        return false !== update_metadata( $type, (int) $id, $name, $value );
+        return false !== update_metadata( $type, (int) $id, $key, $value );
     }
 
     /** @param array{0:string,1:int|string} $context */
-    public static function delete( array $context, string $name ): bool {
+    public static function delete( array $context, string $name, bool $hidden = false ): bool {
         [ $type, $id ] = $context;
+        $key = self::key( $context, $name, $hidden );
         if ( 'option' === $type ) {
-            return delete_option( $id . '_' . $name );
+            return delete_option( $key );
         }
-        return delete_metadata( $type, (int) $id, $name );
+        return delete_metadata( $type, (int) $id, $key );
+    }
+
+    /**
+     * ACF's storage name (acf_get_metadata): `<id>_<name>` / `_<id>_<name>`
+     * for options, `<name>` / `_<name>` for meta.
+     *
+     * @param array{0:string,1:int|string} $context
+     */
+    private static function key( array $context, string $name, bool $hidden ): string {
+        if ( 'option' === $context[0] ) {
+            return ( $hidden ? '_' : '' ) . $context[1] . '_' . $name;
+        }
+        return ( $hidden ? '_' : '' ) . $name;
+    }
+
+    /**
+     * Stored field names with their `_name` field-key reference, as ACF uses to
+     * list an object's fields.
+     *
+     * @param array{0:string,1:int|string} $context
+     * @return array<string,string> name => field key
+     */
+    public static function referenced( array $context ): array {
+        [ $type, $id ] = $context;
+        // As acf_get_meta(): every stored value that has a `_<name>` reference, in stored-value order.
+        $all = [];
+        if ( 'option' === $type ) {
+            global $wpdb;
+            $prefix = $id . '_';
+            // The same query as acf_get_option_meta(), so rows arrive in the same order.
+            $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $wpdb->esc_like( $prefix ) . '%', $wpdb->esc_like( '_' . $prefix ) . '%' ) );
+            foreach ( (array) $rows as $row ) {
+                $name = (string) $row->option_name;
+                $all[ str_starts_with( $name, '_' ) ? '_' . substr( $name, strlen( $prefix ) + 1 ) : substr( $name, strlen( $prefix ) ) ] = (string) $row->option_value;
+            }
+        } else {
+            foreach ( (array) get_metadata( $type, (int) $id ) as $key => $values ) {
+                $all[ (string) $key ] = is_array( $values ) ? (string) ( $values[0] ?? '' ) : '';
+            }
+        }
+        $names = [];
+        foreach ( $all as $key => $value ) {
+            $reference = $all[ '_' . $key ] ?? '';
+            if ( '' !== $reference ) {
+                $names[ (string) $key ] = $reference;
+            }
+        }
+        return $names;
     }
 
     /** @return array{0:string,1:int|string} */

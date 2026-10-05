@@ -22,6 +22,9 @@ final class Field {
         if ( Acf::active() ) {
             return get_field( $selector, $context, $format, $escape_html );
         }
+        if ( '' === $selector ) {
+            return null;
+        }
         $context = Storage::context( $context );
         [ $field, $name ] = Values::resolve( $selector, $context );
         if ( null === $field ) {
@@ -46,7 +49,7 @@ final class Field {
             return (bool) update_field( $selector, $value, $context );
         }
         $context = Storage::context( $context );
-        [ $field, $name ] = Values::resolve( $selector, $context );
+        [ $field, $name ] = Values::resolve( $selector, $context, false );
         if ( null === $field ) {
             return Storage::update( $context, $selector, $value );
         }
@@ -59,7 +62,8 @@ final class Field {
         }
         $context = Storage::context( $context );
         [ $field, $name ] = Values::resolve( $selector, $context );
-        return null === $field ? Storage::delete( $context, $selector ) : Values::erase( $context, $field, $name );
+        // Like delete_field(): a name with no stored reference is not a field.
+        return null === $field ? false : Values::erase( $context, $field, $name );
     }
 
     /** @return array<string,mixed>|false Equivalent of get_fields(). */
@@ -96,19 +100,20 @@ final class Field {
         if ( Acf::active() ) {
             return get_field_objects( $context, $format, $load_value );
         }
+        // As get_field_objects(): each stored value whose `_name` reference resolves to a
+        // field of that same name (which leaves out sub-field values).
         $resolved = Storage::context( $context );
         $objects = [];
-        foreach ( FieldGroups::for_screen( Storage::screen( $resolved ) ) as $group ) {
-            foreach ( (array) $group['fields'] as $field ) {
-                if ( '' === (string) $field['name'] ) {
-                    continue;
-                }
-                if ( $load_value ) {
-                    $value = Values::load( $resolved, $field, (string) $field['name'] );
-                    $field['value'] = $format ? Values::format( $value, $resolved, $field ) : $value;
-                }
-                $objects[ (string) $field['name'] ] = $field;
+        foreach ( Storage::referenced( $resolved ) as $name => $key ) {
+            $field = FieldGroups::get_field( $key );
+            if ( null === $field || (string) $field['name'] !== (string) $name ) {
+                continue;
             }
+            if ( $load_value ) {
+                $value = Values::load( $resolved, $field, (string) $name );
+                $field['value'] = $format ? Values::format( $value, $resolved, $field ) : $value;
+            }
+            $objects[ (string) $name ] = $field;
         }
         return [] === $objects ? false : $objects;
     }

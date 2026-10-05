@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\SearchQuery;
 
+use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
+
 /**
  * Normalizes the reusable public-search behavior contract.
  *
@@ -27,8 +29,10 @@ final class SearchQueryConfiguration {
             'taxonomies'       => [],
             'authors'          => false,
             'custom_fields'    => [],
+            'user_reference_fields' => [],
             'results_per_page' => 0,
             'orderby'          => 'relevance',
+            'time_window'      => [],
         ];
     }
 
@@ -61,14 +65,19 @@ final class SearchQueryConfiguration {
         $selected_taxonomies = self::selected_keys( $settings['taxonomies'] ?? [], $taxonomies );
         $authors = self::boolean( $settings['authors'] ?? $defaults['authors'] );
         $custom_fields = array_slice( self::keys( (array) ( $settings['custom_fields'] ?? [] ) ), 0, 20 );
+        $user_reference_fields = array_slice( self::keys( (array) ( $settings['user_reference_fields'] ?? [] ) ), 0, 10 );
         $fields = self::selected_keys( $settings['fields'] ?? [], self::FIELDS );
-        $has_advanced_source = [] !== $selected_taxonomies || $authors || [] !== $custom_fields;
+        $has_advanced_source = [] !== $selected_taxonomies || $authors || [] !== $custom_fields || [] !== $user_reference_fields;
         if ( [] === $fields && ( ! array_key_exists( 'fields', $settings ) || ! $has_advanced_source ) ) {
             $fields = $defaults['fields'];
         }
 
         $results_per_page = (int) ( $settings['results_per_page'] ?? $defaults['results_per_page'] );
         $results_per_page = max( 0, min( 100, $results_per_page ) );
+        $time_window = NaturalTimeWindow::normalize(
+            is_array( $settings['time_window'] ?? null ) ? $settings['time_window'] : [],
+            $selected_post_types
+        );
 
         return [
             'enabled'          => self::boolean( $settings['enabled'] ?? $defaults['enabled'] ),
@@ -80,8 +89,10 @@ final class SearchQueryConfiguration {
             'taxonomies'       => $selected_taxonomies,
             'authors'          => $authors,
             'custom_fields'    => $custom_fields,
+            'user_reference_fields' => $user_reference_fields,
             'results_per_page' => $results_per_page,
             'orderby'          => self::choice( $settings['orderby'] ?? '', self::ORDERING, $defaults['orderby'] ),
+            'time_window'      => $time_window,
         ];
     }
 

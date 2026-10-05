@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.0 — 2026-10-05
+
+- New Hexa PR Wire → Editor Screens tab. Its FIFU Box toggle (on by default) removes the FIFU (Featured Image from URL) box from the release editor through WordPress's `remove_meta_box`.
+- Bundles Hexa WordPress Plugin Core 3.15.0 (was 3.4.1), which owns the shared clean-up toggles and presets.
+
 ## 2.3.3 — 2026-10-03
 
 - Removed the release-specific View As toolbar and picker. The generic, configurable feature is now owned by HWS Base Tools 13.3.10+.

@@ -8,22 +8,39 @@ namespace Hexa\PluginCore\Fields;
  */
 final class Values {
     private const LAYOUT_TYPES = [ 'accordion', 'tab', 'message' ];
+    /** ACF field-type `default_value` defaults, merged into every field ACF loads. */
+    private const TYPE_DEFAULTS = [
+        'text' => '', 'textarea' => '', 'number' => '', 'range' => '', 'email' => '', 'url' => '', 'wysiwyg' => '', 'color_picker' => '',
+        'select' => '', 'checkbox' => '', 'radio' => '', 'button_group' => '', 'true_false' => 0,
+    ];
 
     /**
-     * Resolve a selector (name or key) to its definition and stored name.
+     * Resolve a selector (name or key) to its definition and stored name, as
+     * acf_maybe_get_field() does: a key resolves directly; a name resolves
+     * through its stored `_name` reference. Reads are strict (a never-saved
+     * name is unknown, so get_field() returns the raw stored value or null);
+     * update_field() is not strict and also matches registered names.
      *
      * @param array{0:string,1:int|string} $context
      * @return array{0:array<string,mixed>|null,1:string}
      */
-    public static function resolve( string $selector, array $context ): array {
-        $field = FieldGroups::get_field( $selector, Storage::acf_id( $context ) );
-        if ( null !== $field ) {
-            return [ $field, str_starts_with( $selector, 'field_' ) ? (string) $field['name'] : $selector ];
+    public static function resolve( string $selector, array $context, bool $strict = true ): array {
+        if ( str_starts_with( $selector, 'field_' ) ) {
+            $field = FieldGroups::get_field( $selector );
+            if ( null !== $field ) {
+                return [ $field, (string) $field['name'] ];
+            }
         }
-        // ACF resolves flattened names (group or repeater sub fields) through the `_name` reference.
-        $reference = Storage::get( $context, '_' . $selector );
-        if ( is_string( $reference ) && str_starts_with( $reference, 'field_' ) ) {
+        // As acf_get_meta_field(): the stored reference is a field key or, occasionally, a field name.
+        $reference = Storage::get( $context, $selector, true );
+        if ( is_string( $reference ) && '' !== $reference ) {
             $field = FieldGroups::get_field( $reference );
+            if ( null !== $field ) {
+                return [ $field, $selector ];
+            }
+        }
+        if ( ! $strict ) {
+            $field = FieldGroups::get_field( $selector, Storage::acf_id( $context ) );
             if ( null !== $field ) {
                 return [ $field, $selector ];
             }
@@ -69,8 +86,9 @@ final class Values {
             }
         } else {
             $value = Storage::get( $context, $name );
-            if ( null === $value && isset( $field['default_value'] ) && '' !== $field['default_value'] ) {
-                $value = $field['default_value'];
+            if ( null === $value ) {
+                // As acf_get_value(): a missing value takes the field's (or its type's) default.
+                $value = $field['default_value'] ?? self::TYPE_DEFAULTS[ $type ] ?? null;
             }
         }
         return Hooks::field_filter( 'load_value', $value, $field, Storage::acf_id( $context ), $field );
@@ -229,7 +247,7 @@ final class Values {
                 Storage::update( $context, $name, self::storable( $field, $value ) );
         }
         if ( '' !== (string) $field['key'] ) {
-            Storage::update( $context, '_' . $name, (string) $field['key'] );
+            Storage::update( $context, $name, (string) $field['key'], true );
         }
         return true;
     }
@@ -251,7 +269,7 @@ final class Values {
                 self::erase( $context, $sub, $name . '_' . $sub['name'] );
             }
         }
-        Storage::delete( $context, '_' . $name );
+        Storage::delete( $context, $name, true );
         return Storage::delete( $context, $name );
     }
 
@@ -323,17 +341,21 @@ final class Values {
         return [];
     }
 
+    /** ACF's `acf_the_content` chain, registered once when ACF is not active so site hooks on it keep working. */
     private static function content( string $value ): string {
         if ( '' === $value ) {
             return $value;
         }
-        $value = wptexturize( $value );
-        $value = convert_smilies( $value );
-        $value = convert_chars( $value );
-        $value = wpautop( $value );
-        $value = shortcode_unautop( $value );
-        $value = do_shortcode( $value );
-        return function_exists( 'wp_filter_content_tags' ) ? wp_filter_content_tags( $value ) : $value;
+        if ( ! has_filter( 'acf_the_content', 'wpautop' ) ) {
+            add_filter( 'acf_the_content', 'capital_P_dangit', 11 );
+            add_filter( 'acf_the_content', 'wptexturize' );
+            add_filter( 'acf_the_content', 'convert_smilies', 20 );
+            add_filter( 'acf_the_content', 'wpautop' );
+            add_filter( 'acf_the_content', 'shortcode_unautop' );
+            add_filter( 'acf_the_content', function_exists( 'wp_filter_content_tags' ) ? 'wp_filter_content_tags' : 'wp_make_content_images_responsive' );
+            add_filter( 'acf_the_content', 'do_shortcode', 11 );
+        }
+        return (string) apply_filters( 'acf_the_content', $value );
     }
 
     /** @param array<string,mixed> $field */
@@ -405,17 +427,59 @@ final class Values {
     private static function posts( mixed $value, array $field, string $return ): mixed {
         $multiple = 'relationship' === $field['type'] || ! empty( $field['multiple'] );
         $ids = array_values( array_filter( array_map( 'intval', is_array( $value ) ? $value : ( '' === (string) $value || null === $value ? [] : [ $value ] ) ) ) );
-        $items = 'id' === $return ? $ids : array_values( array_filter( array_map( 'get_post', $ids ) ) );
-        if ( $multiple ) {
-            return [] === $items ? false : $items;
+        if ( [] === $ids ) {
+            return false;
         }
-        return $items[0] ?? false;
+        $items = 'id' === $return ? $ids : self::visible_posts( $ids, $field );
+        return $multiple ? $items : ( $items[0] ?? false );
+    }
+
+    /**
+     * Posts acf_get_posts() returns for these IDs: registered post types (the
+     * field's own when set), not trashed or auto-draft, in ID order.
+     *
+     * @param array<int,int> $ids
+     * @param array<string,mixed> $field
+     * @return array<int,\WP_Post>
+     */
+    private static function visible_posts( array $ids, array $field ): array {
+        $types = array_filter( (array) ( $field['post_type'] ?? [] ) );
+        $statuses = array_filter( (array) ( $field['post_status'] ?? [] ) );
+        $posts = [];
+        foreach ( $ids as $id ) {
+            $post = get_post( (int) $id );
+            if ( ! $post instanceof \WP_Post || ! post_type_exists( $post->post_type ) || in_array( $post->post_type, [ 'acf-field-group', 'acf-field' ], true ) ) {
+                continue;
+            }
+            if ( [] !== $types && ! in_array( $post->post_type, $types, true ) ) {
+                continue;
+            }
+            if ( [] !== $statuses ? ! in_array( $post->post_status, $statuses, true ) : in_array( $post->post_status, [ 'trash', 'auto-draft' ], true ) ) {
+                continue;
+            }
+            $posts[] = $post;
+        }
+        return $posts;
     }
 
     /** @param array<string,mixed> $field */
     private static function links( mixed $value, array $field ): mixed {
-        $items = array_map( static fn( $item ) => is_numeric( $item ) ? (string) get_permalink( (int) $item ) : (string) $item, is_array( $value ) ? $value : ( empty( $value ) ? [] : [ $value ] ) );
-        return ! empty( $field['multiple'] ) ? ( [] === $items ? false : $items ) : ( $items[0] ?? false );
+        if ( empty( $value ) ) {
+            return $value;
+        }
+        // As ACF's page_link: post IDs become permalinks of visible posts; archive URLs stay.
+        $items = [];
+        foreach ( (array) $value as $item ) {
+            if ( ! is_numeric( $item ) ) {
+                $items[] = $item;
+                continue;
+            }
+            $post = self::visible_posts( [ (int) $item ], $field )[0] ?? null;
+            if ( null !== $post ) {
+                $items[] = (string) get_permalink( $post );
+            }
+        }
+        return ! empty( $field['multiple'] ) ? $items : ( $items[0] ?? null );
     }
 
     /** @param array<string,mixed> $field */

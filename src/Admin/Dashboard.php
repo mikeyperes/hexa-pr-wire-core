@@ -21,12 +21,13 @@ final class Dashboard implements Module {
 		'publications' => 'Publications',
 		'releases' => 'Releases',
 		'notifications' => 'Notifications',
+		'editor' => 'Editor Screens',
 		'system' => 'System / Migration',
 	];
 
 	private TabRegistry $tabs;
 
-	public function __construct( private NotificationSettings $notifications, private StatusReport $status ) {
+	public function __construct( private NotificationSettings $notifications, private StatusReport $status, private EditorScreenCleanup $editor_cleanup ) {
 		$this->tabs = new TabRegistry();
 		foreach ( self::TABS as $id => $label ) {
 			$this->tabs->add( new TabDefinition( $id, $label, [ $this, $id ], 'manage_options' ) );
@@ -114,6 +115,10 @@ final class Dashboard implements Module {
 		Activity::add( 'Notification templates saved.', 'success', [], 'settings' );
 		wp_safe_redirect( add_query_arg( [ 'page' => self::PAGE . '-notifications', 'updated' => 1 ], admin_url( 'admin.php' ) ) );
 		exit;
+	}
+
+	private function editor(): void {
+		$this->editor_cleanup->render();
 	}
 
 	private function overview(): void {

@@ -4,6 +4,29 @@ Copy this file into every plugin that consumes `hexa/plugin-core`. Keep it updat
 
 This is the quick reference for developers and agents working in separate Codex or Claude chats.
 
+Calendar profiles accept `sort`, an ordered list of field or value-callback
+criteria handled by `Hexa\PluginCore\Calendar\CalendarSort`. Fields may be
+dot-separated paths such as `data.area`; criteria declare `direction`
+(`asc`/`desc`), `type` (`auto`/`text`/`number`/`boolean`), and missing-value
+placement (`first`/`last`). Sorting runs within each day after placement, before
+the visible/more split. See `docs/calendar.md` for examples and compatibility.
+
+Map profiles opt into a selection panel with `selection => 'sidebar'`: a
+sectioned overlay that slides over the map (a bottom sheet on narrow screens)
+without resizing it. Core's `Map\MapDetails` owns the place block, compact
+entry rows (date badge, meta, tags, thumbnail, actions), the single-entry
+featured card, the read endpoint `map/{profile}/details/{item}`, "Show more"
+paging, loading skeleton, retry, request cancellation, focus, and placement. Hosts supply a
+`details(int $id, array $data, array $item, array $query): array` callback
+returning `title`, `summary`, `entries`, `total`, and the clamped `page`.
+The query contains `page`, profile-controlled `per_page` (1–50), and `hours`
+(0 or a declared date window); hosts own grouping, ordering and date semantics.
+Set `related_post_types` for content dependencies so saves/terms/metadata
+invalidate map/detail caches even for user-sourced maps. `MapLocations::item()`
+resolves one eligible placed location. The popup remains the default; absent
+a details provider, a sidebar shows the existing card. See `docs/map.md` for
+entry shape, profile settings, endpoint visibility, and verification methods.
+
 ## Fixed Identity
 
 ```text
@@ -13,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.4.1
+Current release: 3.15.0
 ```
 
 Do not rename these.
@@ -59,6 +82,7 @@ src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/DirectorySearch/    Hexa\PluginCore\DirectorySearch
 src/Calendar/           Hexa\PluginCore\Calendar
+src/Map/                Hexa\PluginCore\Map
 src/QueryFilter/        Hexa\PluginCore\QueryFilter
 src/PublicComponents/   Hexa\PluginCore\PublicComponents
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
@@ -191,6 +215,8 @@ Hexa\PluginCore\WpAdminUiCleanup
 ```
 
 Use `CleanupRegistry` to define admin cleanup options once, render toggle rows, save settings through AJAX, and apply behavior on the target admin screens.
+
+Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()` and `CleanupPresets::fifu_meta_box()` instead of redefining those boxes; pass overrides such as `section` or `label` as the argument.
 
 Required rules:
 
@@ -581,6 +607,31 @@ $result = PluginProvisioner::ensure_github_plugin_active(
 );
 ```
 
+### Plugin bridge (install from a GitHub release over REST)
+
+`PluginBridge::register()` adds an administrator-only REST route that installs
+or updates a plugin from its GitHub release's attached `.zip`. Every host
+plugin should switch it on once Core is selected (safe to call from each host):
+
+```php
+add_action( 'hexa_plugin_core_package_selected', static function (): void {
+    if ( class_exists( \Hexa\PluginCore\PluginProvisioning\PluginBridge::class ) ) {
+        \Hexa\PluginCore\PluginProvisioning\PluginBridge::register();
+    }
+} );
+```
+
+Then, with an administrator Application Password:
+
+- `GET /wp-json/hexa-plugin-core/v1/plugins/github?repo=owner/name` - installed file, version, active state.
+- `POST /wp-json/hexa-plugin-core/v1/plugins/github` `{"repo":"owner/name","tag":"latest","activate":true}` - install or replace from that release.
+
+Only owners in the `hexa_plugin_core/plugin_bridge_owners` filter (default
+`mikeyperes`) and only zip assets attached to that repository's release are
+accepted. It needs install, update and activate plugin rights and respects
+`DISALLOW_FILE_MODS`. One Hexa plugin on a site is therefore enough to deliver
+every other one without wp-admin.
+
 ## WP Config File
 
 Namespace:
@@ -823,7 +874,10 @@ Classes:
 SearchQueryConfiguration
 SearchTermParser
 SearchQueryEngine
+MetaConstraintSql
 JetEngineSearchAdapter
+ElementorSearchAdapter
+ElementorPublicTextIndex
 ```
 
 Use this namespace to alter one explicitly eligible native WordPress search-results query. The host owns option storage, capability/nonce checks, available public post types and taxonomies, and the request marker. Core owns normalization, bounded parsing, selected-source SQL, and query scoping.
@@ -847,17 +901,31 @@ $jet_engine = new \Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter(
     'example_search'
 );
 $jet_engine->register();
+
+$elementor_search = new \Hexa\PluginCore\SearchQuery\ElementorSearchAdapter(
+    $settings_provider,
+    'example_live_search'
+);
+$elementor_search->register();
+
+$elementor_text = new \Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex(
+    get_post_types( [ 'public' => true ], 'names' )
+);
+$elementor_text->register();
 ```
+
+Pass no post-type list when the host registers custom public types on `init`.
+Core then resolves the current public searchable types when the index runs.
 
 Supported behavior:
 
 - term logic: `all`, `any`, or `exact`
 - word matching: `whole`, `prefix`, or `contains`
-- sources: title, content, excerpt, slug, selected taxonomy names, author display names, and selected custom-field keys
-- public post-type selection, result count from 0 to 100, and relevance/newest/oldest/title ordering
+- sources: title, content, excerpt, slug, selected taxonomy names, author display names, selected custom-field keys, and public display names reached through selected numeric user-reference meta keys
+- public post-type selection, result count from 0 to 100, relevance/newest/oldest/title ordering, and opt-in host-mapped natural time windows such as `24 hours`, `one week`, or `Chabad next 48 hours`
 - `shortcode` scope through a hidden marker, or deliberate `all` public-search scope
 
-Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `JetEngineSearchAdapter` can explicitly mark a posts grid created by a search-results template; archive grids and unrelated requests stay untouched. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `JetEngineSearchAdapter` can explicitly mark a posts grid created by a search-results template; archive grids and unrelated requests stay untouched. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
 
 Do not copy this into host `pre_get_posts` callbacks. Do not use it for suggestions: `SmartSearch` remains the separate AJAX typeahead/content-picker system. Full protocol: `docs/search-query.md`.
 
@@ -1090,6 +1158,21 @@ Package hygiene rules:
 - Never ship or install nested VCS metadata inside a plugin package. Core excludes `.git`, `.svn`, `.hg`, `.bzr`, `.DS_Store`, and `Thumbs.db` from ZIP builders, direct installs, vendored Core installs, and GitHub plugin provisioning.
 - Native WordPress plugin updates call a Core pre-install purge for the current plugin folder before WordPress starts copying files. If locked metadata cannot be removed, Core returns a clear `WP_Error` instead of letting WordPress dump a long copy-failure list.
 - Do not append GitHub tokens or API keys to package URLs. If a private GitHub request needs auth, pass the token through the HTTP `Authorization` header only.
+
+### PHP 7.4 release builds
+
+Source targets current PHP. For sites still on PHP 7.4, build a downgraded copy
+of the release and attach it next to the normal zip:
+
+```bash
+lib/hexa-wordpress-plugin-core/bin/build-php74-release.sh . v1.2.3 my-plugin /tmp/my-plugin-1.2.3-php74.zip
+```
+
+It needs Rector (`RECTOR`, default `/root/tools/rector/vendor/bin/rector`), a
+PHP 8 binary to run it and a PHP 7.4 binary to lint every file. The updater
+serves `<folder>-<version>-php74.zip` only to sites whose PHP is older than the
+source's `Requires PHP`; without it, those sites see the real requirement and
+WordPress does not install the update.
 
 ### Required Updater Config
 
@@ -1685,3 +1768,7 @@ php tests/core-package-fleet.php
 php tests/wordpress-operations.php
 php tests/litespeed-cache.php
 ```
+
+## User profile route
+
+Call `\Hexa\PluginCore\Users\UserProfileBridge::register()` from `hexa_plugin_core_package_selected` to expose `GET/POST /wp-json/hexa-plugin-core/v1/users/{id}/profile` (needs `list_users` and `edit_user`). GET returns `rows`, safe `meta`, `legacy_avatar_url` and `avatar_provider`. POST accepts `native` (display_name, first_name, last_name, nickname, user_url, description, user_email), `meta`, `fields` and `avatar: {media_id}`, then returns the fresh profile plus `written`. Role, login, password, capability and session keys are always refused.

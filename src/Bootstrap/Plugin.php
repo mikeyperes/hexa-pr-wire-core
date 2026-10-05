@@ -10,6 +10,7 @@ use HexaPrWire\Core\Admin\CustomerNavigation;
 use HexaPrWire\Core\Admin\CustomerActions;
 use HexaPrWire\Core\Admin\CustomerProfile;
 use HexaPrWire\Core\Admin\Dashboard;
+use HexaPrWire\Core\Admin\EditorScreenCleanup;
 use HexaPrWire\Core\Admin\EditorChecklist;
 use HexaPrWire\Core\Admin\EditorStyles;
 use HexaPrWire\Core\Content\ContentModel;
@@ -94,7 +95,8 @@ final class Plugin {
 				->add( new CustomerActions( $access ) )
 				->add( new EditorChecklist() )
 				->add( new EditorStyles() )
-			->add( new Dashboard( $notification_settings, new StatusReport() ) )
+			->add( $editor_cleanup = new EditorScreenCleanup() )
+			->add( new Dashboard( $notification_settings, new StatusReport(), $editor_cleanup ) )
 			->add( new OwnershipService() )
 			->add( new DeliveryLinkGenerator( $publications, $urls ) )
 			->add( new CanonicalService( $publications, $urls ) )
