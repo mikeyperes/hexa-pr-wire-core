@@ -19,30 +19,49 @@ final class OutletClient {
 
 	/** @return array{ok:bool,status:int,message:string} */
 	public function command( string $host, string $route, array $body = [], int $timeout = 60 ): array {
+		$result = $this->request( 'POST', $host, $route, $body, $timeout );
+		unset( $result['data'] );
+		return $result;
+	}
+
+	/**
+	 * Distributor's token-protected health report for one outlet host.
+	 *
+	 * @return array{ok:bool,status:int,message:string,data:array<string,mixed>}
+	 */
+	public function health( string $host, int $timeout = 20 ): array {
+		return $this->request( 'GET', $host, 'health', [], $timeout );
+	}
+
+	/** @return array{ok:bool,status:int,message:string,data:array<string,mixed>} */
+	private function request( string $method, string $host, string $route, array $body, int $timeout ): array {
 		$token = $this->credentials->get();
 		if ( '' === $token ) {
-			return [ 'ok' => false, 'status' => 0, 'message' => 'The shared Hexa PR Wire token is not configured.' ];
+			return [ 'ok' => false, 'status' => 0, 'message' => 'The shared Hexa PR Wire token is not configured.', 'data' => [] ];
 		}
-		$response = wp_remote_post(
+		$response = wp_remote_request(
 			'https://' . $host . '/wp-json/hpr-distributor/v1/' . ltrim( $route, '/' ),
 			[
+				'method'              => $method,
 				'timeout'             => $timeout,
 				'redirection'         => 0,
 				'sslverify'           => true,
 				'reject_unsafe_urls'  => true,
 				'limit_response_size' => MB_IN_BYTES,
 				'headers'             => [ 'Accept' => 'application/json', 'Cache-Control' => 'no-cache', 'X-HPR-Token' => $token, 'User-Agent' => 'HexaPRWireCore/' . HPRWC_VERSION ],
-				'body'                => $body,
+				'body'                => 'POST' === $method ? $body : null,
 			]
 		);
 		$token = '';
 		if ( is_wp_error( $response ) ) {
-			return [ 'ok' => false, 'status' => 0, 'message' => $response->get_error_message() ];
+			return [ 'ok' => false, 'status' => 0, 'message' => $response->get_error_message(), 'data' => [] ];
 		}
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$json = json_decode( (string) wp_remote_retrieve_body( $response ), true );
-		$ok = $status >= 200 && $status < 300 && is_array( $json ) && ! empty( $json['success'] );
-		return [ 'ok' => $ok, 'status' => $status, 'message' => is_array( $json ) ? (string) ( $json['message'] ?? ( $ok ? 'OK' : 'Failed' ) ) : 'HTTP ' . $status ];
+		$json = is_array( $json ) ? $json : [];
+		// Commands answer {success:true,...}; the health route returns its report directly.
+		$ok = $status >= 200 && $status < 300 && [] !== $json && ( 'GET' === $method || ! empty( $json['success'] ) );
+		return [ 'ok' => $ok, 'status' => $status, 'message' => (string) ( $json['message'] ?? ( $ok ? 'OK' : 'HTTP ' . $status ) ), 'data' => $json ];
 	}
 
 	/**

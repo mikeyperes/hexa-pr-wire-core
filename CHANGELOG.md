@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.8.0 — 2026-10-05
+
+- **Publications dashboard** (Hexa PR Wire → Publications, `Admin\PublicationConnections`): one table of every publication record. Each row shows:
+  - its connection type
+  - its approved push host
+  - a live status
+  - the last push from Hexa PR Wire, with result and time
+  - its release count and latest release
+
+  The table can be filtered by type or by inactive records.
+- **Live check:** Distributor-managed outlets are checked over AJAX through Distributor's token-protected `/health` route, four at a time. It shows Distributor and WordPress versions, feed state, last pull and the latest imported copy, or "Unreachable" / "Token rejected" / "Distributor missing or outdated". It runs on load and from **Check managed outlets**.
+- New **Connection Type** field (`connection_type`) on publication records: Managed (Distributor), RSS pull (Echo), External or Premium. Premium-tier records default to Premium.
+- `ForceSyncService` keeps the latest push result per publication (`hprwc_outlet_last_push`), so the dashboard shows the latest push without scanning releases.
+- `OutletClient` gains `health()`; commands and health share one token-bearing request path that keeps TLS verification on and never follows redirects.
+
 ## 2.7.0 — 2026-10-05
 
 - Release editor: the Force Sync meta box is replaced by a **Distribution** panel rendered directly above the content (`edit_form_after_title`).

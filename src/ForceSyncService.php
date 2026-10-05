@@ -11,6 +11,9 @@ final class ForceSyncService {
 
 	public const LOG_OPTION = 'hws_hpr_force_sync_log';
 
+	/** Latest push result per publication, for the Publications connection dashboard. */
+	public const OUTLET_LAST_OPTION = 'hprwc_outlet_last_push';
+
 	public function __construct(
 		private PublicationResolver $resolver,
 		private CredentialRepository $credentials,
@@ -199,6 +202,13 @@ final class ForceSyncService {
 		$stored = is_array( $stored ) ? $stored : [];
 		$stored[ $publication_id ] = $result;
 		update_post_meta( $post_id, self::RESULT_META, $stored );
+
+		if ( 'force' === ( $result['mode'] ?? '' ) ) {
+			$last = get_option( self::OUTLET_LAST_OPTION, [] );
+			$last = is_array( $last ) ? $last : [];
+			$last[ $publication_id ] = array_intersect_key( $result, array_flip( [ 'ok', 'time_gmt', 'post_id', 'post_title', 'live_url', 'endpoint_http', 'message' ] ) );
+			update_option( self::OUTLET_LAST_OPTION, $last, false );
+		}
 	}
 
 	/**

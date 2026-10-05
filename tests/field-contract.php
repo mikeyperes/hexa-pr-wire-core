@@ -12,6 +12,7 @@ require_once dirname( __DIR__ ) . '/src/Contracts/CustomerPolicyRepository.php';
 require_once dirname( __DIR__ ) . '/src/Customer/SubmissionMode.php';
 require_once dirname( __DIR__ ) . '/src/Customer/AccessPolicy.php';
 require_once dirname( __DIR__ ) . '/src/Fields/ReleaseLocation.php';
+require_once dirname( __DIR__ ) . '/src/Domain/Publication/ConnectionType.php';
 require_once dirname( __DIR__ ) . '/src/Fields/FieldGroups.php';
 
 $assert = static function ( bool $condition, string $message ): void {

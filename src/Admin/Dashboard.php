@@ -27,7 +27,7 @@ final class Dashboard implements Module {
 
 	private TabRegistry $tabs;
 
-	public function __construct( private NotificationSettings $notifications, private StatusReport $status, private EditorScreenCleanup $editor_cleanup, private CustomerTermLimits $term_limits ) {
+	public function __construct( private NotificationSettings $notifications, private StatusReport $status, private EditorScreenCleanup $editor_cleanup, private CustomerTermLimits $term_limits, private PublicationConnections $connections ) {
 		$this->tabs = new TabRegistry();
 		foreach ( self::TABS as $id => $label ) {
 			$this->tabs->add( new TabDefinition( $id, $label, [ $this, $id ], 'manage_options' ) );
@@ -140,12 +140,7 @@ final class Dashboard implements Module {
 	}
 
 	private function publications(): void {
-		$mapped = get_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false, 'meta_key' => 'publication', 'fields' => 'ids' ] );
-		$this->cards( [
-			[ 'Registry records', (int) wp_count_posts( 'publication' )->publish, 'edit.php?post_type=publication' ],
-			[ 'Taxonomy terms', (int) wp_count_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false ] ), 'edit-tags.php?taxonomy=publication&post_type=post' ],
-			[ 'Mapped terms', is_wp_error( $mapped ) ? 0 : count( $mapped ), 'edit-tags.php?taxonomy=publication&post_type=post' ],
-		] );
+		$this->connections->render();
 		$this->syndication_panel();
 	}
 
