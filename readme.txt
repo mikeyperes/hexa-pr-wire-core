@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.5.0
+Stable tag: 2.6.0
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.6.0 =
+* New Elementor dynamic tag "Publication Release URL": on a release page it links each outlet card to that outlet's copy of the release (press-release URL prefix + release slug), falling back to the outlet homepage when the outlet has no prefix. Replaces the retired client-side link rewrite (legacy snippet 51).
 
 = 2.5.0 =
 * Release Requirements: "Headings use H2" now needs at least one H2 and no other heading level (it used to pass with no headings), and updates live in the Visual editor.

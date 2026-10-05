@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.6.0 — 2026-10-05
+
+- New Elementor dynamic tag "Publication Release URL" (`hpr-publication-release-url`, URL category). In the release page's `publication_links` grid it returns `PublicationUrl::for_slug()` for the card's outlet and the queried release, so "View This Press Release On" cards open the outlet's copy instead of its homepage. Outlets without a press-release prefix fall back to their homepage. It replaces legacy snippet 51's footer JavaScript rewrite, retired on 2026-09-20 without a server-side replacement for the cards.
+- `ElementorPublicationQuery` reuses one outlet lookup per release for both the grid query and the card links.
+
 ## 2.5.0 — 2026-10-05
 
 - Release Requirements: "Headings use H2" passes only when the release has at least one H2 and no H1/H3–H6. It used to pass for releases with no headings at all. The box now also updates live while typing in the Visual editor. One rule, tested in PHP and in the editor script (`tests/editor-checklist.php`).

@@ -108,7 +108,7 @@ final class Plugin {
 			->add( new DeletionManifest() )
 			->add( new PressReleaseContent() )
 			->add( new PublicationShortcodes( $publications, $urls ) )
-			->add( new ElementorPublicationQuery( $publications ) )
+			->add( new ElementorPublicationQuery( $publications, $urls ) )
 			->add( new BillingPricingBridge( $policies, $access ) )
 			->add( new OnboardingApi( $this->destinations ) )
 			->add( new ForceSyncModule( $this->resolver, $this->credentials, $this->destinations, $this->force_sync ) )
