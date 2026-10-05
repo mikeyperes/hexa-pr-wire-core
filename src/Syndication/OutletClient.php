@@ -33,6 +33,11 @@ final class OutletClient {
 		return $this->request( 'GET', $host, 'health', [], $timeout );
 	}
 
+	/** Whether the outlet exposes Distributor's REST namespace at all (any version). */
+	public function has_distributor( string $host ): bool {
+		return 200 === $this->request( 'GET', $host, '', [], 15 )['status'];
+	}
+
 	/** @return array{ok:bool,status:int,message:string,data:array<string,mixed>} */
 	private function request( string $method, string $host, string $route, array $body, int $timeout ): array {
 		$token = $this->credentials->get();

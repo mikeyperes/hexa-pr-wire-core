@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.8.1 — 2026-10-05
+
+- Publications dashboard: when an outlet has no `/health` route, `OutletClient::has_distributor()` checks Distributor's REST namespace, so the row reads **Distributor outdated** (installed, too old to report) or **Distributor not installed**.
+- Live-status lines decode HTML entities, so trimmed titles end with … instead of `&hellip;`.
+
 ## 2.8.0 — 2026-10-05
 
 - **Publications dashboard** (Hexa PR Wire → Publications, `Admin\PublicationConnections`): one table of every publication record. Each row shows:

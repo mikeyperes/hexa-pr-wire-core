@@ -134,10 +134,15 @@ final class PublicationConnections implements Module {
 			$label = match ( true ) {
 				0 === $result['status'] => 'Unreachable',
 				in_array( $result['status'], [ 401, 403 ], true ) => 'Token rejected',
-				404 === $result['status'] => 'Distributor missing or outdated',
+				404 === $result['status'] => $this->outlets->has_distributor( $row['push_host'] ) ? 'Distributor outdated' : 'Distributor not installed',
 				default => 'Error',
 			};
-			wp_send_json_success( [ 'state' => 'error', 'label' => $label, 'lines' => [ 0 === $result['status'] ? $result['message'] : 'HTTP ' . $result['status'] . ' · ' . $result['message'] ] ] );
+			$detail = match ( $label ) {
+				'Distributor outdated' => 'Installed, but too old to report health. Update Distributor.',
+				'Distributor not installed' => 'No Distributor plugin answers on this site.',
+				default => 0 === $result['status'] ? $result['message'] : 'HTTP ' . $result['status'] . ' · ' . $result['message'],
+			};
+			wp_send_json_success( [ 'state' => 'error', 'label' => $label, 'lines' => [ $detail ] ] );
 		}
 
 		$versions = (array) ( $data['versions'] ?? [] );
@@ -153,7 +158,7 @@ final class PublicationConnections implements Module {
 			$lines[] = 'Latest copy ' . $this->ago( (string) $last_post['date_gmt'] ) . ': ' . wp_trim_words( (string) ( $last_post['title'] ?? '' ), 8 );
 		}
 		$problem = empty( $feed['enabled'] ) || ! empty( $last_pull['error'] );
-		wp_send_json_success( [ 'state' => $problem ? 'warn' : 'ok', 'label' => $problem ? 'Connected · attention' : 'Connected', 'lines' => array_map( 'sanitize_text_field', $lines ) ] );
+		wp_send_json_success( [ 'state' => $problem ? 'warn' : 'ok', 'label' => $problem ? 'Connected · attention' : 'Connected', 'lines' => array_map( static fn( string $line ): string => html_entity_decode( sanitize_text_field( $line ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ), $lines ) ] );
 	}
 
 	/** @return array<int,array<string,mixed>> */

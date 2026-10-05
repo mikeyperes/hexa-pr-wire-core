@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.8.0
+Stable tag: 2.8.1
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.8.1 =
+* Publications dashboard tells an outdated Distributor apart from a site without Distributor, and shows release titles without HTML entities.
 
 = 2.8.0 =
 * Hexa PR Wire → Publications now lists every publication with its connection type (Managed / RSS pull / External / Premium), push host, last push result and releases, and live-checks each Distributor-managed outlet (version, feed, last pull, latest copy).
