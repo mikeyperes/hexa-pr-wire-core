@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.7.0 — 2026-10-05
+
+- Release editor: the Force Sync meta box is replaced by a **Distribution** panel rendered directly above the content (`edit_form_after_title`).
+  - It loads entirely over AJAX with a loader.
+  - Right after a save it shows each outlet as "Sending…" until the real-time outlet push finishes, polling while `hprwc_push_release` is still scheduled. Otherwise it re-checks every outlet link on load, four at a time.
+  - Picking or unpicking outlets, in the admin taxonomy box or the customer picker, updates the list with a spinner. Newly picked, unsaved outlets show "Not created".
+  - Each outlet shows one state, computed server-side by `ForceSyncAdmin::present_status()`: Live, Not created (404/410, or the page loads without the release title), Waiting (release not published), Sync failed or Error. The panel header shows a summary such as "3 of 4 live · 1 not created".
+- Customers who can edit the release now see the panel and can **Refresh** (check mode). **Force sync**, outlet selection and mapping warnings stay administrator-only and are enforced again server-side per request.
+- Fixed false "post title was not found" results. The live check compared the page text against the texturized, entity-encoded title (`Men&#8217;s`); both sides are now compared as decoded plain text.
+
 ## 2.6.0 — 2026-10-05
 
 - New Elementor dynamic tag "Publication Release URL" (`hpr-publication-release-url`, URL category). In the release page's `publication_links` grid it returns `PublicationUrl::for_slug()` for the card's outlet and the queried release, so "View This Press Release On" cards open the outlet's copy instead of its homepage. Outlets without a press-release prefix fall back to their homepage. It replaces legacy snippet 51's footer JavaScript rewrite, retired on 2026-09-20 without a server-side replacement for the cards.

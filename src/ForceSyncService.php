@@ -165,7 +165,10 @@ final class ForceSyncService {
 		}
 
 		$status_code = (int) wp_remote_retrieve_response_code( $response );
-		$body_text   = html_entity_decode( wp_strip_all_tags( (string) wp_remote_retrieve_body( $response ) ), ENT_QUOTES | ENT_HTML5, get_bloginfo( 'charset' ) ?: 'UTF-8' );
+		$charset     = get_bloginfo( 'charset' ) ?: 'UTF-8';
+		$body_text   = html_entity_decode( wp_strip_all_tags( (string) wp_remote_retrieve_body( $response ) ), ENT_QUOTES | ENT_HTML5, $charset );
+		// get_the_title() is texturized and entity-encoded (Men&#8217;s); compare it as plain text like the page body.
+		$expected_title = html_entity_decode( wp_strip_all_tags( $expected_title ), ENT_QUOTES | ENT_HTML5, $charset );
 		$title_found = '' !== $expected_title && false !== stripos( $body_text, $expected_title );
 
 		return [

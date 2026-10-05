@@ -6,11 +6,20 @@ use HexaPrWire\Core\CredentialRepository;
 use HexaPrWire\Core\DestinationRegistry;
 use HexaPrWire\Core\ForceSyncService;
 use HexaPrWire\Core\PublicationResolver;
+use HexaPrWire\Core\Syndication\OutletPush;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Distribution panel on the release editor, directly above the content.
+ *
+ * Everyone who can edit the release sees each selected outlet's live state and
+ * can refresh it; only administrators can force an outlet to pull the release.
+ * The panel loads its state over AJAX: right after a save it waits for the
+ * real-time outlet push to finish, otherwise it re-checks every outlet link.
+ */
 final class ForceSyncAdmin {
 	private const NONCE_ACTION = 'hprwc_force_sync_admin';
 
@@ -31,28 +40,17 @@ final class ForceSyncAdmin {
 		add_action( 'admin_init', [ $this, 'remove_legacy_hooks' ], 999 );
 		add_action( 'wp_ajax_hpr_force_sync_publication', [ $this, 'reject_legacy_ajax' ], -999 );
 		add_action( 'wp_ajax_hpr_bulk_publication_all', [ $this, 'reject_legacy_ajax' ], -999 );
-		add_action( 'add_meta_boxes', [ $this, 'register_meta_box' ], 100, 2 );
+		add_action( 'add_meta_boxes', [ $this, 'remove_legacy_meta_box' ], 100 );
+		add_action( 'edit_form_after_title', [ $this, 'render_panel' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'wp_ajax_' . self::AJAX_RESOLVE, [ $this, 'ajax_resolve_publications' ] );
 		add_action( 'wp_ajax_' . self::AJAX_FORCE, [ $this, 'ajax_force_publication' ] );
 	}
 
-	public function register_meta_box( string $post_type, \WP_Post $post ): void {
+	/** The legacy Code Snippets box stays stored for rollback but never renders. */
+	public function remove_legacy_meta_box(): void {
 		$this->remove_legacy_hooks();
-		if ( 'post' !== $post_type || ! taxonomy_exists( PublicationResolver::TAXONOMY ) || ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		// Replace the legacy Code Snippets box while it remains available for rollback.
 		remove_meta_box( 'hpr-force-sync', 'post', 'normal' );
-		add_meta_box(
-			'hpr-force-sync',
-			'Hexa PR Wire Force Sync',
-			[ $this, 'render_meta_box' ],
-			'post',
-			'normal',
-			'high'
-		);
 	}
 
 	public function enqueue_assets( string $hook_suffix ): void {
@@ -61,111 +59,71 @@ final class ForceSyncAdmin {
 		}
 
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-		if ( ! $screen || 'post' !== $screen->post_type || ! current_user_can( 'manage_options' ) ) {
+		global $post;
+		if ( ! $screen || 'post' !== $screen->post_type || ! $post instanceof \WP_Post || ! $this->can_view( (int) $post->ID ) ) {
 			return;
 		}
 
-		global $post;
-		$post_id = $post instanceof \WP_Post ? (int) $post->ID : absint( $_GET['post'] ?? 0 );
-
-		wp_enqueue_style(
-			'hprwc-force-sync-admin',
-			HPRWC_URL . 'assets/admin.css',
-			[],
-			HPRWC_VERSION
-		);
-
-		wp_enqueue_script(
-			'hprwc-force-sync-admin',
-			HPRWC_URL . 'assets/admin.js',
-			[ 'jquery' ],
-			HPRWC_VERSION,
-			true
-		);
-
+		wp_enqueue_style( 'hprwc-force-sync-admin', HPRWC_URL . 'assets/admin.css', [], HPRWC_VERSION );
+		wp_enqueue_script( 'hprwc-force-sync-admin', HPRWC_URL . 'assets/admin.js', [ 'jquery' ], HPRWC_VERSION, true );
 		wp_localize_script(
 			'hprwc-force-sync-admin',
 			'hprwcForceSync',
 			[
-				'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
-				'nonce'           => wp_create_nonce( self::NONCE_ACTION ),
-				'postId'          => $post_id,
-				'postStatus'      => $post instanceof \WP_Post ? $post->post_status : '',
-				'credentialReady' => $this->credentials->exists(),
-				'autoSelectAll'   => 'post-new.php' === $hook_suffix,
-				'actions'         => [
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'nonce'         => wp_create_nonce( self::NONCE_ACTION ),
+				'postId'        => (int) $post->ID,
+				'autoSelectAll' => 'post-new.php' === $hook_suffix && $this->is_admin_user(),
+				'actions'       => [
 					'resolve' => self::AJAX_RESOLVE,
 					'force'   => self::AJAX_FORCE,
-				],
-				'messages'        => [
-					'ajaxFailed' => 'The request failed. Reload the editor and try again.',
-					'noRows'     => 'No eligible publication sources are selected.',
 				],
 			]
 		);
 	}
 
-	public function render_meta_box( \WP_Post $post ): void {
-		$resolved       = $this->destinations->enforce( $this->resolver->resolve_post( (int) $post->ID ) );
-		$stored_results = get_post_meta( $post->ID, ForceSyncService::RESULT_META, true );
-		$stored_results = is_array( $stored_results ) ? $stored_results : [];
-		$is_published   = 'publish' === $post->post_status;
-		$has_targets    = ! empty( $resolved['targets'] );
-		$can_force      = $is_published && $has_targets && $this->credentials->exists();
-		$can_check      = $is_published && $has_targets;
+	public function render_panel( \WP_Post $post ): void {
+		if ( 'post' !== $post->post_type || ! taxonomy_exists( PublicationResolver::TAXONOMY ) || ! $this->can_view( (int) $post->ID ) ) {
+			return;
+		}
+
+		$is_admin = $this->is_admin_user();
 		?>
-		<div class="hprwc-force-sync-panel" data-hprwc-panel data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-hprwc-can-force="<?php echo $can_force ? '1' : '0'; ?>" data-hprwc-can-check="<?php echo $can_check ? '1' : '0'; ?>" data-hprwc-has-targets="<?php echo $has_targets ? '1' : '0'; ?>">
-			<p class="hprwc-description">Only eligible destinations assigned in this post's <strong>Publications</strong> taxonomy appear below. The server validates that assignment again before every request.</p>
+		<section class="hprwc-dist" data-hprwc-panel data-post-id="<?php echo esc_attr( (string) $post->ID ); ?>" data-hprwc-admin="<?php echo $is_admin ? '1' : '0'; ?>" aria-busy="true">
+			<header class="hprwc-dist__head">
+				<div class="hprwc-dist__title">
+					<h2>Distribution</h2>
+					<p class="hprwc-dist__summary" data-hprwc-summary aria-live="polite">Loading outlet links…</p>
+				</div>
+				<div class="hprwc-dist__actions">
+					<button type="button" class="hprwc-btn" data-hprwc-run="check" disabled>
+						<span class="hprwc-btn__icon dashicons dashicons-update" aria-hidden="true"></span>Refresh
+					</button>
+					<?php if ( $is_admin ) : ?>
+						<button type="button" class="hprwc-btn hprwc-btn--primary" data-hprwc-run="force" disabled>
+							<span class="hprwc-btn__icon dashicons dashicons-upload" aria-hidden="true"></span>Force sync
+						</button>
+					<?php endif; ?>
+				</div>
+			</header>
 
-			<div class="notice notice-warning inline hprwc-unsaved-notice" data-hprwc-unsaved-notice hidden>
-				<p><strong>Unsaved publication changes.</strong> This is a live preview. Update the post before forcing or checking these destinations.</p>
-			</div>
-
-			<?php if ( ! $is_published ) : ?>
-				<div class="notice notice-info inline"><p>Publish this press release before using Force Sync.</p></div>
+			<div class="hprwc-dist__notice" data-hprwc-notice hidden></div>
+			<?php if ( $is_admin ) : ?>
+				<ul class="hprwc-dist__warnings" data-hprwc-warnings hidden></ul>
 			<?php endif; ?>
 
-			<?php if ( ! $this->credentials->is_store_available() ) : ?>
-				<div class="notice notice-error inline"><p>Hexa Credential Vault is unavailable. Force Sync is disabled until the shared Hexa Core runtime is loaded.</p></div>
-			<?php elseif ( ! $this->credentials->exists() ) : ?>
-				<div class="notice notice-error inline"><p>The encrypted Force Sync credential is not configured. Link checking remains available, but force requests are disabled.</p></div>
-			<?php endif; ?>
-
-			<div class="hprwc-warning-box" data-hprwc-warning-box <?php echo empty( $resolved['warnings'] ) ? 'hidden' : ''; ?>>
-				<strong>Publication mapping warnings</strong>
-				<ul data-hprwc-warnings>
-					<?php foreach ( $resolved['warnings'] as $warning ) : ?>
-						<li><strong><?php echo esc_html( (string) $warning['term_name'] ); ?>:</strong> <?php echo esc_html( (string) $warning['message'] ); ?></li>
-					<?php endforeach; ?>
-				</ul>
+			<div class="hprwc-dist__body">
+				<div class="hprwc-dist__loader" data-hprwc-loader><span class="hprwc-spin" aria-hidden="true"></span>Loading outlet links…</div>
+				<?php if ( $is_admin ) : ?>
+					<div class="hprwc-dist__select" data-hprwc-select-bar hidden>
+						<button type="button" class="button-link" data-hprwc-select="all">Select all</button>
+						<span aria-hidden="true">·</span>
+						<button type="button" class="button-link" data-hprwc-select="none">Select none</button>
+					</div>
+				<?php endif; ?>
+				<ul class="hprwc-dist__list" data-hprwc-rows></ul>
 			</div>
-
-			<div class="hprwc-actions">
-				<button type="button" class="button button-primary" data-hprwc-run="force" <?php disabled( ! $can_force ); ?>>Force selected sources</button>
-				<button type="button" class="button" data-hprwc-run="check" <?php disabled( ! $can_check ); ?>>Check selected links</button>
-				<span class="hprwc-action-divider" aria-hidden="true"></span>
-				<button type="button" class="button button-small" data-hprwc-select="all" <?php disabled( ! $has_targets ); ?>>Select all</button>
-				<button type="button" class="button button-small" data-hprwc-select="none" <?php disabled( ! $has_targets ); ?>>Select none</button>
-				<span class="spinner" data-hprwc-spinner></span>
-				<span class="hprwc-progress" data-hprwc-progress aria-live="polite"></span>
-			</div>
-
-			<div class="hprwc-table-wrap">
-				<table class="widefat striped hprwc-publication-table">
-					<thead>
-						<tr>
-							<th class="check-column"><span class="screen-reader-text">Select source</span></th>
-							<th>Publication</th>
-							<th>Expected public URL</th>
-							<th>Status</th>
-						</tr>
-					</thead>
-					<tbody data-hprwc-rows>
-						<?php $this->render_rows( $post, $resolved['targets'], $stored_results ); ?>
-					</tbody>
-				</table>
-			</div>
-		</div>
+		</section>
 		<?php
 	}
 
@@ -173,29 +131,50 @@ final class ForceSyncAdmin {
 		$this->verify_nonce();
 
 		$post_id = absint( $_POST['post_id'] ?? 0 );
-		if ( ! $this->can_edit_post( $post_id ) ) {
+		$post    = $post_id > 0 ? get_post( $post_id ) : null;
+		if ( ! $post instanceof \WP_Post || ! $this->can_view( $post_id ) ) {
 			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
 		}
 
-		$raw_term_ids = isset( $_POST['term_ids'] ) && is_array( $_POST['term_ids'] ) ? wp_unslash( $_POST['term_ids'] ) : [];
-		$term_ids     = array_values( array_unique( array_filter( array_map( 'absint', $raw_term_ids ) ) ) );
-		sort( $term_ids, SORT_NUMERIC );
+		$saved = $this->destinations->enforce( $this->resolver->resolve_post( $post_id ) );
+		if ( isset( $_POST['term_ids'] ) ) {
+			$raw_term_ids = is_array( $_POST['term_ids'] ) ? wp_unslash( $_POST['term_ids'] ) : [];
+			$term_ids     = array_values( array_unique( array_filter( array_map( 'absint', $raw_term_ids ) ) ) );
+			sort( $term_ids, SORT_NUMERIC );
+			$preview = $this->destinations->enforce( $this->resolver->resolve_term_ids( $term_ids ) );
+		} else {
+			$preview = $saved;
+		}
 
-		$preview  = $this->destinations->enforce( $this->resolver->resolve_term_ids( $term_ids ) );
-		$saved    = $post_id > 0 ? $this->destinations->enforce( $this->resolver->resolve_post( $post_id ) ) : [ 'term_ids' => [] ];
-		$is_saved = $preview['term_ids'] === $saved['term_ids'];
-		$post     = $post_id > 0 ? get_post( $post_id ) : null;
-		$stored   = $is_saved && $post_id > 0 ? get_post_meta( $post_id, ForceSyncService::RESULT_META, true ) : [];
-		$stored   = is_array( $stored ) ? $stored : [];
+		$saved_ids  = array_map( static fn( array $target ): int => (int) $target['publication_id'], $saved['targets'] );
+		$stored     = get_post_meta( $post_id, ForceSyncService::RESULT_META, true );
+		$stored     = is_array( $stored ) ? $stored : [];
+		$published  = 'publish' === $post->post_status;
+		$is_admin   = $this->is_admin_user();
+		$targets    = [];
+
+		foreach ( $preview['targets'] as $target ) {
+			$publication_id = (int) $target['publication_id'];
+			$is_saved       = in_array( $publication_id, $saved_ids, true );
+			$result         = $is_saved && isset( $stored[ $publication_id ] ) && is_array( $stored[ $publication_id ] ) ? $stored[ $publication_id ] : null;
+			$targets[]      = [
+				'publication_id' => $publication_id,
+				'title'          => (string) $target['title'],
+				'domain'         => (string) $target['domain'],
+				'live_url'       => $this->resolver->build_live_url( $target, $post ),
+				'saved'          => $is_saved,
+				'status'         => $is_saved ? $this->present_status( $result ) : $this->state( 'missing', 'Not created', 'Update the release to send it here.' ),
+			];
+		}
 
 		wp_send_json_success(
 			[
-				'targets'   => $this->present_targets( $preview['targets'], $post, $stored ),
-				'warnings'  => $preview['warnings'],
-				'is_saved'  => $is_saved,
-				'published' => $post instanceof \WP_Post && 'publish' === $post->post_status,
-				'can_force' => $is_saved && $post instanceof \WP_Post && 'publish' === $post->post_status && ! empty( $preview['targets'] ) && $this->credentials->exists(),
-				'can_check' => $is_saved && $post instanceof \WP_Post && 'publish' === $post->post_status && ! empty( $preview['targets'] ),
+				'targets'      => $targets,
+				'warnings'     => $is_admin ? $preview['warnings'] : [],
+				'is_saved'     => $preview['term_ids'] === $saved['term_ids'],
+				'published'    => $published,
+				'push_pending' => $published && false !== wp_next_scheduled( OutletPush::PUSH_HOOK, [ $post_id ] ),
+				'can_force'    => $is_admin && $published && $this->credentials->exists(),
 			]
 		);
 	}
@@ -207,88 +186,62 @@ final class ForceSyncAdmin {
 		$publication_id = absint( $_POST['publication_id'] ?? 0 );
 		$mode           = sanitize_key( wp_unslash( $_POST['mode'] ?? 'force' ) );
 
-		if ( ! $this->can_edit_post( $post_id ) ) {
-			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
-		}
-
 		if ( ! in_array( $mode, [ 'check', 'force' ], true ) ) {
 			wp_send_json_error( [ 'error_code' => 'invalid_mode', 'message' => 'Invalid Force Sync mode.' ], 400 );
 		}
 
+		$allowed = 'force' === $mode ? $this->is_admin_user() && $this->can_view( $post_id ) : $this->can_view( $post_id );
+		if ( ! $allowed ) {
+			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
+		}
+
 		$result = $this->force_sync->run( $post_id, $publication_id, $mode );
-		if ( empty( $result['ok'] ) ) {
-			$status = 'unassigned_publication' === ( $result['error_code'] ?? '' ) ? 403 : 502;
-			wp_send_json_error( $result, $status );
+		$status = $this->present_status( $result );
+		if ( 'unassigned_publication' === ( $result['error_code'] ?? '' ) ) {
+			wp_send_json_error( [ 'status' => $status, 'message' => (string) $result['message'] ], 403 );
 		}
 
-		wp_send_json_success( $result );
+		wp_send_json_success( [ 'publication_id' => $publication_id, 'status' => $status ] );
 	}
 
 	/**
-	 * @param array<int, array<string, mixed>> $targets Resolved targets.
-	 * @param array<int|string, mixed>          $stored Stored status map.
+	 * One display state for a stored or fresh Force Sync result.
+	 *
+	 * @param array<string,mixed>|null $result
+	 * @return array{state:string,label:string,detail:string}
 	 */
-	private function render_rows( \WP_Post $post, array $targets, array $stored ): void {
-		if ( empty( $targets ) ) {
-			echo '<tr class="hprwc-empty-row"><td colspan="4">No eligible publication sources are selected.</td></tr>';
-			return;
-		}
-
-		foreach ( $targets as $target ) {
-			$publication_id = (int) $target['publication_id'];
-			$live_url       = $this->resolver->build_live_url( $target, $post );
-			$result         = isset( $stored[ $publication_id ] ) && is_array( $stored[ $publication_id ] ) ? $stored[ $publication_id ] : null;
-			?>
-			<tr data-hprwc-row data-publication-id="<?php echo esc_attr( $publication_id ); ?>">
-				<th class="check-column"><input type="checkbox" data-hprwc-source-check value="<?php echo esc_attr( $publication_id ); ?>" checked></th>
-				<td><strong><?php echo esc_html( (string) $target['title'] ); ?></strong><br><code><?php echo esc_html( (string) $target['domain'] ); ?></code></td>
-				<td><a href="<?php echo esc_url( $live_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $live_url ); ?></a></td>
-				<td class="hprwc-row-status" data-hprwc-row-status><?php echo esc_html( $this->status_label( $result ) ); ?></td>
-			</tr>
-			<?php
-		}
-	}
-
-	/**
-	 * @param array<int, array<string, mixed>> $targets Resolved targets.
-	 * @param array<int|string, mixed>          $stored Stored result map.
-	 * @return array<int, array<string, mixed>>
-	 */
-	private function present_targets( array $targets, ?\WP_Post $post, array $stored = [] ): array {
-		$presented = [];
-
-		foreach ( $targets as $target ) {
-			$publication_id = (int) $target['publication_id'];
-			$result         = isset( $stored[ $publication_id ] ) && is_array( $stored[ $publication_id ] ) ? $stored[ $publication_id ] : null;
-			$presented[] = [
-				'publication_id' => $publication_id,
-				'title'          => (string) $target['title'],
-				'domain'         => (string) $target['domain'],
-				'live_url'       => $post instanceof \WP_Post ? $this->resolver->build_live_url( $target, $post ) : '',
-				'status'         => $this->status_label( $result ),
-			];
-		}
-
-		return $presented;
-	}
-
-	private function status_label( ?array $result ): string {
+	private function present_status( ?array $result ): array {
 		if ( empty( $result ) ) {
-			return 'Not checked';
+			return $this->state( 'unchecked', 'Not checked', '' );
 		}
 
-		$parts = [ ! empty( $result['ok'] ) ? 'OK' : 'Issue' ];
+		$when = '';
 		if ( ! empty( $result['time_gmt'] ) ) {
-			$parts[] = (string) $result['time_gmt'] . ' GMT';
+			$time = strtotime( (string) $result['time_gmt'] . ' UTC' );
+			$when = false !== $time ? 'Checked ' . human_time_diff( $time ) . ' ago' : '';
 		}
-		if ( isset( $result['public_status'] ) ) {
-			$parts[] = 'HTTP ' . (int) $result['public_status'];
+		$http = (int) ( $result['public_status'] ?? 0 );
+
+		if ( ! empty( $result['ok'] ) ) {
+			return $this->state( 'live', 'Live', $when );
 		}
-		if ( ! empty( $result['message'] ) ) {
-			$parts[] = (string) $result['message'];
+		if ( 'post_not_published' === ( $result['error_code'] ?? '' ) ) {
+			return $this->state( 'waiting', 'Waiting', 'Sent once the release is published.' );
+		}
+		if ( isset( $result['endpoint_ok'] ) && empty( $result['endpoint_ok'] ) ) {
+			return $this->state( 'error', 'Sync failed', (string) ( $result['message'] ?? '' ) );
+		}
+		if ( in_array( $http, [ 404, 410 ], true ) || ( 200 === $http && empty( $result['title_found'] ) ) ) {
+			return $this->state( 'missing', 'Not created', $when );
 		}
 
-		return implode( ' — ', $parts );
+		$detail = $http > 0 ? 'HTTP ' . $http : (string) ( $result['message'] ?? '' );
+		return $this->state( 'error', 'Error', trim( $detail . ( '' !== $when ? ' · ' . $when : '' ), ' ·' ) );
+	}
+
+	/** @return array{state:string,label:string,detail:string} */
+	private function state( string $state, string $label, string $detail ): array {
+		return [ 'state' => $state, 'label' => $label, 'detail' => sanitize_text_field( $detail ) ];
 	}
 
 	private function verify_nonce(): void {
@@ -297,12 +250,12 @@ final class ForceSyncAdmin {
 		}
 	}
 
-	private function can_edit_post( int $post_id ): bool {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return false;
-		}
+	private function is_admin_user(): bool {
+		return current_user_can( 'manage_options' );
+	}
 
-		return $post_id > 0 ? current_user_can( 'edit_post', $post_id ) : current_user_can( 'edit_posts' );
+	private function can_view( int $post_id ): bool {
+		return $post_id > 0 && current_user_can( 'edit_post', $post_id );
 	}
 
 	/**
