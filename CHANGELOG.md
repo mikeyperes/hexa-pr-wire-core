@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.12.0 — 2026-10-06
+
+- **Full-site live search.** An Elementor Pro Search widget with Query ID `hprw_site_search` now searches every public content type (releases, the external press-release archive, outlet articles, pages, publications and more) as the visitor types, with Core's matching (all words, word starts) across titles, content, summaries, datelines, categories, publications and authors, plus the visible text of Elementor pages.
+- Each result can show its kind through Core's **Result Type** Elementor tag: Press Release, External PR, or Site Content.
+- Bundles Hexa WP Core 3.17.0 (requires 3.17.0).
+
 ## 2.11.1 — 2026-10-06
 
 - Editor Screens: new "Post visibility box (customers)" option, on by default, removes SMP's Post visibility box from the release editor for customers; staff keep it. The box saves only when present, so stored visibility is untouched.

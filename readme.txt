@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.11.1
+Stable tag: 2.12.0
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.12.0 =
+* Full-site live search: Elementor Search widgets with Query ID hprw_site_search search every public content type as you type, and each result can show Press Release, External PR or Site Content through Core's Result Type tag. Bundles Core 3.17.0.
 
 = 2.11.1 =
 * Hide the Post visibility box from customers (Editor Screens).

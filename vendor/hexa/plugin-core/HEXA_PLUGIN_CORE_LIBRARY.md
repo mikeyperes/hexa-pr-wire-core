@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.16.0
+Current release: 3.17.0
 ```
 
 Do not rename these.
@@ -880,6 +880,8 @@ MetaConstraintSql
 JetEngineSearchAdapter
 ElementorSearchAdapter
 ElementorPublicTextIndex
+ResultTypeLabels
+ElementorResultTypeTag
 ```
 
 Use this namespace to alter one explicitly eligible native WordPress search-results query. The host owns option storage, capability/nonce checks, available public post types and taxonomies, and the request marker. Core owns normalization, bounded parsing, selected-source SQL, and query scoping.
@@ -928,6 +930,8 @@ Supported behavior:
 - `shortcode` scope through a hidden marker, or deliberate `all` public-search scope
 
 Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `JetEngineSearchAdapter` can explicitly mark a posts grid created by a search-results template; archive grids and unrelated requests stay untouched. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+
+To flag what kind of content each result is, call `ResultTypeLabels::register( [ 'post' => 'Press Release' ], 'Site Content' )` and place Core's **Result Type** Elementor dynamic tag in the result Loop Item; style per type through the loop item's `type-{post_type}` class.
 
 Do not copy this into host `pre_get_posts` callbacks. Do not use it for suggestions: `SmartSearch` remains the separate AJAX typeahead/content-picker system. Full protocol: `docs/search-query.md`.
 

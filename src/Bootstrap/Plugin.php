@@ -28,6 +28,7 @@ use HexaPrWire\Core\Fields\ReleaseLocation;
 use HexaPrWire\Core\ForceSyncService;
 use HexaPrWire\Core\Frontend\PressReleaseContent;
 use HexaPrWire\Core\Frontend\PublicationShortcodes;
+use HexaPrWire\Core\Frontend\SiteSearch;
 use HexaPrWire\Core\Infrastructure\WordPress\WordPressCustomerPolicyRepository;
 use HexaPrWire\Core\Infrastructure\WordPress\WordPressMailer;
 use HexaPrWire\Core\Infrastructure\WordPress\WordPressPublicationRepository;
@@ -111,6 +112,7 @@ final class Plugin {
 			->add( new FeedRegistry( new FeedRenderer(), $this->credentials ) )
 			->add( new DeletionManifest() )
 			->add( new PressReleaseContent() )
+			->add( new SiteSearch() )
 			->add( new PublicationShortcodes( $publications, $urls ) )
 			->add( new ElementorPublicationQuery( $publications, $urls ) )
 			->add( new BillingPricingBridge( $policies, $access ) )
