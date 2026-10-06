@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.11.1 — 2026-10-06
+
+- Editor Screens: new "Post visibility box (customers)" option, on by default, removes SMP's Post visibility box from the release editor for customers; staff keep it. The box saves only when present, so stored visibility is untouched.
+
 ## 2.11.0 — 2026-10-06
 
 - **New Publications layout.** One card per row. Each card has four sections:

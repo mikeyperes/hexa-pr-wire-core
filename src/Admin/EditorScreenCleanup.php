@@ -21,6 +21,16 @@ final class EditorScreenCleanup implements Module {
 			'sections' => [ 'editor' => [ 'title' => 'Release editor', 'description' => 'Boxes removed from the post editor screen.' ] ],
 			'options' => [
 				'hide_fifu_box' => CleanupPresets::fifu_meta_box( [ 'default' => true ] ),
+				'hide_post_visibility_box' => [
+					'label' => 'Post visibility box (customers)',
+					'description' => "Removes SMP's Post visibility box (hide from home and archives) from the release editor for customers. Staff keep it.",
+					'mode' => 'meta_box_remove',
+					'meta_boxes' => [ 'smpi_visibility' ],
+					'audience' => 'non_admins',
+					'audience_capability' => 'edit_others_posts',
+					'section' => 'editor',
+					'default' => true,
+				],
 				'hide_lock_modified_date' => CleanupPresets::rankmath_lock_modified_date( [
 					'label' => 'Lock Modified Date (customers)',
 					'description' => "Removes Rank Math's Lock Modified Date switch from the Publish box for customers. Staff keep it.",
