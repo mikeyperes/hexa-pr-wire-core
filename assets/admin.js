@@ -81,7 +81,7 @@
 		}
 		const $main = $('<div>').addClass('hprwc-row__main').appendTo($row);
 		$('<span>').addClass('hprwc-row__name').text(target.title).appendTo($main);
-		$('<a>', { href: target.live_url, target: '_blank', rel: 'noopener noreferrer', class: 'hprwc-row__url' }).text(target.domain).appendTo($main);
+		$('<a>', { href: target.live_url, target: '_blank', rel: 'noopener noreferrer', class: 'hprwc-row__url' }).text(target.live_url || target.domain).appendTo($main);
 		const $status = $('<div>').addClass('hprwc-row__status').appendTo($row);
 		$('<span>').addClass('hprwc-pill').attr('data-hprwc-pill', '').appendTo($status);
 		$('<span>').addClass('hprwc-row__detail').attr('data-hprwc-detail', '').appendTo($status);

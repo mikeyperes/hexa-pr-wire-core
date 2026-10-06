@@ -221,22 +221,28 @@ final class ForceSyncAdmin {
 			$when = false !== $time ? 'Checked ' . human_time_diff( $time ) . ' ago' : '';
 		}
 		$http = (int) ( $result['public_status'] ?? 0 );
+		// Every checked row shows the outlet server's actual answer to the release URL.
+		$response = $http > 0 ? 'Server response: HTTP ' . $http : 'Server response: none (' . (string) ( $result['message'] ?? 'no answer' ) . ')';
+		$detail = static fn( string ...$parts ): string => implode( ' · ', array_filter( $parts, static fn( string $part ): bool => '' !== $part ) );
 
-		if ( ! empty( $result['ok'] ) ) {
-			return $this->state( 'live', 'Live', $when );
-		}
 		if ( 'post_not_published' === ( $result['error_code'] ?? '' ) ) {
 			return $this->state( 'waiting', 'Waiting', 'Sent once the release is published.' );
 		}
-		if ( isset( $result['endpoint_ok'] ) && empty( $result['endpoint_ok'] ) ) {
-			return $this->state( 'error', 'Sync failed', (string) ( $result['message'] ?? '' ) );
+		if ( ! empty( $result['ok'] ) ) {
+			return $this->state( 'live', 'Live', $detail( $response, $when ) );
 		}
-		if ( in_array( $http, [ 404, 410 ], true ) || ( 200 === $http && empty( $result['title_found'] ) ) ) {
-			return $this->state( 'missing', 'Not created', $when );
+		if ( isset( $result['endpoint_ok'] ) && empty( $result['endpoint_ok'] ) ) {
+			$endpoint = ! empty( $result['endpoint_http'] ) ? 'Distributor answered HTTP ' . (int) $result['endpoint_http'] : '';
+			return $this->state( 'error', 'Sync failed', $detail( $endpoint, (string) ( $result['message'] ?? '' ), $response, $when ) );
+		}
+		if ( in_array( $http, [ 404, 410 ], true ) ) {
+			return $this->state( 'missing', 'Not created', $detail( $response, $when ) );
+		}
+		if ( 200 === $http && empty( $result['title_found'] ) ) {
+			return $this->state( 'missing', 'Not created', $detail( $response, 'page loads without the release title', $when ) );
 		}
 
-		$detail = $http > 0 ? 'HTTP ' . $http : (string) ( $result['message'] ?? '' );
-		return $this->state( 'error', 'Error', trim( $detail . ( '' !== $when ? ' · ' . $when : '' ), ' ·' ) );
+		return $this->state( 'error', 'Error', $detail( $response, $when ) );
 	}
 
 	/** @return array{state:string,label:string,detail:string} */

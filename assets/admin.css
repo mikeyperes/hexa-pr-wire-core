@@ -196,10 +196,8 @@
 .hprwc-row__url {
 	color: var(--hprwc-muted);
 	font-size: 12px;
-	overflow: hidden;
+	overflow-wrap: anywhere;
 	text-decoration: none;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .hprwc-row__url:hover {

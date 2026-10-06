@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.8.2 — 2026-10-06
+
+- Distribution panel: each outlet row links its full expected release permalink instead of only the domain.
+- Every checked row states the outlet server's actual answer, for example "Server response: HTTP 200 · Checked 1 minute ago". Sync failures also show the Distributor endpoint's HTTP code. No answer at all shows the connection error.
+
 ## 2.8.1 — 2026-10-05
 
 - Publications dashboard: when an outlet has no `/health` route, `OutletClient::has_distributor()` checks Distributor's REST namespace, so the row reads **Distributor outdated** (installed, too old to report) or **Distributor not installed**.
