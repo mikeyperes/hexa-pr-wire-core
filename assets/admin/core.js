@@ -52,6 +52,12 @@
 				refresh();
 			}
 		});
+		// Empty publication prices fall back to the standard price: mirror it live.
+		$box.on('input', '[data-hprwc-default-price]', function () {
+			const value = this.value.trim() || String($(this).data('fallback') || '') || 'Default';
+			$rows.find('.hprwc-price input').attr('placeholder', value);
+			$box.find('[data-hprwc-default-label]').text(value);
+		});
 		refresh();
 	}
 

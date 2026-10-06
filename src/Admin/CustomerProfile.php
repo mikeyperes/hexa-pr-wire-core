@@ -106,7 +106,7 @@ final class CustomerProfile implements Module {
 						<li class="hprwc-empty" hidden>No publications match your search.</li>
 					</ul>
 				</div>
-				<p class="description">An empty price uses this customer's standard price<?php echo '' !== $default_price ? esc_html( ' ($' . $default_price . ')' ) : ''; ?>. Prices never change access.</p>
+				<p class="description">An empty price uses this customer's standard price<?php if ( '' !== $default_price ) : ?> ($<span data-hprwc-default-label><?php echo esc_html( $default_price ); ?></span>)<?php endif; ?>. Prices never change access.</p>
 				<?php do_action( 'hprwc_customer_billing_services', $user ); ?>
 			</section>
 

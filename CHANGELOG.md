@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.7 — 2026-10-06
+
+- Publication price placeholders and the standard-price note now update as the standard price is typed, instead of showing the last saved value until the profile is saved.
+
 ## 2.9.6 — 2026-10-06
 
 - **One card for publications, pricing and payment.** The customer profile's Publications card now hosts Billing's standard price, credit-card switch and custom services through the `hprwc_customer_billing_settings` and `hprwc_customer_billing_services` actions. Empty publication prices show the customer's effective standard price via `hprwc_customer_default_price`.
