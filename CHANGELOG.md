@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.11.0 — 2026-10-06
+
+- **New Publications layout.** One card per row. Each card has four sections:
+  - Site: response, last sync, remote updates
+  - Plugins: one row each, with version, latest version and an Update button
+  - Compatibility: Echo RSS and FIFU
+  - Most recent press releases
+- **One-click site actions** through one endpoint (`hprwc_publication_site_action`), each calling that site's Distributor:
+  - **Sync now** (`pull`)
+  - **Remove FIFU from press releases** (`fifu/release`, Distributor 3.6.4+; FIFU stays active)
+  - **Switch off Hexa PR Wire job** (`echo/disable`)
+
 ## 2.10.5 — 2026-10-06
 
 - Press Release Date rebuilt as one joined control: ‹ [date] ›, a calendar button that opens the date picker, and Today. Arrow up/down also step a day.

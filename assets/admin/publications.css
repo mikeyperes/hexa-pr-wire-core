@@ -44,12 +44,6 @@
 	margin: 0;
 }
 
-.hprwc-stat__btn {
-	align-self: flex-start;
-	display: inline-flex !important;
-	gap: 6px;
-	margin-top: 4px !important;
-}
 
 /* ---------- top bar ---------- */
 
@@ -120,7 +114,7 @@
 .hprwc-pubs__grid {
 	display: grid;
 	gap: 16px;
-	grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr));
+	grid-template-columns: 1fr;
 }
 
 .hprwc-pcard {
@@ -233,100 +227,54 @@
 	margin: 0;
 }
 
-/* ---------- stats ---------- */
+/* ---------- sections and rows ---------- */
 
-.hprwc-stats {
-	display: grid;
-	gap: 8px;
-	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-}
+.hprwc-pcard__body { gap: 0; padding: 0 20px 8px; }
 
-.hprwc-stat {
-	background: var(--soft);
-	border: 1px solid var(--line);
-	border-radius: 8px;
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	padding: 8px 10px;
-}
+.hprwc-sec { border-top: 1px solid var(--line); padding: 12px 0; }
+.hprwc-sec:first-child { border-top: 0; }
 
-.hprwc-stat__label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
-.hprwc-stat__value { font-weight: 600; }
-.hprwc-stat.is-ok .hprwc-stat__value { color: var(--ok-ink); }
-.hprwc-stat.is-warn .hprwc-stat__value { color: var(--warn-ink); }
-.hprwc-stat.is-bad .hprwc-stat__value { color: var(--bad-ink); }
-
-/* ---------- plugin tiles ---------- */
-
-.hprwc-tiles {
-	display: grid;
-	gap: 8px;
-	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
-
-.hprwc-tile {
-	border: 1px solid var(--line);
-	border-left-width: 4px;
-	border-radius: 8px;
-	display: flex;
-	flex-direction: column;
-	gap: 3px;
-	padding: 10px 12px;
-}
-
-.hprwc-tile.is-ok { border-left-color: var(--ok); }
-.hprwc-tile.is-warn { border-left-color: var(--warn); }
-.hprwc-tile.is-bad { border-left-color: var(--bad); }
-.hprwc-tile.is-missing { border-left-color: #d0d5dd; opacity: .7; }
-.hprwc-tile.is-busy { opacity: .75; }
-
-.hprwc-tile__name { font-size: 12px; font-weight: 600; }
-.hprwc-tile__version { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
-.hprwc-tile__note { color: var(--muted); font-size: 11px; }
-.hprwc-tile.is-bad .hprwc-tile__note { color: var(--bad-ink); }
-
-.hprwc-tile__btn {
-	align-self: flex-start;
-	display: inline-flex !important;
-	gap: 6px;
-	margin-top: 4px !important;
-}
-
-/* ---------- recent releases ---------- */
-
-.hprwc-recent h4 {
+.hprwc-sec__title {
 	color: var(--muted);
 	font-size: 11px;
-	letter-spacing: .04em;
+	letter-spacing: .05em;
 	margin: 0 0 6px;
 	text-transform: uppercase;
 }
 
-.hprwc-recent ul {
-	margin: 0;
+.hprwc-row {
+	align-items: center;
+	border-radius: 6px;
+	display: grid;
+	gap: 12px;
+	grid-template-columns: 10px 200px 160px 1fr auto;
+	min-height: 34px;
+	padding: 4px 8px;
 }
 
-.hprwc-recent li {
-	display: flex;
-	gap: 10px;
-	justify-content: space-between;
-	margin: 0;
-	padding: 5px 0;
-}
+.hprwc-row:hover { background: var(--soft); }
+.hprwc-row__dot { background: #d0d5dd; border-radius: 50%; height: 8px; width: 8px; }
+.hprwc-row.is-ok .hprwc-row__dot { background: var(--ok); }
+.hprwc-row.is-warn .hprwc-row__dot { background: var(--warn); }
+.hprwc-row.is-bad .hprwc-row__dot { background: var(--bad); }
+.hprwc-row__label { font-weight: 600; }
+.hprwc-row__value { font-family: ui-monospace, Menlo, monospace; }
+.hprwc-row.is-warn .hprwc-row__value { color: var(--warn-ink); }
+.hprwc-row.is-bad .hprwc-row__value { color: var(--bad-ink); }
+.hprwc-row.is-muted .hprwc-row__value { color: var(--muted); }
+.hprwc-row__detail { color: var(--muted); font-size: 12px; }
+.hprwc-row__action .button { display: inline-flex !important; gap: 6px; align-items: center; }
 
-.hprwc-recent li + li { border-top: 1px dashed var(--line); }
-
-.hprwc-recent li a {
-	color: var(--ink);
-	overflow: hidden;
-	text-decoration: none;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
+.hprwc-recent { margin: 0; }
+.hprwc-recent li { display: flex; gap: 12px; justify-content: space-between; margin: 0; padding: 5px 8px; }
+.hprwc-recent li a { color: var(--ink); overflow: hidden; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .hprwc-recent li a:hover { color: #175cd3; }
 .hprwc-recent li span { color: var(--muted); flex: none; font-size: 12px; }
+
+@media (max-width: 900px) {
+	.hprwc-row { grid-template-columns: 10px 1fr auto; }
+	.hprwc-row__value, .hprwc-row__detail { grid-column: 2 / 4; }
+}
 
 /* ---------- motion ---------- */
 

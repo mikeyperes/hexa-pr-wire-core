@@ -39,75 +39,76 @@
 		summarize();
 	}
 
-	function stat(label, value, tone) {
-		return el('div', 'hprwc-stat' + (tone ? ' is-' + tone : ''))
-			.append(el('span', 'hprwc-stat__label', label))
-			.append(el('span', 'hprwc-stat__value', value));
+	function section(title) {
+		return el('section', 'hprwc-sec').append(el('h4', 'hprwc-sec__title', title));
 	}
 
-	function tile($card, t, canUpdate) {
-		const tone = !t.installed ? 'missing' : (t.outdated ? 'warn' : (t.active ? 'ok' : 'warn'));
-		const $tile = el('div', 'hprwc-tile is-' + tone).attr('data-plugin', t.slug);
-		$tile.append(el('span', 'hprwc-tile__name', t.label));
-		if (!t.installed) {
-			$tile.append(el('span', 'hprwc-tile__version', 'Not installed'));
-			return $tile;
-		}
-		$tile.append(el('span', 'hprwc-tile__version', t.version + (t.outdated ? ' → ' + t.latest : '')));
-		$tile.append(el('span', 'hprwc-tile__note', t.outdated ? 'Update available' : (t.active ? 'Up to date' : 'Inactive')));
-		if (t.outdated) {
-			const $btn = el('button', 'button button-small hprwc-tile__btn', 'Update').attr('type', 'button').attr('data-pub-update', t.slug);
-			if (!canUpdate) $btn.prop('disabled', true).attr('title', 'Turn on Remote Plugin Updates in Distributor on this site.');
-			$tile.append($btn);
-		}
-		return $tile;
+	/** One labelled line: label · value (toned) · optional detail · optional action button. */
+	function row(label, value, tone, detail, action) {
+		const $r = el('div', 'hprwc-row' + (tone ? ' is-' + tone : ''));
+		$r.append(el('span', 'hprwc-row__dot'));
+		$r.append(el('span', 'hprwc-row__label', label));
+		$r.append(el('span', 'hprwc-row__value', value));
+		$r.append(el('span', 'hprwc-row__detail', detail || ''));
+		const $act = el('span', 'hprwc-row__action');
+		if (action) $act.append(action);
+		return $r.append($act);
+	}
+
+	function button(text, attrs, disabledTitle) {
+		const $b = el('button', 'button button-small', text).attr($.extend({ type: 'button' }, attrs));
+		if (disabledTitle) $b.prop('disabled', true).attr('title', disabledTitle);
+		return $b;
 	}
 
 	function renderConnected($card, d) {
 		const $body = $card.find('[data-pub-body]').empty();
 		if (!d.reachable) {
-			$body.append(el('p', 'hprwc-pcard__error', d.message));
-			$body.append(el('div', 'hprwc-stats').append(stat('Site', d.http ? 'HTTP ' + d.http : 'No answer', 'bad')));
+			$body.append(section('Site').append(row('Connection', d.http ? 'HTTP ' + d.http : 'No answer', 'bad', d.message)));
 			setState($card, 'error');
 			return;
 		}
 
-		const outdated = (d.plugins || []).some(function (t) { return t.installed && t.outdated; });
-		const missingCore = (d.plugins || []).some(function (t) { return !t.installed && t.slug === 'hexa-pr-wire-distributor'; });
-		const syncTone = d.last_sync_error ? 'bad' : (d.feed_enabled ? '' : 'warn');
+		const plugins = d.plugins || [];
+		const outdated = plugins.some(function (t) { return t.installed && t.outdated; });
 
-		$body.append(el('div', 'hprwc-stats')
-			.append(stat('Site', 'HTTP ' + d.http + ' · ' + d.ms + ' ms', d.http === 200 ? 'ok' : 'bad'))
-			.append(stat('Last sync', d.last_sync ? ago(d.last_sync) : 'never', syncTone))
-			.append(stat('Feed', d.feed_enabled ? 'On' : 'Off', d.feed_enabled ? 'ok' : 'warn'))
-			.append(stat('Remote updates', d.plugins_route ? (d.remote_updates ? 'On' : 'Off') : 'Needs Distributor 3.6+', d.remote_updates ? 'ok' : 'warn')));
+		// Site
+		$body.append(section('Site')
+			.append(row('Response', 'HTTP ' + d.http, d.http === 200 ? 'ok' : 'bad', d.ms + ' ms'))
+			.append(row('Last sync', d.last_sync ? ago(d.last_sync) : 'never', d.feed_enabled ? 'ok' : 'warn',
+				d.last_sync_error ? 'Last run reported: ' + d.last_sync_error.replace(/^Legacy import conflict:\s*/, '') : (d.feed_enabled ? 'Feed on' : 'Feed off'),
+				button('Sync now', { 'data-pub-site': 'sync' })))
+			.append(row('Remote updates', d.remote_updates ? 'On' : 'Off', d.remote_updates ? 'ok' : 'warn', d.remote_updates ? '' : 'Turn on in Distributor on this site')));
 
-		if (d.last_sync_error) {
-			$body.append(el('p', 'hprwc-pcard__error', 'Last sync error: ' + d.last_sync_error));
-		}
+		// Plugins — one row each
+		const $plugins = section('Plugins');
+		plugins.forEach(function (t) {
+			if (!t.installed) {
+				$plugins.append(row(t.label, 'Not installed', 'muted', ''));
+				return;
+			}
+			const tone = t.outdated ? 'warn' : (t.active ? 'ok' : 'warn');
+			const detail = t.outdated ? 'Latest ' + t.latest : (t.active ? 'Up to date' : 'Inactive');
+			const act = t.outdated ? button('Update to ' + t.latest, { 'data-pub-update': t.slug }, d.remote_updates ? '' : 'Turn on Remote Plugin Updates in Distributor on this site.') : null;
+			$plugins.append(row(t.label, t.version, tone, detail, act).attr('data-plugin', t.slug));
+		});
+		$body.append($plugins);
 
+		// Compatibility
 		$card.attr('data-echo', d.echo_jobs > 0 && d.echo_route ? d.echo_jobs : 0);
-		const $legacy = el('div', 'hprwc-stats');
-		const $echo = stat('Echo RSS', d.echo_jobs > 0 ? 'Importing Hexa PR Wire (' + d.echo_jobs + ')' : (d.echo_active ? 'On · Hexa PR Wire job off' : 'Off'), d.echo_jobs > 0 ? 'warn' : 'ok');
-		if (d.echo_jobs > 0) {
-			const $off = el('button', 'button button-small hprwc-stat__btn', 'Switch off').attr({ type: 'button', 'data-pub-echo': '' });
-			if (!d.echo_route) $off.prop('disabled', true).attr('title', 'Update Distributor to 3.6.3 or later first.');
-			$echo.append($off);
-		}
-		$legacy.append($echo).append(stat('FIFU', d.fifu_active ? 'Active · supported' + (d.fifu_to_clean ? ' (' + d.fifu_to_clean + ' releases to clean)' : '') : 'Off', ''));
-		$body.append($legacy);
+		const $compat = section('Compatibility');
+		$compat.append(row('Echo RSS', d.echo_jobs > 0 ? 'Importing Hexa PR Wire' : (d.echo_active ? 'On' : 'Off'), d.echo_jobs > 0 ? 'warn' : 'ok',
+			d.echo_jobs > 0 ? d.echo_jobs + ' Hexa PR Wire job(s) still on' : (d.echo_active ? 'Hexa PR Wire job off · other feeds untouched' : ''),
+			d.echo_jobs > 0 ? button('Switch off Hexa PR Wire job', { 'data-pub-site': 'echo' }) : null));
+		$compat.append(row('FIFU', d.fifu_active ? 'Active' : 'Off', d.fifu_to_clean > 0 ? 'warn' : 'ok',
+			d.fifu_to_clean > 0 ? d.fifu_to_clean + ' press releases still carry FIFU data' : (d.fifu_active ? 'Press releases clean · FIFU works for other posts' : ''),
+			d.fifu_to_clean > 0 ? button('Remove FIFU from press releases', { 'data-pub-site': 'fifu' }) : null));
+		$body.append($compat);
 
-		const $tiles = el('div', 'hprwc-tiles');
-		if (d.plugins_route) {
-			(d.plugins || []).forEach(function (t) { $tiles.append(tile($card, t, d.remote_updates)); });
-		} else {
-			$tiles.append(tile($card, { slug: 'hexa-pr-wire-distributor', label: 'Hexa PR Wire Distributor', installed: true, active: true, version: d.distributor, latest: '3.6+', outdated: true }, false));
-		}
-		$body.append($tiles);
-
-		const $recent = el('div', 'hprwc-recent').append(el('h4', '', 'Most recent press releases'));
+		// Recent releases
+		const $recent = section('Most recent press releases');
 		if ((d.recent || []).length) {
-			const $list = el('ul');
+			const $list = el('ul', 'hprwc-recent');
 			d.recent.forEach(function (p) {
 				$list.append(el('li').append(el('a', '', p.title).attr({ href: p.url, target: '_blank', rel: 'noopener noreferrer' })).append(el('span', '', ago(p.date))));
 			});
@@ -117,15 +118,15 @@
 		}
 		$body.append($recent);
 
-		const attention = d.http !== 200 || outdated || missingCore || !d.plugins_route || !!d.last_sync_error || !d.feed_enabled || d.echo_jobs > 0;
+		const attention = d.http !== 200 || outdated || !d.plugins_route || !d.feed_enabled || d.echo_jobs > 0 || d.fifu_to_clean > 0;
 		setState($card, attention ? 'warn' : 'ok');
 	}
 
 	function renderOffline($card, d) {
-		const $body = $card.find('[data-pub-body]').empty();
-		$body.append(el('p', 'hprwc-muted', 'No plugin connection. Only the public site is checked.'));
-		$body.append(el('div', 'hprwc-stats').append(stat('Site', d.site.http ? 'HTTP ' + d.site.http + ' · ' + d.site.ms + ' ms' : 'No answer', d.site.http >= 200 && d.site.http < 400 ? 'ok' : 'bad')));
-		setState($card, d.site.http >= 200 && d.site.http < 400 ? 'ok' : 'error');
+		const ok = d.site.http >= 200 && d.site.http < 400;
+		$card.find('[data-pub-body]').empty().append(section('Site')
+			.append(row('Response', d.site.http ? 'HTTP ' + d.site.http : 'No answer', ok ? 'ok' : 'bad', d.site.http ? d.site.ms + ' ms · no plugin connection' : 'No plugin connection')));
+		setState($card, ok ? 'ok' : 'error');
 	}
 
 	/* ---------- loading ---------- */
@@ -172,32 +173,29 @@
 		pump();
 	}
 
-	/* ---------- updates ---------- */
+	/* ---------- actions ---------- */
 
-	function update($card, slug, $btn) {
-		const pub = $card.data('pub');
-		const $tile = $btn.closest('.hprwc-tile').addClass('is-busy');
-		$btn.prop('disabled', true).html('<span class="hprwc-spin"></span>Updating…');
-		post(cfg.actions.update, { publication_id: pub.id, plugin: slug })
-			.done(function (r) {
-				const d = (r && r.data) || {};
-				$tile.removeClass('is-busy').find('.hprwc-tile__note').text(d.message || 'Updated') ;
-				load($card);
-			})
-			.fail(function (xhr) {
-				$tile.removeClass('is-busy').addClass('is-bad').find('.hprwc-tile__note').text(errorText(xhr));
-				$btn.prop('disabled', false).text('Retry');
-			});
+	function busy($btn, text) {
+		$btn.prop('disabled', true).html('<span class="hprwc-spin"></span>' + text);
 	}
 
-	/* ---------- Echo RSS ---------- */
+	function failed($btn, xhr) {
+		$btn.prop('disabled', false).text('Retry');
+		$btn.closest('.hprwc-row').find('.hprwc-row__detail').text(errorText(xhr));
+	}
 
-	function switchOffEcho($card) {
-		const pub = $card.data('pub');
-		$card.find('[data-pub-echo]').prop('disabled', true).html('<span class="hprwc-spin"></span>Switching off…');
-		return post(cfg.actions.echo, { publication_id: pub.id })
-			.fail(function (xhr) { $card.find('[data-pub-echo]').prop('disabled', false).text('Retry').attr('title', errorText(xhr)); })
-			.done(function () { load($card); });
+	function update($card, slug, $btn) {
+		busy($btn, 'Updating…');
+		return post(cfg.actions.update, { publication_id: $card.data('pub').id, plugin: slug })
+			.done(function () { load($card); })
+			.fail(function (xhr) { failed($btn, xhr); });
+	}
+
+	function siteAction($card, action, $btn) {
+		busy($btn, { sync: 'Syncing…', fifu: 'Cleaning…', echo: 'Switching off…' }[action] || 'Working…');
+		return post(cfg.actions.site, { publication_id: $card.data('pub').id, site_action: action })
+			.done(function () { load($card); })
+			.fail(function (xhr) { failed($btn, xhr); });
 	}
 
 	function updateEchoBanner() {
@@ -246,13 +244,14 @@
 		$root.on('input', '[data-pubs-search]', applyFilters);
 		$root.on('click', '[data-pubs-refresh-all]', function () { enqueue($root.find('.hprwc-pcard')); });
 		$root.on('click', '[data-pub-refresh]', function () { load($(this).closest('.hprwc-pcard')); });
-		$root.on('click', '[data-pub-echo]', function () { switchOffEcho($(this).closest('.hprwc-pcard')); });
+		$root.on('click', '[data-pub-site]', function () { siteAction($(this).closest('.hprwc-pcard'), $(this).data('pub-site'), $(this)); });
 		$root.on('click', '[data-pubs-echo-all]', function () {
 			const $btn = $(this).prop('disabled', true).text('Switching off…');
 			const cards = $root.find('.hprwc-pcard').filter(function () { return +$(this).attr('data-echo') > 0; }).toArray();
 			(function next() {
 				if (!cards.length) { $btn.prop('disabled', false).text('Switch off on all'); return; }
-				switchOffEcho($(cards.shift())).always(next);
+				const $c = $(cards.shift());
+				siteAction($c, 'echo', $c.find('[data-pub-site="echo"]')).always(next);
 			})();
 		});
 		$root.on('click', '[data-pub-update]', function () {

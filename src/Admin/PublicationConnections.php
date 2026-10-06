@@ -19,7 +19,7 @@ use HexaPrWire\Core\Syndication\PluginReleases;
  */
 final class PublicationConnections implements Module {
 	private const NONCE = 'hprwc_publications';
-	private const ACTIONS = [ 'status' => 'hprwc_publication_status', 'update' => 'hprwc_publication_update', 'echo' => 'hprwc_publication_echo' ];
+	private const ACTIONS = [ 'status' => 'hprwc_publication_status', 'update' => 'hprwc_publication_update', 'site' => 'hprwc_publication_site_action' ];
 
 	/** Plugins shown as tiles, in order; `always` keeps a "Not installed" tile on Internal sites. */
 	private const PLUGINS = [
@@ -39,7 +39,7 @@ final class PublicationConnections implements Module {
 	public function register(): void {
 		add_action( 'wp_ajax_' . self::ACTIONS['status'], [ $this, 'ajax_status' ] );
 		add_action( 'wp_ajax_' . self::ACTIONS['update'], [ $this, 'ajax_update' ] );
-		add_action( 'wp_ajax_' . self::ACTIONS['echo'], [ $this, 'ajax_echo' ] );
+		add_action( 'wp_ajax_' . self::ACTIONS['site'], [ $this, 'ajax_site_action' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'assets' ] );
 	}
 
@@ -155,17 +155,25 @@ final class PublicationConnections implements Module {
 		wp_send_json_success( (array) ( $result['data']['result'] ?? [] ) );
 	}
 
-	/** Switch off only the Echo RSS job that imports Hexa PR Wire on one site (Echo and its other feeds stay). */
-	public function ajax_echo(): void {
+	/** One-click site actions, each a Distributor remote command: label => [route, timeout]. */
+	private const SITE_ACTIONS = [
+		'sync' => [ 'pull', 180, 'Synced.' ],
+		'fifu' => [ 'fifu/release', 240, 'FIFU data removed from press releases.' ],
+		'echo' => [ 'echo/disable', 60, 'The Hexa PR Wire Echo job is off.' ],
+	];
+
+	public function ajax_site_action(): void {
 		$card = $this->guarded_card();
-		if ( ! ConnectionType::is_connected( $card['type'] ) ) {
-			wp_send_json_error( [ 'message' => 'This publication has no plugin connection.' ], 400 );
+		$action = sanitize_key( (string) wp_unslash( $_POST['site_action'] ?? '' ) );
+		if ( ! ConnectionType::is_connected( $card['type'] ) || ! isset( self::SITE_ACTIONS[ $action ] ) ) {
+			wp_send_json_error( [ 'message' => 'This action is not available for this publication.' ], 400 );
 		}
-		$result = $this->outlets->command( $card['host'], 'echo/disable' );
+		[ $route, $timeout, $done ] = self::SITE_ACTIONS[ $action ];
+		$result = $this->outlets->command( $card['host'], $route, [], $timeout );
 		if ( ! $result['ok'] ) {
 			wp_send_json_error( [ 'message' => $this->failure( $result['status'], $result['message'] ) ], 502 );
 		}
-		wp_send_json_success( [ 'message' => 'The Hexa PR Wire Echo job is off.' ] );
+		wp_send_json_success( [ 'message' => $done ] );
 	}
 
 	/** @return array<string,mixed> */
