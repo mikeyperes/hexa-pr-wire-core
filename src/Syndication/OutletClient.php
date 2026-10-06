@@ -33,9 +33,22 @@ final class OutletClient {
 		return $this->request( 'GET', $host, 'health', [], $timeout );
 	}
 
-	/** Whether the outlet exposes Distributor's REST namespace at all (any version). */
-	public function has_distributor( string $host ): bool {
-		return 200 === $this->request( 'GET', $host, '', [], 15 )['status'];
+	/**
+	 * Installed and latest version of each Hexa plugin on the outlet.
+	 *
+	 * @return array{ok:bool,status:int,message:string,data:array<string,mixed>}
+	 */
+	public function plugins( string $host, bool $refresh = false ): array {
+		return $this->request( 'GET', $host, 'plugins' . ( $refresh ? '?refresh=1' : '' ), [], 45 );
+	}
+
+	/**
+	 * Update one Hexa plugin on the outlet (needs its Remote Plugin Updates switch on).
+	 *
+	 * @return array{ok:bool,status:int,message:string,data:array<string,mixed>}
+	 */
+	public function update_plugin( string $host, string $plugin ): array {
+		return $this->request( 'POST', $host, 'plugins/update', [ 'plugin' => $plugin ], 240 );
 	}
 
 	/** @return array{ok:bool,status:int,message:string,data:array<string,mixed>} */

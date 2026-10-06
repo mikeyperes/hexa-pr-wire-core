@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.9.0 — 2026-10-06
+
+- **Publications page redesigned as live cards.** Code: `Admin\PublicationConnections`, `assets/admin/publications.js`, `assets/admin/publications.css`.
+  - Each card loads its site over AJAX, four at a time. It shows:
+    - site response and time
+    - last sync, feed state, and whether remote updates are on
+    - a tile per Hexa plugin (HWS Base Tools, Distributor, SMP Publication Integration, plus SMP Verified Profiles when installed) with installed → latest version and an Update button
+    - the five most recent imported press releases
+  - The page has search, type filters, a "Needs attention" filter and "Check all".
+- **Updates** go through the outlet's Distributor 3.6+ routes (`/plugins`, `/plugins/update`; `OutletClient::plugins()` and `update_plugin()`). They need that site's Remote Plugin Updates switch on.
+- **Connection types** are now Internal, REST, Plugin and Premium (`ConnectionType::LABELS` and `DESCRIPTIONS`).
+- **Removed:** the old table, the per-outlet last-push record, and the namespace probe.
+
 ## 2.8.2 — 2026-10-06
 
 - Distribution panel: each outlet row links its full expected release permalink instead of only the domain.

@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.8.2
+Stable tag: 2.9.0
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,10 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.9.0 =
+* Publications page redesigned as live cards. Each card shows the connection type, site response, last sync, the Hexa plugin versions with Update buttons, and the five most recent press releases. Everything loads and updates over AJAX.
+* Connection types are now Internal, REST, Plugin and Premium.
 
 = 2.8.2 =
 * Distribution panel shows each outlet's full release permalink and the outlet server's HTTP response on every checked row.

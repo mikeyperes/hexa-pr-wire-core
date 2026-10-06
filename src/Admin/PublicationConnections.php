@@ -7,17 +7,26 @@ use HexaPrWire\Core\Contracts\Module;
 use HexaPrWire\Core\Contracts\PublicationRepository;
 use HexaPrWire\Core\Domain\Publication\ConnectionType;
 use HexaPrWire\Core\DestinationRegistry;
-use HexaPrWire\Core\ForceSyncService;
-use HexaPrWire\Core\PublicationResolver;
 use HexaPrWire\Core\Syndication\OutletClient;
 
 /**
- * Hexa PR Wire → Publications: every publication record with how releases reach
- * it, and for Distributor-managed outlets a live health check over AJAX.
+ * Hexa PR Wire → Publications: one live card per publication.
+ *
+ * The page renders only each publication's record; every card then loads its
+ * site's state over AJAX (Distributor health + Hexa plugin versions) and can
+ * update one plugin at a time through the outlet's Distributor.
  */
 final class PublicationConnections implements Module {
-	private const AJAX_ACTION = 'hprwc_publication_health';
-	private const NONCE = 'hprwc_publication_health';
+	private const NONCE = 'hprwc_publications';
+	private const ACTIONS = [ 'status' => 'hprwc_publication_status', 'update' => 'hprwc_publication_update' ];
+
+	/** Plugins shown as tiles, in order; tiles for plugins not installed are hidden unless always shown. */
+	private const PLUGINS = [
+		'hws-base-tools'              => [ 'label' => 'HWS Base Tools', 'always' => true ],
+		'hexa-pr-wire-distributor'    => [ 'label' => 'Hexa PR Wire Distributor', 'always' => true ],
+		'smp-publication-integration' => [ 'label' => 'SMP Publication Integration', 'always' => true ],
+		'smp-verified-profiles'       => [ 'label' => 'SMP Verified Profiles', 'always' => false ],
+	];
 
 	public function __construct(
 		private PublicationRepository $publications,
@@ -26,214 +35,197 @@ final class PublicationConnections implements Module {
 	) {}
 
 	public function register(): void {
-		add_action( 'wp_ajax_' . self::AJAX_ACTION, [ $this, 'ajax_health' ] );
+		add_action( 'wp_ajax_' . self::ACTIONS['status'], [ $this, 'ajax_status' ] );
+		add_action( 'wp_ajax_' . self::ACTIONS['update'], [ $this, 'ajax_update' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'assets' ] );
+	}
+
+	public function assets( string $hook ): void {
+		if ( ! str_contains( $hook, 'hexa-pr-wire-core' ) ) {
+			return;
+		}
+		wp_enqueue_style( 'hprwc-publications', HPRWC_URL . 'assets/admin/publications.css', [], HPRWC_VERSION );
+		wp_enqueue_script( 'hprwc-publications', HPRWC_URL . 'assets/admin/publications.js', [ 'jquery' ], HPRWC_VERSION, true );
+		wp_localize_script( 'hprwc-publications', 'hprwcPublications', [
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( self::NONCE ),
+			'actions' => self::ACTIONS,
+			'plugins' => self::PLUGINS,
+			'types'   => ConnectionType::LABELS,
+		] );
 	}
 
 	public function render(): void {
-		$rows = $this->rows();
-		$counts = array_fill_keys( array_keys( ConnectionType::LABELS ), 0 ) + [ '' => 0 ];
-		foreach ( $rows as $row ) {
-			$counts[ $row['type'] ]++;
-		}
-		$inactive = count( array_filter( $rows, static fn( array $row ): bool => ! $row['active'] ) );
+		$cards = $this->cards();
+		$counts = array_count_values( array_map( static fn( array $card ): string => $card['type'] ?: 'unset', $cards ) );
 		?>
-		<div class="hprwc-panel hprwc-connections" data-ajax-url="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-action="<?php echo esc_attr( self::AJAX_ACTION ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( self::NONCE ) ); ?>">
-			<div class="hprwc-conn-head">
+		<div class="hprwc-pubs" data-hprwc-pubs>
+			<header class="hprwc-pubs__bar">
 				<div>
-					<h2>Publications &amp; connections</h2>
-					<p class="description">Every publication record, how releases reach it, and a live check of each Distributor-managed outlet.</p>
+					<h2>Publications</h2>
+					<p class="hprwc-pubs__summary" data-pubs-summary aria-live="polite">Checking <?php echo count( $cards ); ?> publications…</p>
 				</div>
-				<button type="button" class="button button-primary" data-conn-refresh><span class="dashicons dashicons-update" aria-hidden="true"></span> Check managed outlets</button>
-			</div>
-
-			<div class="hprwc-conn-filters" role="tablist" aria-label="Filter by connection">
-				<button type="button" class="is-active" data-conn-filter="all">All <span><?php echo count( $rows ); ?></span></button>
-				<?php foreach ( ConnectionType::LABELS as $key => $label ) : ?>
-					<button type="button" data-conn-filter="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?> <span><?php echo (int) $counts[ $key ]; ?></span></button>
+				<div class="hprwc-pubs__tools">
+					<input type="search" class="hprwc-pubs__search" placeholder="Search publications" data-pubs-search>
+					<button type="button" class="button button-primary" data-pubs-refresh-all>Check all</button>
+				</div>
+			</header>
+			<nav class="hprwc-pubs__filters" aria-label="Filter publications">
+				<button type="button" class="is-active" data-pubs-filter="all">All <span><?php echo count( $cards ); ?></span></button>
+				<?php foreach ( ConnectionType::LABELS as $type => $label ) : ?>
+					<button type="button" data-pubs-filter="<?php echo esc_attr( $type ); ?>" title="<?php echo esc_attr( ConnectionType::DESCRIPTIONS[ $type ] ); ?>"><?php echo esc_html( $label ); ?> <span><?php echo (int) ( $counts[ $type ] ?? 0 ); ?></span></button>
 				<?php endforeach; ?>
-				<?php if ( $counts[''] ) : ?>
-					<button type="button" data-conn-filter="unset">Not set <span><?php echo (int) $counts['']; ?></span></button>
-				<?php endif; ?>
-				<?php if ( $inactive ) : ?>
-					<button type="button" data-conn-filter="inactive">Inactive <span><?php echo (int) $inactive; ?></span></button>
-				<?php endif; ?>
+				<button type="button" data-pubs-filter="attention">Needs attention <span data-pubs-attention-count>0</span></button>
+			</nav>
+			<div class="hprwc-pubs__grid">
+				<?php foreach ( $cards as $card ) : ?>
+					<article class="hprwc-pub" data-pub='<?php echo esc_attr( (string) wp_json_encode( $card ) ); ?>' data-type="<?php echo esc_attr( $card['type'] ?: 'unset' ); ?>" data-state="loading">
+						<header class="hprwc-pub__head">
+							<span class="hprwc-light" aria-hidden="true"></span>
+							<div class="hprwc-pub__title">
+								<a href="<?php echo esc_url( (string) get_edit_post_link( $card['id'] ) ); ?>"><?php echo esc_html( $card['title'] ); ?></a>
+								<?php if ( '' !== $card['url'] ) : ?><a class="hprwc-pub__domain" href="<?php echo esc_url( $card['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $card['domain'] ); ?></a><?php endif; ?>
+							</div>
+							<span class="hprwc-type hprwc-type--<?php echo esc_attr( $card['type'] ?: 'unset' ); ?>" title="<?php echo esc_attr( ConnectionType::DESCRIPTIONS[ $card['type'] ] ?? 'Set Connection Type on the publication record.' ); ?>"><?php echo esc_html( ConnectionType::LABELS[ $card['type'] ] ?? 'Not set' ); ?></span>
+							<button type="button" class="hprwc-icon-btn" data-pub-refresh title="Check again" aria-label="Check <?php echo esc_attr( $card['title'] ); ?> again"><span class="dashicons dashicons-update"></span></button>
+						</header>
+						<div class="hprwc-pub__body" data-pub-body><div class="hprwc-pub__loading"><span class="hprwc-spin"></span>Checking site…</div></div>
+					</article>
+				<?php endforeach; ?>
 			</div>
-			<p class="hprwc-conn-summary" data-conn-summary aria-live="polite"></p>
-
-			<div class="hprwc-conn-table-wrap">
-				<table class="hprwc-conn-table">
-					<thead>
-						<tr>
-							<th>Publication</th>
-							<th>Connection</th>
-							<th>Live status</th>
-							<th>Last push from Hexa PR Wire</th>
-							<th>Releases</th>
-						</tr>
-					</thead>
-					<tbody>
-					<?php foreach ( $rows as $row ) : ?>
-						<tr data-id="<?php echo (int) $row['id']; ?>" data-type="<?php echo esc_attr( '' === $row['type'] ? 'unset' : $row['type'] ); ?>" data-active="<?php echo $row['active'] ? '1' : '0'; ?>" data-checkable="<?php echo $row['checkable'] ? '1' : '0'; ?>">
-							<td>
-								<a class="hprwc-conn-name" href="<?php echo esc_url( (string) get_edit_post_link( $row['id'] ) ); ?>"><?php echo esc_html( $row['title'] ); ?></a>
-								<?php if ( '' !== $row['url'] ) : ?>
-									<a class="hprwc-conn-domain" href="<?php echo esc_url( $row['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $row['domain'] ); ?></a>
-								<?php endif; ?>
-								<?php if ( ! $row['active'] ) : ?><span class="hprwc-tag">Inactive</span><?php endif; ?>
-							</td>
-							<td>
-								<span class="hprwc-type hprwc-type--<?php echo esc_attr( '' === $row['type'] ? 'unset' : $row['type'] ); ?>"><?php echo esc_html( '' === $row['type'] ? 'Not set' : ConnectionType::LABELS[ $row['type'] ] ); ?></span>
-								<?php if ( '' !== $row['push_host'] ) : ?>
-									<div class="hprwc-conn-meta">Push host: <?php echo esc_html( $row['push_host'] ); ?><?php echo $row['approved'] ? '' : ' · <strong>not approved</strong>'; ?></div>
-								<?php elseif ( 'managed' === $row['type'] ) : ?>
-									<div class="hprwc-conn-meta"><strong>No press-release URL prefix</strong></div>
-								<?php endif; ?>
-							</td>
-							<td data-conn-live>
-								<?php if ( $row['checkable'] ) : ?>
-									<span class="hprwc-state" data-state="idle">Not checked</span>
-								<?php else : ?>
-									<span class="hprwc-muted"><?php echo esc_html( $this->no_check_reason( $row ) ); ?></span>
-								<?php endif; ?>
-							</td>
-							<td><?php $this->render_last_push( $row['last_push'] ); ?></td>
-							<td>
-								<strong><?php echo number_format_i18n( $row['release_count'] ); ?></strong>
-								<?php if ( $row['last_release'] instanceof \WP_Post ) : ?>
-									<div class="hprwc-conn-meta">Latest: <a href="<?php echo esc_url( (string) get_edit_post_link( $row['last_release']->ID ) ); ?>"><?php echo esc_html( wp_trim_words( get_the_title( $row['last_release'] ), 8 ) ); ?></a> · <?php echo esc_html( human_time_diff( (int) get_post_time( 'U', true, $row['last_release'] ) ) ); ?> ago</div>
-								<?php endif; ?>
-							</td>
-						</tr>
-					<?php endforeach; ?>
-					</tbody>
-				</table>
-			</div>
-			<p class="description">Set a publication's connection type on its record (<em>Connection Type</em> field). Managed outlets are checked through Distributor's protected health endpoint.</p>
 		</div>
 		<?php
 	}
 
-	public function ajax_health(): void {
+	/** One publication's live state: site health, Hexa plugin versions and recent releases. */
+	public function ajax_status(): void {
+		$card = $this->guarded_card();
+		if ( ! ConnectionType::is_connected( $card['type'] ) ) {
+			wp_send_json_success( [ 'connected' => false, 'site' => $this->site_check( $card['url'] ) ] );
+		}
+
+		$started = microtime( true );
+		$health = $this->outlets->health( $card['host'] );
+		$ms = (int) round( ( microtime( true ) - $started ) * 1000 );
+		if ( ! $health['ok'] ) {
+			wp_send_json_success( [ 'connected' => true, 'reachable' => false, 'http' => $health['status'], 'ms' => $ms, 'message' => $this->failure( $health['status'], $health['message'] ) ] );
+		}
+
+		$plugins = $this->outlets->plugins( $card['host'], ! empty( $_POST['refresh'] ) );
+		$report = $health['data'];
+		wp_send_json_success( [
+			'connected'      => true,
+			'reachable'      => true,
+			'http'           => $health['status'],
+			'ms'             => $ms,
+			'distributor'    => (string) ( $report['versions']['distributor'] ?? '' ),
+			'wordpress'      => (string) ( $report['versions']['wordpress'] ?? '' ),
+			'feed_enabled'   => ! empty( $report['feed']['enabled'] ),
+			'last_sync'      => $this->gmt( (string) ( $report['last_pull']['ended_gmt'] ?? '' ) ),
+			'last_sync_error'=> (string) ( $report['last_pull']['error'] ?? '' ),
+			'recent'         => array_map( fn( array $post ): array => [ 'title' => $this->text( (string) $post['title'] ), 'url' => esc_url_raw( (string) $post['url'] ), 'date' => $this->gmt( (string) $post['date_gmt'] ) ], array_slice( (array) ( $report['recent_posts'] ?? ( ! empty( $report['last_post'] ) ? [ $report['last_post'] ] : [] ) ), 0, 5 ) ),
+			'plugins_route'  => $plugins['ok'],
+			'remote_updates' => $plugins['ok'] && ! empty( $plugins['data']['result']['remote_updates'] ),
+			'plugins'        => $plugins['ok'] ? $this->plugin_tiles( (array) ( $plugins['data']['result']['plugins'] ?? [] ) ) : [],
+		] );
+	}
+
+	/** Update one Hexa plugin on one publication's site. */
+	public function ajax_update(): void {
+		$card = $this->guarded_card();
+		$plugin = sanitize_key( (string) wp_unslash( $_POST['plugin'] ?? '' ) );
+		if ( ! ConnectionType::is_connected( $card['type'] ) || ! isset( self::PLUGINS[ $plugin ] ) ) {
+			wp_send_json_error( [ 'message' => 'This plugin cannot be updated on this publication.' ], 400 );
+		}
+		$result = $this->outlets->update_plugin( $card['host'], $plugin );
+		if ( ! $result['ok'] ) {
+			wp_send_json_error( [ 'message' => $this->failure( $result['status'], $result['message'] ) ], 502 );
+		}
+		wp_send_json_success( (array) ( $result['data']['result'] ?? [] ) );
+	}
+
+	/** @return array<string,mixed> */
+	private function guarded_card(): array {
 		AjaxGuard::require_nonce_or_error( self::NONCE );
 		AjaxGuard::require_capability_or_error( 'manage_options' );
 		$id = absint( $_POST['publication_id'] ?? 0 );
-		$row = null;
-		foreach ( $this->rows() as $candidate ) {
-			if ( $candidate['id'] === $id ) {
-				$row = $candidate;
-				break;
+		foreach ( $this->cards() as $card ) {
+			if ( $card['id'] === $id ) {
+				if ( ConnectionType::is_connected( $card['type'] ) && '' === $card['host'] ) {
+					wp_send_json_error( [ 'message' => 'This publication has no approved press-release host.' ], 400 );
+				}
+				return $card;
 			}
 		}
-		if ( null === $row || ! $row['checkable'] ) {
-			wp_send_json_error( [ 'message' => 'This publication has no approved Distributor host to check.' ], 400 );
-		}
-
-		$result = $this->outlets->health( $row['push_host'] );
-		$data = $result['data'];
-		if ( ! $result['ok'] ) {
-			$label = match ( true ) {
-				0 === $result['status'] => 'Unreachable',
-				in_array( $result['status'], [ 401, 403 ], true ) => 'Token rejected',
-				404 === $result['status'] => $this->outlets->has_distributor( $row['push_host'] ) ? 'Distributor outdated' : 'Distributor not installed',
-				default => 'Error',
-			};
-			$detail = match ( $label ) {
-				'Distributor outdated' => 'Installed, but too old to report health. Update Distributor.',
-				'Distributor not installed' => 'No Distributor plugin answers on this site.',
-				default => 0 === $result['status'] ? $result['message'] : 'HTTP ' . $result['status'] . ' · ' . $result['message'],
-			};
-			wp_send_json_success( [ 'state' => 'error', 'label' => $label, 'lines' => [ $detail ] ] );
-		}
-
-		$versions = (array) ( $data['versions'] ?? [] );
-		$feed = (array) ( $data['feed'] ?? [] );
-		$last_pull = (array) ( $data['last_pull'] ?? [] );
-		$last_post = is_array( $data['last_post'] ?? null ) ? $data['last_post'] : [];
-		$lines = [ 'Distributor ' . (string) ( $versions['distributor'] ?? '?' ) . ' · WordPress ' . (string) ( $versions['wordpress'] ?? '?' ) ];
-		$lines[] = 'Feed ' . ( empty( $feed['enabled'] ) ? 'off' : 'on' ) . ( ! empty( $feed['outlet'] ) ? ' (' . (string) $feed['outlet'] . ')' : '' );
-		if ( ! empty( $last_pull['ended_gmt'] ) ) {
-			$lines[] = 'Last pull ' . $this->ago( (string) $last_pull['ended_gmt'] ) . ( ! empty( $last_pull['error'] ) ? ' · error: ' . (string) $last_pull['error'] : '' );
-		}
-		if ( ! empty( $last_post['date_gmt'] ) ) {
-			$lines[] = 'Latest copy ' . $this->ago( (string) $last_post['date_gmt'] ) . ': ' . wp_trim_words( (string) ( $last_post['title'] ?? '' ), 8 );
-		}
-		$problem = empty( $feed['enabled'] ) || ! empty( $last_pull['error'] );
-		wp_send_json_success( [ 'state' => $problem ? 'warn' : 'ok', 'label' => $problem ? 'Connected · attention' : 'Connected', 'lines' => array_map( static fn( string $line ): string => html_entity_decode( sanitize_text_field( $line ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ), $lines ) ] );
+		wp_send_json_error( [ 'message' => 'Unknown publication.' ], 404 );
 	}
 
 	/** @return array<int,array<string,mixed>> */
-	private function rows(): array {
-		$terms_by_publication = [];
-		$terms = get_terms( [ 'taxonomy' => PublicationResolver::TAXONOMY, 'hide_empty' => false ] );
-		foreach ( is_wp_error( $terms ) ? [] : $terms as $term ) {
-			$publication_id = $this->publications->mapped_post_id( (int) $term->term_id );
-			if ( $publication_id > 0 ) {
-				$terms_by_publication[ $publication_id ][] = $term;
-			}
-		}
-		$last_push = get_option( ForceSyncService::OUTLET_LAST_OPTION, [] );
-		$last_push = is_array( $last_push ) ? $last_push : [];
-
-		$rows = [];
-		foreach ( $this->publications->all() as $publication ) {
-			$id = (int) $publication['id'];
-			$type = ConnectionType::of( $publication );
-			$push_host = strtolower( (string) wp_parse_url( (string) $publication['prefix'], PHP_URL_HOST ) );
-			$approved = '' !== $push_host && $this->destinations->is_approved( $id, $push_host );
-			$terms = $terms_by_publication[ $id ] ?? [];
-			$term_ids = array_map( static fn( \WP_Term $term ): int => (int) $term->term_id, $terms );
-			$latest = [] === $term_ids ? [] : get_posts( [
-				'post_type' => 'post',
-				'post_status' => 'publish',
-				'numberposts' => 1,
-				'no_found_rows' => true,
-				'tax_query' => [ [ 'taxonomy' => PublicationResolver::TAXONOMY, 'field' => 'term_id', 'terms' => $term_ids ] ],
-			] );
-			$rows[] = [
-				'id' => $id,
-				'title' => (string) $publication['title'],
-				'url' => (string) $publication['url'],
+	private function cards(): array {
+		$order = array_flip( array_keys( ConnectionType::LABELS ) );
+		$cards = [];
+		foreach ( $this->publications->all( [ 'status' => true ] ) as $publication ) {
+			$host = strtolower( (string) wp_parse_url( (string) $publication['prefix'], PHP_URL_HOST ) );
+			$cards[] = [
+				'id'     => (int) $publication['id'],
+				'title'  => (string) $publication['title'],
+				'url'    => (string) $publication['url'],
 				'domain' => preg_replace( '/^www\./', '', strtolower( (string) wp_parse_url( (string) $publication['url'], PHP_URL_HOST ) ) ),
-				'active' => (bool) $publication['status'],
-				'type' => $type,
-				'push_host' => $push_host,
-				'approved' => $approved,
-				'checkable' => 'managed' === $type && $approved,
-				'last_push' => is_array( $last_push[ $id ] ?? null ) ? $last_push[ $id ] : null,
-				'release_count' => array_sum( array_map( static fn( \WP_Term $term ): int => (int) $term->count, $terms ) ),
-				'last_release' => $latest[0] ?? null,
+				'type'   => ConnectionType::of( $publication ),
+				'host'   => '' !== $host && $this->destinations->is_approved( (int) $publication['id'], $host ) ? $host : '',
 			];
 		}
-		$order = array_flip( array_keys( ConnectionType::LABELS ) );
-		$key = static fn( array $row ): array => [ $row['active'] ? 0 : 1, $order[ $row['type'] ] ?? 9, strtolower( $row['title'] ) ];
-		usort( $rows, static fn( array $a, array $b ): int => $key( $a ) <=> $key( $b ) );
-		return $rows;
+		usort( $cards, static fn( array $a, array $b ): int => [ $order[ $a['type'] ] ?? 9, strtolower( $a['title'] ) ] <=> [ $order[ $b['type'] ] ?? 9, strtolower( $b['title'] ) ] );
+		return $cards;
 	}
 
-	private function no_check_reason( array $row ): string {
-		return match ( $row['type'] ) {
-			'rss' => 'Pulls the RSS feed; no push connection',
-			'external' => 'Managed outside Hexa PR Wire',
-			'premium' => 'Premium placement; delivered manually',
-			'managed' => '' === $row['push_host'] ? 'Set a press-release URL prefix' : 'Push host not approved',
-			default => 'Set the connection type',
+	/** @param array<int,array<string,mixed>> $installed */
+	private function plugin_tiles( array $installed ): array {
+		$by_slug = array_column( $installed, null, 'slug' );
+		$tiles = [];
+		foreach ( self::PLUGINS as $slug => $meta ) {
+			$plugin = $by_slug[ $slug ] ?? null;
+			if ( null === $plugin && ! $meta['always'] ) {
+				continue;
+			}
+			$tiles[] = [
+				'slug'      => $slug,
+				'label'     => $meta['label'],
+				'installed' => null !== $plugin,
+				'active'    => ! empty( $plugin['active'] ),
+				'version'   => (string) ( $plugin['version'] ?? '' ),
+				'latest'    => (string) ( $plugin['latest'] ?? '' ),
+				'outdated'  => ! empty( $plugin['update_available'] ),
+			];
+		}
+		return $tiles;
+	}
+
+	/** @return array{http:int,ms:int} Outside check for sites without a plugin connection. */
+	private function site_check( string $url ): array {
+		if ( '' === $url ) {
+			return [ 'http' => 0, 'ms' => 0 ];
+		}
+		$started = microtime( true );
+		$response = wp_remote_head( $url, [ 'timeout' => 15, 'redirection' => 3 ] );
+		return [ 'http' => is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response ), 'ms' => (int) round( ( microtime( true ) - $started ) * 1000 ) ];
+	}
+
+	private function failure( int $status, string $message ): string {
+		return match ( true ) {
+			0 === $status => 'Unreachable: ' . $message,
+			in_array( $status, [ 401, 403 ], true ) => 'Token rejected (HTTP ' . $status . ')',
+			404 === $status => 'Distributor too old for remote checks (HTTP 404). Update Distributor once on the site.',
+			default => 'HTTP ' . $status . ': ' . $message,
 		};
 	}
 
-	private function render_last_push( ?array $push ): void {
-		if ( null === $push ) {
-			echo '<span class="hprwc-muted">No push recorded yet</span>';
-			return;
-		}
-		echo '<span class="hprwc-state" data-state="' . ( empty( $push['ok'] ) ? 'error' : 'ok' ) . '">' . ( empty( $push['ok'] ) ? 'Failed' : 'Delivered' ) . '</span>';
-		echo '<div class="hprwc-conn-meta">' . esc_html( $this->ago( (string) ( $push['time_gmt'] ?? '' ) ) ) . ( ! empty( $push['post_title'] ) ? ' · ' . esc_html( wp_trim_words( (string) $push['post_title'], 8 ) ) : '' ) . '</div>';
-		if ( empty( $push['ok'] ) && ! empty( $push['message'] ) ) {
-			echo '<div class="hprwc-conn-meta hprwc-conn-error">' . esc_html( (string) $push['message'] ) . '</div>';
-		}
+	private function gmt( string $gmt ): string {
+		$time = '' !== $gmt ? strtotime( $gmt . ' UTC' ) : false;
+		return false !== $time ? gmdate( 'c', $time ) : '';
 	}
 
-	private function ago( string $gmt ): string {
-		$time = '' !== $gmt ? strtotime( $gmt . ' UTC' ) : false;
-		return false !== $time ? human_time_diff( $time ) . ' ago' : 'unknown time';
+	private function text( string $value ): string {
+		return html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 	}
 }
