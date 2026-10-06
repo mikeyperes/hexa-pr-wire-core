@@ -49,8 +49,9 @@
 			return wp.data.select('core/editor').getEditedPostContent() || '';
 		}
 		const visual = window.tinymce && tinymce.get('content');
-		if (visual && !visual.isHidden()) {
-			return visual.getContent() || '';
+		if (visual && visual.initialized && !visual.isHidden()) {
+			// Before TinyMCE has loaded the article it reports empty; the textarea still holds it.
+			return visual.getContent() || $('#content').val() || '';
 		}
 		return $('#content').val() || '';
 	}
@@ -119,7 +120,7 @@
 	// Classic editor Visual tab: TinyMCE edits do not fire input events on #content.
 	function bindTinyMce(editor) {
 		if (editor && editor.id === 'content') {
-			editor.on('keyup change SetContent NodeChange undo redo', schedule);
+			editor.on('init keyup change SetContent NodeChange undo redo', schedule);
 		}
 	}
 	if (window.tinymce) {
@@ -139,4 +140,5 @@
 	}
 
 	render();
+	$(window).on('load', function () { window.setTimeout(render, 300); });
 })(jQuery);

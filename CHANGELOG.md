@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.3 — 2026-10-06
+
+- Release Requirements and Release Status re-check once the Visual editor has loaded the article, and fall back to the saved text before then. In 2.10.2 a release opened in the Visual editor could be measured as empty (0 words, H2 missing).
+
 ## 2.10.2 — 2026-10-06
 
 - Release Requirements: the editor script read the block-editor store, which exists but is empty on the classic editor, so it judged an empty article (every release showed the same result). It now reads the Visual or Code editor in use. Verified in a logged-in browser.
