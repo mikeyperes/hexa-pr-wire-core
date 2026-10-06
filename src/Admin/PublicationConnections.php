@@ -21,7 +21,7 @@ final class PublicationConnections implements Module {
 	private const NONCE = 'hprwc_publications';
 	private const ACTIONS = [ 'status' => 'hprwc_publication_status', 'update' => 'hprwc_publication_update' ];
 
-	/** Plugins shown as tiles, in order; tiles for plugins not installed are hidden unless always shown. */
+	/** Plugins shown as tiles, in order; `always` keeps a "Not installed" tile on Internal sites. */
 	private const PLUGINS = [
 		'hws-base-tools'              => [ 'label' => 'HWS Base Tools', 'repo' => 'mikeyperes/hws-base-tools', 'always' => true ],
 		'hexa-pr-wire-distributor'    => [ 'label' => 'Hexa PR Wire Distributor', 'repo' => 'mikeyperes/hexa-pr-wire-distributor', 'always' => true ],
@@ -127,7 +127,7 @@ final class PublicationConnections implements Module {
 			'recent'         => array_map( fn( array $post ): array => [ 'title' => $this->text( (string) $post['title'] ), 'url' => esc_url_raw( (string) $post['url'] ), 'date' => $this->gmt( (string) $post['date_gmt'] ) ], array_slice( (array) ( $report['recent_posts'] ?? ( ! empty( $report['last_post'] ) ? [ $report['last_post'] ] : [] ) ), 0, 5 ) ),
 			'plugins_route'  => $plugins['ok'],
 			'remote_updates' => $plugins['ok'] && ! empty( $plugins['data']['result']['remote_updates'] ),
-			'plugins'        => $plugins['ok'] ? $this->plugin_tiles( (array) ( $plugins['data']['result']['plugins'] ?? [] ) ) : [],
+			'plugins'        => $plugins['ok'] ? $this->plugin_tiles( (array) ( $plugins['data']['result']['plugins'] ?? [] ), $card['type'] ) : [],
 		] );
 	}
 
@@ -180,13 +180,18 @@ final class PublicationConnections implements Module {
 		return $cards;
 	}
 
-	/** @param array<int,array<string,mixed>> $installed */
-	private function plugin_tiles( array $installed ): array {
+	/**
+	 * Tiles for the Hexa plugins on one site. A missing plugin gets a tile only
+	 * on our own (Internal) sites; partner sites run just Distributor by design.
+	 *
+	 * @param array<int,array<string,mixed>> $installed
+	 */
+	private function plugin_tiles( array $installed, string $type ): array {
 		$by_slug = array_column( $installed, null, 'slug' );
 		$tiles = [];
 		foreach ( self::PLUGINS as $slug => $meta ) {
 			$plugin = $by_slug[ $slug ] ?? null;
-			if ( null === $plugin && ! $meta['always'] ) {
+			if ( null === $plugin && ( ! $meta['always'] || 'internal' !== $type ) ) {
 				continue;
 			}
 			$version = (string) ( $plugin['version'] ?? '' );
@@ -204,13 +209,13 @@ final class PublicationConnections implements Module {
 		return $tiles;
 	}
 
-	/** @return array{http:int,ms:int} Outside check for sites without a plugin connection. */
+	/** @return array{http:int,ms:int} Outside check (GET; some sites refuse HEAD) for sites without a plugin connection. */
 	private function site_check( string $url ): array {
 		if ( '' === $url ) {
 			return [ 'http' => 0, 'ms' => 0 ];
 		}
 		$started = microtime( true );
-		$response = wp_remote_head( $url, [ 'timeout' => 15, 'redirection' => 3 ] );
+		$response = wp_remote_get( $url, [ 'timeout' => 15, 'redirection' => 5, 'limit_response_size' => 65536 ] );
 		return [ 'http' => is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response ), 'ms' => (int) round( ( microtime( true ) - $started ) * 1000 ) ];
 	}
 

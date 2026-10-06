@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.9.5 — 2026-10-06
+
+- **Fewer misleading tiles.** "Not installed" tiles now appear only on Internal sites. Partner (REST and Plugin) sites run just Distributor by design.
+- **Premium site check uses GET.** The outside check for premium sites now sends a GET with redirects followed, instead of HEAD. Newsmax answers HEAD with a 301 that was reported as "No answer".
+
 ## 2.9.4 — 2026-10-06
 
 - **Faster release detection.** `PluginReleases` caches the latest GitHub version for 2 minutes instead of 10, so a new plugin release shows up on the cards almost immediately.
