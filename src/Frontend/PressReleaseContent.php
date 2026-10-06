@@ -16,7 +16,7 @@ final class PressReleaseContent implements Module {
 		}
 		$date = trim( (string) get_post_meta( $post_id, 'press_release_date', true ) );
 		$location = trim( (string) get_post_meta( $post_id, 'press_release_location', true ) );
-		if ( '' !== $date && '' !== $location ) {
+		if ( '' !== $date && '' !== $location && ! self::opens_with_dateline( $content, $location, $date ) ) {
 			$content = '<p class="hprwc-dateline"><strong>' . esc_html( $location ) . ' (Hexa PR Wire — ' . esc_html( $date ) . ')</strong> — </p>' . $content;
 		}
 		$contacts = $this->contacts( $post_id );
@@ -32,6 +32,21 @@ final class PressReleaseContent implements Module {
 			$content .= '<aside class="hprwc-disclaimer"><hr><small><em>' . esc_html( $disclaimer ) . '</em></small></aside>';
 		}
 		return $content;
+	}
+
+	/**
+	 * True when the article itself already opens with the place and date (a
+	 * dateline typed into the editor). The match ignores capitals, spacing and
+	 * punctuation, so "AMERICAN FORK, Utah — October 5, 2026" matches location
+	 * "American Fork, Utah" and date "October 5, 2026". Only the opening of the
+	 * article is checked, so a later mention does not count.
+	 */
+	public static function opens_with_dateline( string $content, string $location, string $date ): bool {
+		$plain = static fn( string $text ): string => (string) preg_replace( '/[^\p{L}\p{N}]+/u', '', mb_strtolower( html_entity_decode( strip_tags( $text ), ENT_QUOTES, 'UTF-8' ) ) );
+		$opening = mb_substr( $plain( $content ), 0, 160 );
+		$location = $plain( $location );
+		$date = $plain( $date );
+		return '' !== $location && '' !== $date && str_contains( $opening, $location ) && str_contains( $opening, $date );
 	}
 
 	/** @return string[] */

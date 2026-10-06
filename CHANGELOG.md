@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.10.4 — 2026-10-06
+
+- Press Release Date: defaults to today when empty; ‹ › buttons (or Alt+←/→) step one day; a calendar picker and a Today link set it. The stored format stays "October 5, 2026".
+- No duplicate dateline: when the article already opens with the same place and date (ignoring capitals, spacing and punctuation), the automatic "Place (Hexa PR Wire — Date) —" line is not added and the editor's version is shown. Tested in `tests/dateline.php`.
+
 ## 2.9.8 — 2026-10-06
 
 - **Fix add-to-cart fatal.** `BillingPricingBridge::validate()` required 5 arguments, but WooCommerce passes 3 for simple products, so adding the standard release to the cart crashed the site. Optional arguments now default.

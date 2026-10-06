@@ -38,6 +38,7 @@ final class EditorChecklist implements Module {
 			return;
 		}
 		wp_enqueue_style( 'hprwc-admin', HPRWC_URL . 'assets/admin/core.css', [], HPRWC_VERSION );
+		wp_enqueue_script( 'hprwc-release-date', HPRWC_URL . 'assets/admin/release-date.js', [ 'jquery' ], HPRWC_VERSION, true );
 		wp_enqueue_script( 'hprwc-editor-checklist', HPRWC_URL . 'assets/admin/editor-checklist.js', [ 'jquery', 'wp-data' ], HPRWC_VERSION, true );
 	}
 
