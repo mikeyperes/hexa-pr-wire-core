@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.1 — 2026-10-06
+
+- **Version fix.** The plugin header and `HPRWC_VERSION` now read 2.10.1. The 2.10.0 release carried the Echo RSS and FIFU controls but kept the 2.9.7 header, because its version bump targeted the wrong previous version.
+
 ## 2.10.0 — 2026-10-06
 
 - **Echo RSS and FIFU on the cards.** Each card shows Echo RSS: importing Hexa PR Wire (with **Switch off**), on with the Hexa PR Wire job off, or off. It also shows FIFU: active and supported, with the count of press releases still to clean, or off.
