@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.8 — 2026-10-06
+
+- **Fix add-to-cart fatal.** `BillingPricingBridge::validate()` required 5 arguments, but WooCommerce passes 3 for simple products, so adding the standard release to the cart crashed the site. Optional arguments now default.
+
 ## 2.10.3 — 2026-10-06
 
 - Release Requirements and Release Status re-check once the Visual editor has loaded the article, and fall back to the saved text before then. In 2.10.2 a release opened in the Visual editor could be measured as empty (0 words, H2 missing).

@@ -27,7 +27,7 @@ final class BillingPricingBridge implements Module {
 	}
 
 	/** @param array<string,mixed> $variations */
-	public function validate( bool $passed, int $product_id, int $quantity, int $variation_id, array $variations ): bool {
+	public function validate( bool $passed, int $product_id, int $quantity = 1, int $variation_id = 0, array $variations = [] ): bool {
 		unset( $quantity, $variation_id, $variations );
 		if ( ! $passed || ! $this->is_standard_product( $product_id ) ) {
 			return $passed;
@@ -45,7 +45,7 @@ final class BillingPricingBridge implements Module {
 	}
 
 	/** @param array<string,mixed> $data @return array<string,mixed> */
-	public function cart_data( array $data, int $product_id, int $variation_id ): array {
+	public function cart_data( array $data, int $product_id, int $variation_id = 0 ): array {
 		unset( $variation_id );
 		if ( ! $this->is_standard_product( $product_id ) ) {
 			return $data;
