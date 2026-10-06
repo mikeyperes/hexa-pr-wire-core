@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.12.1 — 2026-10-06
+
+- Submitting a release starts SMP's Going Live generation in the same save, right after the editor's fields are stored, instead of on the next background cron run (up to 15 minutes later on this host). SMP now only starts Publish jobs, which answer at once, so the editor that loads after Publish already shows the excerpt, summary and FAQs being written. Requires SMP Publication Integration 2.3.0.
+
 ## 2.12.0 — 2026-10-06
 
 - **Full-site live search.** An Elementor Pro Search widget with Query ID `hprw_site_search` now searches every public content type (releases, the external press-release archive, outlet articles, pages, publications and more) as the visitor types, with Core's matching (all words, word starts) across titles, content, summaries, datelines, categories, publications and authors, plus the visible text of Elementor pages.
