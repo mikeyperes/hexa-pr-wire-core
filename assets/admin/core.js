@@ -55,6 +55,21 @@
 		refresh();
 	}
 
+	// Generic add/remove rows: a [data-hprwc-repeater] box holding a <template> row.
+	function initRepeater($box) {
+		const $list = $box.find('.hprwc-repeater-rows');
+		const sync = () => $box.find('.hprwc-repeater-empty').prop('hidden', $list.children().length > 0);
+		$box.on('click', '[data-repeater-add]', function () {
+			$list.append($box.find('template').html());
+			$list.children().last().find('input').first().trigger('focus');
+			sync();
+		});
+		$box.on('click', '[data-repeater-remove]', function () {
+			$(this).closest('.hprwc-repeater-row').remove();
+			sync();
+		});
+		sync();
+	}
 
 	$(function () {
 		if ($('body').hasClass('user-new-php')) {
@@ -66,6 +81,9 @@
 		}
 		$('.hprwc-entitlements').each(function () {
 			initEntitlements($(this));
+		});
+		$('[data-hprwc-repeater]').each(function () {
+			initRepeater($(this));
 		});
 	});
 })(jQuery);

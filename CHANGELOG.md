@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.9.6 — 2026-10-06
+
+- **One card for publications, pricing and payment.** The customer profile's Publications card now hosts Billing's standard price, credit-card switch and custom services through the `hprwc_customer_billing_settings` and `hprwc_customer_billing_services` actions. Empty publication prices show the customer's effective standard price via `hprwc_customer_default_price`.
+- Generic add/remove row repeater (`[data-hprwc-repeater]`) and a public `CustomerProfile::toggle_html()` switch for add-ons.
+
 ## 2.9.5 — 2026-10-06
 
 - **Fewer misleading tiles.** "Not installed" tiles now appear only on Internal sites. Partner (REST and Plugin) sites run just Distributor by design.

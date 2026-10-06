@@ -506,3 +506,57 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+/* Billing blocks inside the Publications card */
+.hprwc-billing {
+	border-bottom: 1px solid #f0f0f1;
+	margin: 0 0 16px;
+	padding: 0 0 8px;
+}
+
+.hprwc-billing .hprwc-field {
+	align-items: center;
+	padding: 6px 0;
+}
+
+.hprwc-billing .hprwc-label {
+	padding-top: 0;
+}
+
+.hprwc-billing-help {
+	color: #646970;
+}
+
+.hprwc-services {
+	border-top: 1px solid #f0f0f1;
+	margin-top: 20px;
+	padding-top: 4px;
+}
+
+.hprwc-repeater-rows {
+	display: grid;
+	gap: 6px;
+	margin: 0 0 8px;
+}
+
+.hprwc-repeater-row {
+	align-items: center;
+	display: flex;
+	gap: 8px;
+	margin: 0;
+}
+
+.hprwc-customer .hprwc-service-name {
+	flex: 1;
+	max-width: 420px;
+	min-height: 30px;
+}
+
+.hprwc-repeater-row .button-link {
+	color: #b32d2e;
+}
+
+.hprwc-repeater-empty {
+	color: #646970;
+	margin: 0 0 8px;
+}

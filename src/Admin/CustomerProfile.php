@@ -40,6 +40,7 @@ final class CustomerProfile implements Module {
 		$access_mode = $this->policies->publication_access_mode( $user_id );
 		$allowed = $this->policies->allowed_publications( $user_id );
 		$excluded = $this->policies->excluded_publications( $user_id, false );
+		$default_price = (string) apply_filters( 'hprwc_customer_default_price', '', $user_id );
 		$modes = [
 			'unrestricted' => [ 'Every publication', 'All current and future publications.' ],
 			'restricted' => [ 'Only selected publications', 'Only the ones switched on below. New publications stay off.' ],
@@ -67,7 +68,8 @@ final class CustomerProfile implements Module {
 			</section>
 
 			<section class="hprwc-card hprwc-entitlements" data-mode="<?php echo esc_attr( $access_mode ); ?>">
-				<header><h3>Publications &amp; pricing</h3><p>Choose where this customer can publish, then adjust individual publications and prices.</p></header>
+				<header><h3>Publications, pricing &amp; payment</h3><p>Everything this customer can buy, what it costs them and how they pay.</p></header>
+				<?php do_action( 'hprwc_customer_billing_settings', $user ); ?>
 
 				<p class="hprwc-section-label">Where can they publish?</p>
 				<div class="hprwc-modes" role="radiogroup" aria-label="Publication access">
@@ -98,13 +100,14 @@ final class CustomerProfile implements Module {
 								<?php if ( $outlets ) : ?><span class="hprwc-tag"><?php echo esc_html( sprintf( _n( '%d outlet', '%d outlets', $outlets ), $outlets ) ); ?></span><?php endif; ?>
 								<span class="hprwc-inherited">Blocked by group</span>
 							</span>
-							<span class="hprwc-price"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]{0,2}" name="hprwc_publication_prices[<?php echo esc_attr( (string) $id ); ?>]" value="<?php echo esc_attr( (string) ( $prices[ $id ] ?? '' ) ); ?>" placeholder="Default" aria-label="Price for <?php echo esc_attr( $term->name ); ?>"></span>
+							<span class="hprwc-price"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]{0,2}" name="hprwc_publication_prices[<?php echo esc_attr( (string) $id ); ?>]" value="<?php echo esc_attr( (string) ( $prices[ $id ] ?? '' ) ); ?>" placeholder="<?php echo esc_attr( '' !== $default_price ? $default_price : 'Default' ); ?>" aria-label="Price for <?php echo esc_attr( $term->name ); ?>"></span>
 						</li>
 					<?php endforeach; ?>
 						<li class="hprwc-empty" hidden>No publications match your search.</li>
 					</ul>
 				</div>
-				<p class="description">An empty price means the customer pays the default store price. Prices never change access.</p>
+				<p class="description">An empty price uses this customer's standard price<?php echo '' !== $default_price ? esc_html( ' ($' . $default_price . ')' ) : ''; ?>. Prices never change access.</p>
+				<?php do_action( 'hprwc_customer_billing_services', $user ); ?>
 			</section>
 
 			<section class="hprwc-card">
@@ -147,7 +150,12 @@ final class CustomerProfile implements Module {
 	}
 
 	private function toggle( string $name, int $value, bool $checked, string $label ): void {
-		printf(
+		echo self::toggle_html( $name, $value, $checked, $label ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
+	/** Shared switch markup, also used by add-ons that render into this screen. */
+	public static function toggle_html( string $name, int $value, bool $checked, string $label ): string {
+		return sprintf(
 			'<label class="hprwc-switch"><input type="checkbox" name="%1$s" value="%2$s" %3$s><span class="hprwc-switch-track" aria-hidden="true"></span><span class="screen-reader-text">%4$s</span></label>',
 			esc_attr( $name ),
 			esc_attr( (string) $value ),
