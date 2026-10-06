@@ -19,7 +19,7 @@ use HexaPrWire\Core\Syndication\PluginReleases;
  */
 final class PublicationConnections implements Module {
 	private const NONCE = 'hprwc_publications';
-	private const ACTIONS = [ 'status' => 'hprwc_publication_status', 'update' => 'hprwc_publication_update' ];
+	private const ACTIONS = [ 'status' => 'hprwc_publication_status', 'update' => 'hprwc_publication_update', 'echo' => 'hprwc_publication_echo' ];
 
 	/** Plugins shown as tiles, in order; `always` keeps a "Not installed" tile on Internal sites. */
 	private const PLUGINS = [
@@ -39,6 +39,7 @@ final class PublicationConnections implements Module {
 	public function register(): void {
 		add_action( 'wp_ajax_' . self::ACTIONS['status'], [ $this, 'ajax_status' ] );
 		add_action( 'wp_ajax_' . self::ACTIONS['update'], [ $this, 'ajax_update' ] );
+		add_action( 'wp_ajax_' . self::ACTIONS['echo'], [ $this, 'ajax_echo' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'assets' ] );
 	}
 
@@ -61,6 +62,10 @@ final class PublicationConnections implements Module {
 		$counts = array_count_values( array_map( static fn( array $card ): string => $card['type'] ?: 'unset', $cards ) );
 		?>
 		<div class="hprwc-pubs" data-hprwc-pubs>
+			<div class="hprwc-pubs__banner" data-pubs-echo-banner hidden>
+				<p><strong>Echo RSS is also importing Hexa PR Wire</strong> on <span data-pubs-echo-count>0</span> site(s). Imports keep running, but each release is fetched twice. Switching off the Echo job leaves Echo RSS and its other feeds untouched.</p>
+				<button type="button" class="button button-primary" data-pubs-echo-all>Switch off on all</button>
+			</div>
 			<header class="hprwc-pubs__bar">
 				<div>
 					<h2>Publications</h2>
@@ -125,6 +130,11 @@ final class PublicationConnections implements Module {
 			'last_sync'      => $this->gmt( (string) ( $report['last_pull']['ended_gmt'] ?? '' ) ),
 			'last_sync_error'=> (string) ( $report['last_pull']['error'] ?? '' ),
 			'recent'         => array_map( fn( array $post ): array => [ 'title' => $this->text( (string) $post['title'] ), 'url' => esc_url_raw( (string) $post['url'] ), 'date' => $this->gmt( (string) $post['date_gmt'] ) ], array_slice( (array) ( $report['recent_posts'] ?? ( ! empty( $report['last_post'] ) ? [ $report['last_post'] ] : [] ) ), 0, 5 ) ),
+			'echo_active'    => ! empty( $report['legacy']['echo']['active'] ),
+			'echo_jobs'      => (int) ( $report['legacy']['echo']['hexa_pr_wire_jobs'] ?? 0 ),
+			'echo_route'     => version_compare( (string) ( $report['versions']['distributor'] ?? '0' ), '3.6.3', '>=' ),
+			'fifu_active'    => ! empty( $report['legacy']['fifu']['active'] ),
+			'fifu_to_clean'  => (int) ( $report['legacy']['fifu']['press_releases_to_clean'] ?? 0 ),
 			'plugins_route'  => $plugins['ok'],
 			'remote_updates' => $plugins['ok'] && ! empty( $plugins['data']['result']['remote_updates'] ),
 			'plugins'        => $plugins['ok'] ? $this->plugin_tiles( (array) ( $plugins['data']['result']['plugins'] ?? [] ), $card['type'] ) : [],
@@ -143,6 +153,19 @@ final class PublicationConnections implements Module {
 			wp_send_json_error( [ 'message' => $this->failure( $result['status'], $result['message'] ) ], 502 );
 		}
 		wp_send_json_success( (array) ( $result['data']['result'] ?? [] ) );
+	}
+
+	/** Switch off only the Echo RSS job that imports Hexa PR Wire on one site (Echo and its other feeds stay). */
+	public function ajax_echo(): void {
+		$card = $this->guarded_card();
+		if ( ! ConnectionType::is_connected( $card['type'] ) ) {
+			wp_send_json_error( [ 'message' => 'This publication has no plugin connection.' ], 400 );
+		}
+		$result = $this->outlets->command( $card['host'], 'echo/disable' );
+		if ( ! $result['ok'] ) {
+			wp_send_json_error( [ 'message' => $this->failure( $result['status'], $result['message'] ) ], 502 );
+		}
+		wp_send_json_success( [ 'message' => 'The Hexa PR Wire Echo job is off.' ] );
 	}
 
 	/** @return array<string,mixed> */

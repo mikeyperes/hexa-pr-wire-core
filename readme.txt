@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.9.5
+Stable tag: 2.10.0
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.10.0 =
+* Publications cards show each site's Echo RSS and FIFU state. A warning at the top of the page, with a one-click fix, appears while Echo RSS still imports Hexa PR Wire on any site. Fixes go through each site's Distributor and switch off only the Hexa PR Wire Echo job.
 
 = 2.9.5 =
 * Publications cards: partner (REST) sites no longer show tiles for plugins they intentionally don't run; premium sites are checked with a normal page request.

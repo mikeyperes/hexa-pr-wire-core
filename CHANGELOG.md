@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.10.0 — 2026-10-06
+
+- **Echo RSS and FIFU on the cards.** Each card shows Echo RSS: importing Hexa PR Wire (with **Switch off**), on with the Hexa PR Wire job off, or off. It also shows FIFU: active and supported, with the count of press releases still to clean, or off.
+- **Top warning banner.** While any site still runs a Hexa PR Wire Echo job, a banner at the top offers **Switch off on all**. Each switch-off calls that site's Distributor 3.6.3+ `POST /hpr-distributor/v1/echo/disable`, so it works for partner (REST) sites as well as our own.
+- New AJAX action: `hprwc_publication_echo`.
+
 ## 2.9.7 — 2026-10-06
 
 - Publication price placeholders and the standard-price note now update as the standard price is typed, instead of showing the last saved value until the profile is saved.

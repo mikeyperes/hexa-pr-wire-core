@@ -86,6 +86,17 @@
 			$body.append(el('p', 'hprwc-pcard__error', 'Last sync error: ' + d.last_sync_error));
 		}
 
+		$card.attr('data-echo', d.echo_jobs > 0 && d.echo_route ? d.echo_jobs : 0);
+		const $legacy = el('div', 'hprwc-stats');
+		const $echo = stat('Echo RSS', d.echo_jobs > 0 ? 'Importing Hexa PR Wire (' + d.echo_jobs + ')' : (d.echo_active ? 'On · Hexa PR Wire job off' : 'Off'), d.echo_jobs > 0 ? 'warn' : 'ok');
+		if (d.echo_jobs > 0) {
+			const $off = el('button', 'button button-small hprwc-stat__btn', 'Switch off').attr({ type: 'button', 'data-pub-echo': '' });
+			if (!d.echo_route) $off.prop('disabled', true).attr('title', 'Update Distributor to 3.6.3 or later first.');
+			$echo.append($off);
+		}
+		$legacy.append($echo).append(stat('FIFU', d.fifu_active ? 'Active · supported' + (d.fifu_to_clean ? ' (' + d.fifu_to_clean + ' releases to clean)' : '') : 'Off', ''));
+		$body.append($legacy);
+
 		const $tiles = el('div', 'hprwc-tiles');
 		if (d.plugins_route) {
 			(d.plugins || []).forEach(function (t) { $tiles.append(tile($card, t, d.remote_updates)); });
@@ -106,7 +117,7 @@
 		}
 		$body.append($recent);
 
-		const attention = d.http !== 200 || outdated || missingCore || !d.plugins_route || !!d.last_sync_error || !d.feed_enabled;
+		const attention = d.http !== 200 || outdated || missingCore || !d.plugins_route || !!d.last_sync_error || !d.feed_enabled || d.echo_jobs > 0;
 		setState($card, attention ? 'warn' : 'ok');
 	}
 
@@ -179,9 +190,26 @@
 			});
 	}
 
+	/* ---------- Echo RSS ---------- */
+
+	function switchOffEcho($card) {
+		const pub = $card.data('pub');
+		$card.find('[data-pub-echo]').prop('disabled', true).html('<span class="hprwc-spin"></span>Switching off…');
+		return post(cfg.actions.echo, { publication_id: pub.id })
+			.fail(function (xhr) { $card.find('[data-pub-echo]').prop('disabled', false).text('Retry').attr('title', errorText(xhr)); })
+			.done(function () { load($card); });
+	}
+
+	function updateEchoBanner() {
+		const n = $('.hprwc-pcard').filter(function () { return +$(this).attr('data-echo') > 0; }).length;
+		$('[data-pubs-echo-count]').text(n);
+		$('[data-pubs-echo-banner]').prop('hidden', n === 0);
+	}
+
 	/* ---------- page ---------- */
 
 	function summarize() {
+		updateEchoBanner();
 		const $cards = $('.hprwc-pcard');
 		const n = function (s) { return $cards.filter('[data-state="' + s + '"]').length; };
 		const pending = n('loading') + n('queued');
@@ -218,6 +246,15 @@
 		$root.on('input', '[data-pubs-search]', applyFilters);
 		$root.on('click', '[data-pubs-refresh-all]', function () { enqueue($root.find('.hprwc-pcard')); });
 		$root.on('click', '[data-pub-refresh]', function () { load($(this).closest('.hprwc-pcard')); });
+		$root.on('click', '[data-pub-echo]', function () { switchOffEcho($(this).closest('.hprwc-pcard')); });
+		$root.on('click', '[data-pubs-echo-all]', function () {
+			const $btn = $(this).prop('disabled', true).text('Switching off…');
+			const cards = $root.find('.hprwc-pcard').filter(function () { return +$(this).attr('data-echo') > 0; }).toArray();
+			(function next() {
+				if (!cards.length) { $btn.prop('disabled', false).text('Switch off on all'); return; }
+				switchOffEcho($(cards.shift())).always(next);
+			})();
+		});
 		$root.on('click', '[data-pub-update]', function () {
 			update($(this).closest('.hprwc-pcard'), $(this).data('pub-update'), $(this));
 		});

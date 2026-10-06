@@ -25,6 +25,32 @@
 	display: none !important;
 }
 
+/* ---------- Echo RSS banner ---------- */
+
+.hprwc-pubs__banner {
+	align-items: center;
+	background: var(--warn-bg);
+	border: 1px solid #fedf89;
+	border-radius: 12px;
+	display: flex;
+	gap: 16px;
+	justify-content: space-between;
+	margin: 0 0 14px;
+	padding: 14px 20px;
+}
+
+.hprwc-pubs__banner p {
+	color: var(--warn-ink);
+	margin: 0;
+}
+
+.hprwc-stat__btn {
+	align-self: flex-start;
+	display: inline-flex !important;
+	gap: 6px;
+	margin-top: 4px !important;
+}
+
 /* ---------- top bar ---------- */
 
 .hprwc-pubs__bar {
