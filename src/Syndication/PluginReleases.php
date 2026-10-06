@@ -5,10 +5,10 @@ namespace HexaPrWire\Core\Syndication;
 /**
  * Latest released version of a Hexa plugin: the `Version:` header of its main
  * file on GitHub's main branch, the same source the plugins' own updaters use.
- * Looked up once per plugin for every outlet and cached for ten minutes.
+ * Looked up once per plugin for every outlet and cached for two minutes.
  */
 final class PluginReleases {
-	private const TTL = 600;
+	private const TTL = 120;
 
 	public function latest( string $repo, string $main_file ): string {
 		$key = 'hprwc_release_' . md5( $repo . '|' . $main_file );

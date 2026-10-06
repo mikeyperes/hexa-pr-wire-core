@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.4 — 2026-10-06
+
+- **Faster release detection.** `PluginReleases` caches the latest GitHub version for 2 minutes instead of 10, so a new plugin release shows up on the cards almost immediately.
+
 ## 2.9.3 — 2026-10-06
 
 - **Card class renamed.** Publications cards use `.hprwc-pcard*`. `.hprwc-pub` belongs to the customer profile's entitlement rows, and its `core.css` rule (`align-items: center`) was squeezing the card header. The 2.9.2 change alone did not fix it.
