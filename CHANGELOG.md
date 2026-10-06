@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.2 — 2026-10-06
+
+- **Card header layout fix.** Publications cards now set `align-items: stretch`. An inherited admin style centered the card's children, which squeezed the header.
+
 ## 2.9.1 — 2026-10-06
 
 - **Latest versions now come from Hexa PR Wire, not from each site.** The new `Syndication\PluginReleases` reads the `Version:` header of the plugin's main file on GitHub `main` and caches it for 10 minutes. The cards compare that against the version each site reports.
