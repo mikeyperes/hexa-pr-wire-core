@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.5 — 2026-10-06
+
+- Press Release Date rebuilt as one joined control: ‹ [date] ›, a calendar button that opens the date picker, and Today. Arrow up/down also step a day.
+
 ## 2.10.4 — 2026-10-06
 
 - Press Release Date: defaults to today when empty; ‹ › buttons (or Alt+←/→) step one day; a calendar picker and a Today link set it. The stored format stays "October 5, 2026".
