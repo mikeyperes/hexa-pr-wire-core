@@ -122,11 +122,11 @@
 	const queue = [];
 	let active = 0;
 
-	function load($card, refresh) {
+	function load($card) {
 		const pub = $card.data('pub');
 		setState($card, 'loading');
 		$card.find('[data-pub-body]').html('<div class="hprwc-pub__loading"><span class="hprwc-spin"></span>Checking site…</div>');
-		return post(cfg.actions.status, { publication_id: pub.id, refresh: refresh ? 1 : 0 })
+		return post(cfg.actions.status, { publication_id: pub.id })
 			.done(function (r) {
 				if (!r || !r.success) {
 					$card.find('[data-pub-body]').empty().append(el('p', 'hprwc-pub__error', (r && r.data && r.data.message) || 'Check failed.'));
@@ -147,16 +147,16 @@
 		while (active < CONCURRENCY && queue.length) {
 			const job = queue.shift();
 			active += 1;
-			load(job.$card, job.refresh).always(function () { active -= 1; pump(); });
+			load(job.$card).always(function () { active -= 1; pump(); });
 		}
 	}
 
-	function enqueue($cards, refresh) {
+	function enqueue($cards) {
 		$cards.each(function () {
 			const $c = $(this);
 			setState($c, 'queued');
 			$c.find('[data-pub-body]').html('<div class="hprwc-pub__loading"><span class="hprwc-spin"></span>Waiting…</div>');
-			queue.push({ $card: $c, refresh: refresh });
+			queue.push({ $card: $c });
 		});
 		pump();
 	}
@@ -171,7 +171,7 @@
 			.done(function (r) {
 				const d = (r && r.data) || {};
 				$tile.removeClass('is-busy').find('.hprwc-tile__note').text(d.message || 'Updated') ;
-				load($card, true);
+				load($card);
 			})
 			.fail(function (xhr) {
 				$tile.removeClass('is-busy').addClass('is-bad').find('.hprwc-tile__note').text(errorText(xhr));
@@ -216,13 +216,13 @@
 			applyFilters();
 		});
 		$root.on('input', '[data-pubs-search]', applyFilters);
-		$root.on('click', '[data-pubs-refresh-all]', function () { enqueue($root.find('.hprwc-pub'), true); });
-		$root.on('click', '[data-pub-refresh]', function () { load($(this).closest('.hprwc-pub'), true); });
+		$root.on('click', '[data-pubs-refresh-all]', function () { enqueue($root.find('.hprwc-pub')); });
+		$root.on('click', '[data-pub-refresh]', function () { load($(this).closest('.hprwc-pub')); });
 		$root.on('click', '[data-pub-update]', function () {
 			update($(this).closest('.hprwc-pub'), $(this).data('pub-update'), $(this));
 		});
 
-		enqueue($root.find('.hprwc-pub'), false);
+		enqueue($root.find('.hprwc-pub'));
 	}
 
 	$(init);

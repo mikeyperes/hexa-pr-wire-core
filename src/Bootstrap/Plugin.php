@@ -98,7 +98,7 @@ final class Plugin {
 				->add( new EditorStyles() )
 			->add( $editor_cleanup = new EditorScreenCleanup() )
 			->add( $term_limits = new CustomerTermLimits() )
-			->add( $connections = new \HexaPrWire\Core\Admin\PublicationConnections( $publications, $this->destinations, $outlets ) )
+			->add( $connections = new \HexaPrWire\Core\Admin\PublicationConnections( $publications, $this->destinations, $outlets, new \HexaPrWire\Core\Syndication\PluginReleases() ) )
 			->add( new Dashboard( $notification_settings, new StatusReport(), $editor_cleanup, $term_limits, $connections ) )
 			->add( new OwnershipService() )
 			->add( new DeliveryLinkGenerator( $publications, $urls ) )

@@ -8,6 +8,7 @@ use HexaPrWire\Core\Contracts\PublicationRepository;
 use HexaPrWire\Core\Domain\Publication\ConnectionType;
 use HexaPrWire\Core\DestinationRegistry;
 use HexaPrWire\Core\Syndication\OutletClient;
+use HexaPrWire\Core\Syndication\PluginReleases;
 
 /**
  * Hexa PR Wire → Publications: one live card per publication.
@@ -22,16 +23,17 @@ final class PublicationConnections implements Module {
 
 	/** Plugins shown as tiles, in order; tiles for plugins not installed are hidden unless always shown. */
 	private const PLUGINS = [
-		'hws-base-tools'              => [ 'label' => 'HWS Base Tools', 'always' => true ],
-		'hexa-pr-wire-distributor'    => [ 'label' => 'Hexa PR Wire Distributor', 'always' => true ],
-		'smp-publication-integration' => [ 'label' => 'SMP Publication Integration', 'always' => true ],
-		'smp-verified-profiles'       => [ 'label' => 'SMP Verified Profiles', 'always' => false ],
+		'hws-base-tools'              => [ 'label' => 'HWS Base Tools', 'repo' => 'mikeyperes/hws-base-tools', 'always' => true ],
+		'hexa-pr-wire-distributor'    => [ 'label' => 'Hexa PR Wire Distributor', 'repo' => 'mikeyperes/hexa-pr-wire-distributor', 'always' => true ],
+		'smp-publication-integration' => [ 'label' => 'SMP Publication Integration', 'repo' => 'mikeyperes/smp-publication-integration', 'always' => true ],
+		'smp-verified-profiles'       => [ 'label' => 'SMP Verified Profiles', 'repo' => 'mikeyperes/smp-verified-profiles', 'always' => false ],
 	];
 
 	public function __construct(
 		private PublicationRepository $publications,
 		private DestinationRegistry $destinations,
-		private OutletClient $outlets
+		private OutletClient $outlets,
+		private PluginReleases $releases
 	) {}
 
 	public function register(): void {
@@ -50,7 +52,6 @@ final class PublicationConnections implements Module {
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( self::NONCE ),
 			'actions' => self::ACTIONS,
-			'plugins' => self::PLUGINS,
 			'types'   => ConnectionType::LABELS,
 		] );
 	}
@@ -111,7 +112,7 @@ final class PublicationConnections implements Module {
 			wp_send_json_success( [ 'connected' => true, 'reachable' => false, 'http' => $health['status'], 'ms' => $ms, 'message' => $this->failure( $health['status'], $health['message'] ) ] );
 		}
 
-		$plugins = $this->outlets->plugins( $card['host'], ! empty( $_POST['refresh'] ) );
+		$plugins = $this->outlets->plugins( $card['host'] );
 		$report = $health['data'];
 		wp_send_json_success( [
 			'connected'      => true,
@@ -188,14 +189,16 @@ final class PublicationConnections implements Module {
 			if ( null === $plugin && ! $meta['always'] ) {
 				continue;
 			}
+			$version = (string) ( $plugin['version'] ?? '' );
+			$latest = null !== $plugin ? $this->releases->latest( $meta['repo'], basename( (string) $plugin['file'] ) ) : '';
 			$tiles[] = [
 				'slug'      => $slug,
 				'label'     => $meta['label'],
 				'installed' => null !== $plugin,
 				'active'    => ! empty( $plugin['active'] ),
-				'version'   => (string) ( $plugin['version'] ?? '' ),
-				'latest'    => (string) ( $plugin['latest'] ?? '' ),
-				'outdated'  => ! empty( $plugin['update_available'] ),
+				'version'   => $version,
+				'latest'    => $latest,
+				'outdated'  => '' !== $latest && version_compare( $latest, $version, '>' ),
 			];
 		}
 		return $tiles;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.9.1 — 2026-10-06
+
+- **Latest versions now come from Hexa PR Wire, not from each site.** The new `Syndication\PluginReleases` reads the `Version:` header of the plugin's main file on GitHub `main` and caches it for 10 minutes. The cards compare that against the version each site reports.
+- **Why:** sites running older HWS Base Tools only load their updater in wp-admin, so they reported no latest version, and their tile showed as up to date.
+
 ## 2.9.0 — 2026-10-06
 
 - **Publications page redesigned as live cards.** Code: `Admin\PublicationConnections`, `assets/admin/publications.js`, `assets/admin/publications.css`.

@@ -34,12 +34,12 @@ final class OutletClient {
 	}
 
 	/**
-	 * Installed and latest version of each Hexa plugin on the outlet.
+	 * Installed version and state of each Hexa plugin on the outlet.
 	 *
 	 * @return array{ok:bool,status:int,message:string,data:array<string,mixed>}
 	 */
-	public function plugins( string $host, bool $refresh = false ): array {
-		return $this->request( 'GET', $host, 'plugins' . ( $refresh ? '?refresh=1' : '' ), [], 45 );
+	public function plugins( string $host ): array {
+		return $this->request( 'GET', $host, 'plugins', [], 45 );
 	}
 
 	/**
