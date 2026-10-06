@@ -66,7 +66,7 @@
 	function renderConnected($card, d) {
 		const $body = $card.find('[data-pub-body]').empty();
 		if (!d.reachable) {
-			$body.append(el('p', 'hprwc-pub__error', d.message));
+			$body.append(el('p', 'hprwc-pcard__error', d.message));
 			$body.append(el('div', 'hprwc-stats').append(stat('Site', d.http ? 'HTTP ' + d.http : 'No answer', 'bad')));
 			setState($card, 'error');
 			return;
@@ -83,7 +83,7 @@
 			.append(stat('Remote updates', d.plugins_route ? (d.remote_updates ? 'On' : 'Off') : 'Needs Distributor 3.6+', d.remote_updates ? 'ok' : 'warn')));
 
 		if (d.last_sync_error) {
-			$body.append(el('p', 'hprwc-pub__error', 'Last sync error: ' + d.last_sync_error));
+			$body.append(el('p', 'hprwc-pcard__error', 'Last sync error: ' + d.last_sync_error));
 		}
 
 		const $tiles = el('div', 'hprwc-tiles');
@@ -125,11 +125,11 @@
 	function load($card) {
 		const pub = $card.data('pub');
 		setState($card, 'loading');
-		$card.find('[data-pub-body]').html('<div class="hprwc-pub__loading"><span class="hprwc-spin"></span>Checking site…</div>');
+		$card.find('[data-pub-body]').html('<div class="hprwc-pcard__loading"><span class="hprwc-spin"></span>Checking site…</div>');
 		return post(cfg.actions.status, { publication_id: pub.id })
 			.done(function (r) {
 				if (!r || !r.success) {
-					$card.find('[data-pub-body]').empty().append(el('p', 'hprwc-pub__error', (r && r.data && r.data.message) || 'Check failed.'));
+					$card.find('[data-pub-body]').empty().append(el('p', 'hprwc-pcard__error', (r && r.data && r.data.message) || 'Check failed.'));
 					setState($card, 'error');
 				} else if (r.data.connected) {
 					renderConnected($card, r.data);
@@ -138,7 +138,7 @@
 				}
 			})
 			.fail(function (xhr) {
-				$card.find('[data-pub-body]').empty().append(el('p', 'hprwc-pub__error', errorText(xhr)));
+				$card.find('[data-pub-body]').empty().append(el('p', 'hprwc-pcard__error', errorText(xhr)));
 				setState($card, 'error');
 			});
 	}
@@ -155,7 +155,7 @@
 		$cards.each(function () {
 			const $c = $(this);
 			setState($c, 'queued');
-			$c.find('[data-pub-body]').html('<div class="hprwc-pub__loading"><span class="hprwc-spin"></span>Waiting…</div>');
+			$c.find('[data-pub-body]').html('<div class="hprwc-pcard__loading"><span class="hprwc-spin"></span>Waiting…</div>');
 			queue.push({ $card: $c });
 		});
 		pump();
@@ -182,7 +182,7 @@
 	/* ---------- page ---------- */
 
 	function summarize() {
-		const $cards = $('.hprwc-pub');
+		const $cards = $('.hprwc-pcard');
 		const n = function (s) { return $cards.filter('[data-state="' + s + '"]').length; };
 		const pending = n('loading') + n('queued');
 		const attention = n('warn') + n('error');
@@ -196,7 +196,7 @@
 	function applyFilters() {
 		const filter = $('[data-pubs-filter].is-active').data('pubs-filter');
 		const term = String($('[data-pubs-search]').val() || '').toLowerCase();
-		$('.hprwc-pub').each(function () {
+		$('.hprwc-pcard').each(function () {
 			const $c = $(this);
 			const pub = $c.data('pub');
 			const byType = filter === 'all' || (filter === 'attention' ? /warn|error/.test($c.attr('data-state')) : $c.attr('data-type') === filter);
@@ -216,13 +216,13 @@
 			applyFilters();
 		});
 		$root.on('input', '[data-pubs-search]', applyFilters);
-		$root.on('click', '[data-pubs-refresh-all]', function () { enqueue($root.find('.hprwc-pub')); });
-		$root.on('click', '[data-pub-refresh]', function () { load($(this).closest('.hprwc-pub')); });
+		$root.on('click', '[data-pubs-refresh-all]', function () { enqueue($root.find('.hprwc-pcard')); });
+		$root.on('click', '[data-pub-refresh]', function () { load($(this).closest('.hprwc-pcard')); });
 		$root.on('click', '[data-pub-update]', function () {
-			update($(this).closest('.hprwc-pub'), $(this).data('pub-update'), $(this));
+			update($(this).closest('.hprwc-pcard'), $(this).data('pub-update'), $(this));
 		});
 
-		enqueue($root.find('.hprwc-pub'));
+		enqueue($root.find('.hprwc-pcard'));
 	}
 
 	$(init);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.3 — 2026-10-06
+
+- **Card class renamed.** Publications cards use `.hprwc-pcard*`. `.hprwc-pub` belongs to the customer profile's entitlement rows, and its `core.css` rule (`align-items: center`) was squeezing the card header. The 2.9.2 change alone did not fix it.
+
 ## 2.9.2 — 2026-10-06
 
 - **Card header layout fix.** Publications cards now set `align-items: stretch`. An inherited admin style centered the card's children, which squeezed the header.

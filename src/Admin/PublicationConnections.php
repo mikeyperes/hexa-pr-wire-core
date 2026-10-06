@@ -80,17 +80,17 @@ final class PublicationConnections implements Module {
 			</nav>
 			<div class="hprwc-pubs__grid">
 				<?php foreach ( $cards as $card ) : ?>
-					<article class="hprwc-pub" data-pub='<?php echo esc_attr( (string) wp_json_encode( $card ) ); ?>' data-type="<?php echo esc_attr( $card['type'] ?: 'unset' ); ?>" data-state="loading">
-						<header class="hprwc-pub__head">
+					<article class="hprwc-pcard" data-pub='<?php echo esc_attr( (string) wp_json_encode( $card ) ); ?>' data-type="<?php echo esc_attr( $card['type'] ?: 'unset' ); ?>" data-state="loading">
+						<header class="hprwc-pcard__head">
 							<span class="hprwc-light" aria-hidden="true"></span>
-							<div class="hprwc-pub__title">
+							<div class="hprwc-pcard__title">
 								<a href="<?php echo esc_url( (string) get_edit_post_link( $card['id'] ) ); ?>"><?php echo esc_html( $card['title'] ); ?></a>
-								<?php if ( '' !== $card['url'] ) : ?><a class="hprwc-pub__domain" href="<?php echo esc_url( $card['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $card['domain'] ); ?></a><?php endif; ?>
+								<?php if ( '' !== $card['url'] ) : ?><a class="hprwc-pcard__domain" href="<?php echo esc_url( $card['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $card['domain'] ); ?></a><?php endif; ?>
 							</div>
 							<span class="hprwc-type hprwc-type--<?php echo esc_attr( $card['type'] ?: 'unset' ); ?>" title="<?php echo esc_attr( ConnectionType::DESCRIPTIONS[ $card['type'] ] ?? 'Set Connection Type on the publication record.' ); ?>"><?php echo esc_html( ConnectionType::LABELS[ $card['type'] ] ?? 'Not set' ); ?></span>
 							<button type="button" class="hprwc-icon-btn" data-pub-refresh title="Check again" aria-label="Check <?php echo esc_attr( $card['title'] ); ?> again"><span class="dashicons dashicons-update"></span></button>
 						</header>
-						<div class="hprwc-pub__body" data-pub-body><div class="hprwc-pub__loading"><span class="hprwc-spin"></span>Checking site…</div></div>
+						<div class="hprwc-pcard__body" data-pub-body><div class="hprwc-pcard__loading"><span class="hprwc-spin"></span>Checking site…</div></div>
 					</article>
 				<?php endforeach; ?>
 			</div>
