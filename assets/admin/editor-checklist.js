@@ -7,24 +7,56 @@
 		return /<h2\b/i.test(content) && !/<h[13456]\b/i.test(content);
 	}
 	window.hprwcHeadingsUseH2 = headingsUseH2;
+	window.hprwcEditorContent = function () { return editorContent(); };
+
+	// Counts for the Release Status box. Keep in step with ReleaseStatus::stats() in PHP.
+	function releaseStats(html, siteHost) {
+		const text = html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+		let internal = 0, external = 0;
+		const re = /<a\b[^>]*\bhref\s*=\s*["']([^"']+)["']/gi;
+		let m;
+		while ((m = re.exec(html)) !== null) {
+			const href = m[1].trim();
+			if (!href || href[0] === '#' || /^(mailto|tel|javascript):/i.test(href)) continue;
+			const hostMatch = href.match(/^(?:https?:)?\/\/([^\/:?#]+)/i);
+			const host = hostMatch ? hostMatch[1].toLowerCase().replace(/^www\./, '') : '';
+			if (!host || host === siteHost) internal++; else external++;
+		}
+		return {
+			words: text === '' ? 0 : text.split(/\s+/).length,
+			images: (html.match(/<img\b/gi) || []).length,
+			links_internal: internal,
+			links_external: external,
+			h2: (html.match(/<h2\b/gi) || []).length,
+			h3: (html.match(/<h3\b/gi) || []).length
+		};
+	}
+	window.hprwcReleaseStats = releaseStats;
 
 	const $checklist = $('[data-hprwc-checklist]').first();
 	if (!$checklist.length) {
 		return;
 	}
 
+	// The block editor store can exist on classic screens (other plugins load
+	// wp-data) and is then empty, so only use it on block-editor pages.
+	function isBlockEditor() {
+		return document.body.classList.contains('block-editor-page') && window.wp && wp.data && wp.data.select('core/editor');
+	}
+
 	function editorContent() {
-		if (window.wp && wp.data && wp.data.select('core/editor')) {
+		if (isBlockEditor()) {
 			return wp.data.select('core/editor').getEditedPostContent() || '';
 		}
-		if (window.tinymce && tinymce.get('content')) {
-			return tinymce.get('content').getContent() || '';
+		const visual = window.tinymce && tinymce.get('content');
+		if (visual && !visual.isHidden()) {
+			return visual.getContent() || '';
 		}
 		return $('#content').val() || '';
 	}
 
 	function hasFeaturedImage() {
-		if (window.wp && wp.data && wp.data.select('core/editor')) {
+		if (isBlockEditor()) {
 			return parseInt(wp.data.select('core/editor').getEditedPostAttribute('featured_media'), 10) > 0;
 		}
 		return parseInt($('#_thumbnail_id').val(), 10) > 0 || $('#postimagediv .inside img').length > 0;
@@ -50,7 +82,17 @@
 		};
 	}
 
+	function renderStats(content) {
+		const $box = $('[data-hprwc-release-status]').first();
+		if (!$box.length) return;
+		const stats = releaseStats(content, String($box.data('site-host') || ''));
+		Object.keys(stats).forEach(function (key) {
+			$box.find('[data-hprwc-stat="' + key + '"]').text(stats[key]);
+		});
+	}
+
 	function render() {
+		renderStats(editorContent());
 		const values = state();
 		let complete = 0;
 		Object.keys(values).forEach(function (key) {
@@ -85,7 +127,7 @@
 		tinymce.on('AddEditor', function (event) { bindTinyMce(event.editor); });
 	}
 
-	if (window.wp && wp.data && typeof wp.data.subscribe === 'function' && wp.data.select('core/editor')) {
+	if (isBlockEditor() && typeof wp.data.subscribe === 'function') {
 		let previous = '';
 		wp.data.subscribe(function () {
 			const current = editorContent() + '|' + (hasFeaturedImage() ? '1' : '0');

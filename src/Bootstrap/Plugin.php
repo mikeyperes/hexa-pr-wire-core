@@ -12,6 +12,7 @@ use HexaPrWire\Core\Admin\CustomerProfile;
 use HexaPrWire\Core\Admin\Dashboard;
 use HexaPrWire\Core\Admin\CustomerTermLimits;
 use HexaPrWire\Core\Admin\EditorScreenCleanup;
+use HexaPrWire\Core\Admin\ReleaseStatus;
 use HexaPrWire\Core\Admin\EditorChecklist;
 use HexaPrWire\Core\Admin\EditorStyles;
 use HexaPrWire\Core\Content\ContentModel;
@@ -94,6 +95,8 @@ final class Plugin {
 				->add( new CustomerNavigation( $access ) )
 				->add( new CustomerProfile( $policies, $notification_settings, $mailer ) )
 				->add( new CustomerActions( $access ) )
+				->add( new ReleaseStatus() )
+				->add( new \HexaPrWire\Core\Integrations\SmpGoLiveProcessing() )
 				->add( new EditorChecklist() )
 				->add( new EditorStyles() )
 			->add( $editor_cleanup = new EditorScreenCleanup() )

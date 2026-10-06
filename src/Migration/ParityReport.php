@@ -7,7 +7,6 @@ final class ParityReport {
 		'group_6506a8003237a',
 		'group_69326f80f12ff',
 		'group_64a72abaeeff0',
-		'group_64a6e0e504f9e',
 		'group_63a0418e58839',
 	];
 
@@ -16,9 +15,8 @@ final class ParityReport {
 		'field_6506a82059c5c', 'field_6506a83659c5d', 'field_6506a9496e720', 'field_6506c74c765d9',
 		'field_6506ceb4af76d', 'field_650757ba0e871', 'field_6507dcf363142', 'field_6512f79098cbd',
 		'field_69326f81d09e3', 'field_64a72abb01ec2', 'field_64a72abb01ef9', 'field_64a72abb01f2f',
-		'field_64a72abb05373', 'field_64a72abb053df', 'field_64a72abb02037', 'field_64a6e0e61d1a5',
-		'field_64a75c0ed49a2', 'field_64a75bc4d49a1', 'field_64a9c5d4cf5fb', 'field_64a75d2ceb7a1',
-		'field_64a75d69eb7a2', 'field_64a772e55b5bb', 'field_64a81e947e59a', 'field_651368fa55448',
+		'field_64a72abb05373', 'field_64a72abb053df', 'field_64a72abb02037',
+		'field_651368fa55448',
 		'field_64b997104e05a', 'field_652cb84e99150', 'field_6931f38cfd6e6', 'field_6931f3d2fd6e7',
 		'field_693201e4fd6e8', 'field_6933d4dc2dd6f',
 	];

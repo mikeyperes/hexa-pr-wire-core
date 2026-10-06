@@ -30,7 +30,7 @@ final class StatusReport {
 	/** @return array<string,bool> */
 	private function acf_groups(): array {
 		$groups = [];
-		foreach ( [ 'group_6506a8003237a', 'group_69326f80f12ff', 'group_64a72abaeeff0', 'group_64a6e0e504f9e', 'group_63a0418e58839' ] as $key ) {
+		foreach ( [ 'group_6506a8003237a', 'group_69326f80f12ff', 'group_64a72abaeeff0', 'group_63a0418e58839' ] as $key ) {
 			$local = \Hexa\PluginCore\Fields\Field::available() ? \Hexa\PluginCore\Fields\FieldGroups::get_group( $key ) : false;
 			$groups[ $key ] = is_array( $local ) && ! empty( $local['active'] );
 		}

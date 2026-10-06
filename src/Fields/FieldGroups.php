@@ -38,7 +38,6 @@ final class FieldGroups implements Module {
 			$this->definition( 'publication-registry', 'Publication Registry', 'group_6506a8003237a', [ $this, 'publication_group' ], [ 'dr', 'da', 'tf', 'status', 'url_nice', 'url_press_release_prefix', 'product_tier', 'featured', 'icon', 'new_source', 'url', 'email_delivery', 'connection_type' ], 'Publication records' ),
 			$this->definition( 'publication-taxonomy-map', 'Publication Taxonomy Mapping', 'group_69326f80f12ff', [ $this, 'taxonomy_group' ], [ 'publication' ], 'Publication taxonomy terms' ),
 			$this->definition( 'release-public', 'Release Public Fields', 'group_64a72abaeeff0', [ $this, 'public_release_group' ], [ 'press_release_date', 'press_release_location', 'contact_information', 'link_output' ], 'Hexa PR Wire release posts' ),
-			$this->definition( 'release-checklist', 'Release Editorial Checklist', 'group_64a6e0e504f9e', [ $this, 'checklist_group' ], [ 'checklist', 'notes_for_editorial_team' ], 'Hexa PR Wire release posts' ),
 			$this->definition( 'release-private', 'Release Private Workflow', 'group_63a0418e58839', [ $this, 'private_release_group' ], [ 'submitted_by', 'disclaimer', 'link_output_html', 'canonical' ], 'Administrator release workflow' ),
 		];
 	}
@@ -94,22 +93,6 @@ final class FieldGroups implements Module {
 				Field::text( [ 'key' => 'field_64a72abb053df', 'label' => 'URL', 'name' => 'url', 'placeholder' => 'https://, mailto:, or tel:' ] ),
 			] ] ),
 			Field::wysiwyg( [ 'key' => 'field_64a72abb02037', 'label' => 'Press Release Links', 'name' => 'link_output', 'instructions' => 'Generated delivery links appear here after approval.' ] ),
-		], $this->release_location_rules() );
-	}
-
-	/** @return array<string,mixed> */
-	public function checklist_group(): array {
-		$toggle = static fn( string $key, string $label, string $name ): array => Field::toggle( [ 'key' => $key, 'label' => $label, 'name' => $name, 'message' => 'Completed' ] );
-		return $this->group( 'group_64a6e0e504f9e', 'Press Release — Editorial Checklist', [
-			Field::group( [ 'key' => 'field_64a6e0e61d1a5', 'label' => 'Going Live Checklist', 'name' => 'checklist', 'sub_fields' => [
-				$toggle( 'field_64a75c0ed49a2', 'Title Requirements', 'title_requirements' ),
-				$toggle( 'field_64a75bc4d49a1', 'Tone and Content', 'focus_on_announcement' ),
-				$toggle( 'field_64a9c5d4cf5fb', 'Internal Linking', 'internal_linking' ),
-				$toggle( 'field_64a75d2ceb7a1', 'Word Count', 'word_count_is_just_right' ),
-				$toggle( 'field_64a75d69eb7a2', 'Subtitles Use H2 Tags', 'sub-titles_are_header_tags' ),
-				$toggle( 'field_64a772e55b5bb', 'Photo Guidelines', 'photo_guidelines' ),
-			] ] ),
-			Field::textarea( [ 'key' => 'field_64a81e947e59a', 'label' => 'Notes for Editorial Team', 'name' => 'notes_for_editorial_team' ] ),
 		], $this->release_location_rules() );
 	}
 

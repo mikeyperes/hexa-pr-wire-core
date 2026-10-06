@@ -32,7 +32,7 @@ $repo = new class implements \HexaPrWire\Core\Contracts\CustomerPolicyRepository
 	public function save( int $user_id, string $mode, array $publication_ids, array $prices = [], string $publication_access_mode = 'unrestricted', ?array $excluded_publication_ids = null ): void {}
 };
 $groups = new \HexaPrWire\Core\Fields\FieldGroups( new \HexaPrWire\Core\Fields\ReleaseLocation( new \HexaPrWire\Core\Customer\AccessPolicy( $repo ) ) );
-$definitions = [ $groups->publication_group(), $groups->taxonomy_group(), $groups->public_release_group(), $groups->checklist_group(), $groups->private_release_group() ];
+$definitions = [ $groups->publication_group(), $groups->taxonomy_group(), $groups->public_release_group(), $groups->private_release_group() ];
 
 $keys = [];
 $names = [];
@@ -49,9 +49,9 @@ foreach ( $definitions as $definition ) {
 	$walk( $definition['fields'] );
 }
 
-$expected_groups = [ 'group_6506a8003237a', 'group_69326f80f12ff', 'group_64a72abaeeff0', 'group_64a6e0e504f9e', 'group_63a0418e58839' ];
+$expected_groups = [ 'group_6506a8003237a', 'group_69326f80f12ff', 'group_64a72abaeeff0', 'group_63a0418e58839' ];
 $assert( $expected_groups === array_column( $definitions, 'key' ), 'the five approved ACF groups retain their stable keys' );
-$required_names = [ 'dr', 'da', 'tf', 'status', 'url_press_release_prefix', 'publication', 'press_release_date', 'press_release_location', 'contact_information', 'link_output', 'checklist', 'notes_for_editorial_team', 'submitted_by', 'disclaimer', 'link_output_html', 'canonical' ];
+$required_names = [ 'dr', 'da', 'tf', 'status', 'url_press_release_prefix', 'publication', 'press_release_date', 'press_release_location', 'contact_information', 'link_output', 'submitted_by', 'disclaimer', 'link_output_html', 'canonical' ];
 foreach ( $required_names as $name ) {
 	$assert( in_array( $name, $names, true ), "required field {$name} is registered" );
 }

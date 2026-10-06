@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.10.1
+Stable tag: 2.10.2
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,12 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.10.2 =
+* Release Requirements reads the classic editor's text (it read an empty block-editor store and showed wrong results).
+* New Release Status box: word count, images, internal/external links, H2/H3, payment.
+* Removed the manual Press Release Editorial Checklist.
+* Submitted releases run SMP's Going Live steps automatically unless "Do not process this page" is on.
 
 = 2.10.1 =
 * Plugin header and runtime version agree again (2.10.0 shipped the Echo RSS and FIFU controls with the header still reading 2.9.7).
@@ -81,7 +87,7 @@ to the publication ID/hostname pairs in the approved destination registry.
 * Redesigned the release editor's Force Sync box as a Distribution panel above the content. It loads over AJAX with a loader, shows each outlet as Live, Not created, Waiting or an error, and updates with a spinner when outlets are picked. Customers see it and can refresh it; Force sync stays administrator-only.
 * Live-link checks now match titles containing apostrophes and other typographic characters.
 
-= 2.6.0 =
+= 2.10.2 =
 * New Elementor dynamic tag "Publication Release URL": on a release page it links each outlet card to that outlet's copy of the release (press-release URL prefix + release slug), falling back to the outlet homepage when the outlet has no prefix. Replaces the retired client-side link rewrite (legacy snippet 51).
 
 = 2.5.0 =

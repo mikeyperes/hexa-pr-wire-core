@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.10.2 — 2026-10-06
+
+- Release Requirements: the editor script read the block-editor store, which exists but is empty on the classic editor, so it judged an empty article (every release showed the same result). It now reads the Visual or Code editor in use. Verified in a logged-in browser.
+- New "Release Status" box at the top of the sidebar, for staff and customers: word count, images in the text, internal and external links, H2 and H3 counts, featured image, and the linked payment (order, status, total, method, transaction, date paid). Counts update live; PHP and the editor script share tested rules (`tests/editor-checklist.php`).
+- Removed the manual "Press Release — Editorial Checklist" field group (stored values are kept in the database).
+- When SMP Publication Integration 2.2.0+ is active, submitting a release (pending, scheduled or published) runs SMP's Going Live processing in the background; SMP skips releases marked "Do not process this page".
+
 ## 2.10.1 — 2026-10-06
 
 - **Version fix.** The plugin header and `HPRWC_VERSION` now read 2.10.1. The 2.10.0 release carried the Echo RSS and FIFU controls but kept the 2.9.7 header, because its version bump targeted the wrong previous version.
