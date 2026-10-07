@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.12.2 — 2026-10-07
+
+- **Publication picker on checkout.** Billing's checkout order card (`hpr_billing_checkout_order_details`) now lists the outlets the customer may use, each with their price; choosing one reloads checkout with that publication in the cart.
+- `PublicationPicker::outlets()` is the one shared outlet list for the release editor and checkout.
+
 ## 2.12.1 — 2026-10-06
 
 - Submitting a release starts SMP's Going Live generation in the same save, right after the editor's fields are stored, instead of on the next background cron run (up to 15 minutes later on this host). SMP now only starts Publish jobs, which answer at once, so the editor that loads after Publish already shows the excerpt, summary and FAQs being written. Requires SMP Publication Integration 2.3.0.

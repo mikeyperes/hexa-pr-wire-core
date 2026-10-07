@@ -2,6 +2,7 @@
 
 namespace HexaPrWire\Core\Integrations;
 
+use HexaPrWire\Core\Admin\PublicationPicker;
 use HexaPrWire\Core\Contracts\Module;
 use HexaPrWire\Core\Customer\AccessPolicy;
 use HexaPrWire\Core\Infrastructure\WordPress\WordPressCustomerPolicyRepository;
@@ -16,6 +17,7 @@ final class BillingPricingBridge implements Module {
 		add_filter( 'woocommerce_add_cart_item_data', [ $this, 'cart_data' ], 30, 3 );
 		add_action( 'woocommerce_before_calculate_totals', [ $this, 'apply_price' ], 40 );
 		add_filter( 'woocommerce_get_item_data', [ $this, 'display_item' ], 30, 2 );
+		add_action( 'hpr_billing_checkout_order_details', [ $this, 'render_checkout_picker' ] );
 		add_action( 'woocommerce_checkout_create_order_line_item', [ $this, 'save_item' ], 30, 4 );
 		add_action( 'woocommerce_order_status_processing', [ $this, 'assign_fulfillment_publication' ], 30 );
 		add_action( 'woocommerce_order_status_completed', [ $this, 'assign_fulfillment_publication' ], 30 );
@@ -75,6 +77,42 @@ final class BillingPricingBridge implements Module {
 				$item['data']->set_price( $price );
 			}
 		}
+	}
+
+	/**
+	 * Lets the customer choose (or change) the publication on the checkout order card.
+	 * Choosing reloads checkout with ?publication=, which cart_data() applies.
+	 *
+	 * @param array<string,array<string,mixed>> $items
+	 */
+	public function render_checkout_picker( array $items ): void {
+		$current = null;
+		$product_id = 0;
+		foreach ( $items as $item ) {
+			if ( $this->is_standard_product( absint( $item['product_id'] ?? 0 ) ) ) {
+				$product_id = absint( $item['product_id'] );
+				$current = absint( $item['_hprwc_publication_term_id'] ?? 0 );
+				break;
+			}
+		}
+		if ( null === $current ) {
+			return;
+		}
+		$user_id = get_current_user_id();
+		$default = (string) apply_filters( 'hprwc_customer_default_price', '', $user_id );
+		$outlets = array_filter( PublicationPicker::outlets(), fn( \WP_Term $term ): bool => $this->policy->can_use_publication( $user_id, (int) $term->term_id ) );
+		?>
+		<div class="hpr-checkout-order__pick">
+			<label for="hprwc-checkout-publication">Publication</label>
+			<select id="hprwc-checkout-publication" data-product="<?php echo esc_attr( (string) $product_id ); ?>" onchange="(function(s){var q=location.search.replace(/[?&](add-to-cart|publication)=[^&]*/g,'').replace(/^&/,'?');location.href=location.pathname+(q?q+'&':'?')+'add-to-cart='+encodeURIComponent(s.dataset.product)+'&publication='+encodeURIComponent(s.value);})(this)">
+				<option value="" <?php selected( 0, $current ); ?>>Choose a publication</option>
+				<?php foreach ( $outlets as $term ) :
+					$price = $this->filtered_price( '' !== $default ? $default : null, $user_id, (int) $term->term_id ); ?>
+					<option value="<?php echo esc_attr( (string) $term->term_id ); ?>" <?php selected( (int) $term->term_id, $current ); ?>><?php echo esc_html( $term->name . ( is_numeric( $price ) ? ' — $' . number_format( (float) $price, 2 ) : '' ) ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</div>
+		<?php
 	}
 
 	/** @param array<int,array<string,string>> $data @param array<string,mixed> $item */

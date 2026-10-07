@@ -38,11 +38,7 @@ final class PublicationPicker implements Module {
 			echo '<input type="hidden" name="tax_input[publication][]" value="' . esc_attr( (string) $locked ) . '">';
 			return;
 		}
-		$terms = get_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false ] );
-		$terms = is_wp_error( $terms ) ? [] : $terms;
-		$parents = array_flip( array_map( static fn( \WP_Term $term ): int => (int) $term->parent, $terms ) );
-		$outlets = array_values( array_filter( $terms, static fn( \WP_Term $term ): bool => ! isset( $parents[ (int) $term->term_id ] ) ) );
-		usort( $outlets, static fn( \WP_Term $a, \WP_Term $b ): int => strnatcasecmp( $a->name, $b->name ) );
+		$outlets = self::outlets();
 		$selected = wp_get_object_terms( $post->ID, 'publication', [ 'fields' => 'ids' ] );
 		$selected = is_wp_error( $selected ) ? [] : array_map( 'absint', $selected );
 
@@ -53,6 +49,20 @@ final class PublicationPicker implements Module {
 			echo '<label style="display:block;margin:0 0 4px"><input type="checkbox" name="tax_input[publication][]" value="' . esc_attr( (string) $term->term_id ) . '"' . checked( in_array( (int) $term->term_id, $selected, true ), true, false ) . '> ' . esc_html( $term->name ) . '</label>';
 		}
 		echo '</div><script>(function(){var all=document.getElementById("hprwc-select-all"),boxes=document.querySelectorAll("#hprwc-outlets input");if(!all)return;var sync=function(){all.checked=boxes.length>0&&Array.prototype.every.call(boxes,function(b){return b.checked;});};all.addEventListener("change",function(){boxes.forEach(function(b){b.checked=all.checked;});});boxes.forEach(function(b){b.addEventListener("change",sync);});sync();})();</script>';
+	}
+
+	/**
+	 * Publications a release can actually go to: terms without child outlets, by name.
+	 *
+	 * @return \WP_Term[]
+	 */
+	public static function outlets(): array {
+		$terms = get_terms( [ 'taxonomy' => 'publication', 'hide_empty' => false ] );
+		$terms = is_wp_error( $terms ) ? [] : $terms;
+		$parents = array_flip( array_map( static fn( \WP_Term $term ): int => (int) $term->parent, $terms ) );
+		$outlets = array_values( array_filter( $terms, static fn( \WP_Term $term ): bool => ! isset( $parents[ (int) $term->term_id ] ) ) );
+		usort( $outlets, static fn( \WP_Term $a, \WP_Term $b ): int => strnatcasecmp( $a->name, $b->name ) );
+		return $outlets;
 	}
 
 	public function admin_tree_script(): void {
