@@ -2,6 +2,31 @@
 
 Versioned source-site ownership for Hexa PR Wire customers, publications, releases, editorial workflow, syndication, notifications, and Force Sync.
 
+> Feature base for HWS Skills. Read before building on this plugin; use or
+> extend these features instead of rebuilding them.
+
+**Purpose:** source-site ownership of Hexa PR Wire customers, publications, releases, editorial workflow and syndication. **Admin:** WP Admin → Hexa PR Wire Core. **Depends on:** ACF Pro; WP-CLI commands `wp hprwc ...`.
+
+## Features
+
+### Publication lists
+- **Does:** the network's publications for marketing pages.
+- **Use:** `[display_standard_releases_table]` (all active standard-tier outlets), `[display_featured_standard_releases_links]` (featured outlets), `[display_new_sources]` (featured new outlets with icons), `[publication_press_links]` (inside a release: links to where it was published).
+- **Code:** `src/Frontend/PublicationShortcodes.php`
+
+### Release URL tag
+- **Does:** a publication's link to the current release, for Elementor loops.
+- **Use:** Elementor dynamic tag `hpr-publication-release-url`.
+- **Code:** `src/Integrations/PublicationReleaseUrlTag.php`
+
+### Customer modes and publication access
+- **Does:** what each customer can create, publish or edit, and which publications they can use (see Customer modes below).
+- **Switch:** the customer's profile in WP Admin.
+- **Extend:** `hprwc_customer_default_price`, `hprwc_push_on_publish`.
+
+### REST routes
+- `hprwc/v1/author`, `hprwc/v1/deletions`, and the outlet onboarding routes below.
+
 ## Ownership
 
 Core owns:
