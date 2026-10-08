@@ -11,7 +11,8 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ### Publication lists
 - **Does:** the network's publications for marketing pages.
-- **Use:** `[display_standard_releases_table]` (all active standard-tier outlets), `[display_featured_standard_releases_links]` (featured outlets), `[display_new_sources]` (featured new outlets with icons), `[publication_press_links]` (inside a release: links to where it was published).
+- **Use:** `[display_standard_releases_table]` (all active standard-tier outlets), `[display_featured_standard_releases_links]` (featured outlets), `[display_new_sources]` (featured new outlets with icons), `[publication_press_links]` (inside a release: list of outlets where it was published, each with icon, name and domain).
+- **Style:** `.hprwc-press-links` (ul), `.hprwc-press-link` (li > a), `.hprwc-press-link__icon`, `.hprwc-press-link__name`, `.hprwc-press-link__host`.
 - **Code:** `src/Frontend/PublicationShortcodes.php`
 
 ### Release URL tag

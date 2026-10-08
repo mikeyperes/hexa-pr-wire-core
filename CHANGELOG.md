@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.12.4 — 2026-10-08
+
+- **Press release outlet links: a styled list instead of bare URLs.** `[publication_press_links]` now outputs one list item per outlet with its icon, name and domain, with classes for styling, instead of raw URLs separated by line breaks.
+
 ## 2.12.3 — 2026-10-08
 
 - **Publications dashboard: clearer plugin and sync rows.** Plugins are a small table with Installed, Latest and Status columns; an outdated plugin shows an "Update now" button in its own row, an up-to-date one shows "✓ Up to date". Row actions such as "Sync now" sit right beside the value they act on instead of at the far right of the card.
