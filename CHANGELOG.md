@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.12.3 — 2026-10-08
+
+- **Publications dashboard: clearer plugin and sync rows.** Plugins are a small table with Installed, Latest and Status columns; an outdated plugin shows an "Update now" button in its own row, an up-to-date one shows "✓ Up to date". Row actions such as "Sync now" sit right beside the value they act on instead of at the far right of the card.
+
 ## 2.12.2 — 2026-10-07
 
 - **Publication picker on checkout.** Billing's checkout order card (`hpr_billing_checkout_order_details`) now lists the outlets the customer may use, each with their price; choosing one reloads checkout with that publication in the cart.

@@ -43,16 +43,34 @@
 		return el('section', 'hprwc-sec').append(el('h4', 'hprwc-sec__title', title));
 	}
 
-	/** One labelled line: label · value (toned) · optional detail · optional action button. */
+	/** One labelled line: label · value with its action right beside it · detail. */
 	function row(label, value, tone, detail, action) {
 		const $r = el('div', 'hprwc-row' + (tone ? ' is-' + tone : ''));
 		$r.append(el('span', 'hprwc-row__dot'));
 		$r.append(el('span', 'hprwc-row__label', label));
-		$r.append(el('span', 'hprwc-row__value', value));
-		$r.append(el('span', 'hprwc-row__detail', detail || ''));
-		const $act = el('span', 'hprwc-row__action');
-		if (action) $act.append(action);
-		return $r.append($act);
+		$r.append(el('span', 'hprwc-row__value').append(el('span', '', value)).append(action || ''));
+		return $r.append(el('span', 'hprwc-row__detail', detail || ''));
+	}
+
+	/** Plugin table: Plugin · Installed · Latest · Status, with Update in the status cell. */
+	function pluginTable(plugins, remoteUpdates) {
+		const $t = el('div', 'hprwc-ptable');
+		$t.append(el('div', 'hprwc-ptable__head').append(el('span'), el('span', '', 'Plugin'), el('span', '', 'Installed'), el('span', '', 'Latest'), el('span', '', 'Status')));
+		plugins.forEach(function (t) {
+			const tone = !t.installed ? 'muted' : (t.outdated || !t.active ? 'warn' : 'ok');
+			const $status = el('span', 'hprwc-row__detail');
+			if (!t.installed) $status.text('Not installed');
+			else if (t.outdated) $status.append(button('Update now', { 'data-pub-update': t.slug }, remoteUpdates ? '' : 'Turn on Remote Plugin Updates in Distributor on this site.'));
+			else $status.text(t.active ? '✓ Up to date' : 'Inactive');
+			$t.append(el('div', 'hprwc-ptable__row is-' + tone).attr('data-plugin', t.slug).append(
+				el('span', 'hprwc-row__dot'),
+				el('span', 'hprwc-row__label', t.label),
+				el('span', 'hprwc-ptable__ver' + (t.outdated ? ' is-old' : ''), t.installed ? t.version : '—'),
+				el('span', 'hprwc-ptable__ver', t.latest || '—'),
+				$status
+			));
+		});
+		return $t;
 	}
 
 	function button(text, attrs, disabledTitle) {
@@ -80,19 +98,8 @@
 				button('Sync now', { 'data-pub-site': 'sync' })))
 			.append(row('Remote updates', d.remote_updates ? 'On' : 'Off', d.remote_updates ? 'ok' : 'warn', d.remote_updates ? '' : 'Turn on in Distributor on this site')));
 
-		// Plugins — one row each
-		const $plugins = section('Plugins');
-		plugins.forEach(function (t) {
-			if (!t.installed) {
-				$plugins.append(row(t.label, 'Not installed', 'muted', ''));
-				return;
-			}
-			const tone = t.outdated ? 'warn' : (t.active ? 'ok' : 'warn');
-			const detail = t.outdated ? 'Latest ' + t.latest : (t.active ? 'Up to date' : 'Inactive');
-			const act = t.outdated ? button('Update to ' + t.latest, { 'data-pub-update': t.slug }, d.remote_updates ? '' : 'Turn on Remote Plugin Updates in Distributor on this site.') : null;
-			$plugins.append(row(t.label, t.version, tone, detail, act).attr('data-plugin', t.slug));
-		});
-		$body.append($plugins);
+		// Plugins
+		$body.append(section('Plugins').append(pluginTable(plugins, d.remote_updates)));
 
 		// Compatibility
 		$card.attr('data-echo', d.echo_jobs > 0 && d.echo_route ? d.echo_jobs : 0);
@@ -181,7 +188,9 @@
 
 	function failed($btn, xhr) {
 		$btn.prop('disabled', false).text('Retry');
-		$btn.closest('.hprwc-row').find('.hprwc-row__detail').text(errorText(xhr));
+		const $d = $btn.closest('.hprwc-row, .hprwc-ptable__row').find('.hprwc-row__detail');
+		$d.find('.hprwc-row__err').remove();
+		$d.append(el('span', 'hprwc-row__err', errorText(xhr)));
 	}
 
 	function update($card, slug, $btn) {
