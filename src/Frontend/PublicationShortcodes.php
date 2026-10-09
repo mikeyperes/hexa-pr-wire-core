@@ -61,7 +61,7 @@ final class PublicationShortcodes implements Module {
 			$url = $this->urls->for_slug( $publication, $post->post_name );
 			if ( '' !== $url ) {
 				$host = (string) ( $publication['url_nice'] ?: wp_parse_url( $url, PHP_URL_HOST ) );
-				$icon = (int) $publication['icon_id'] > 0 ? wp_get_attachment_image( (int) $publication['icon_id'], 'thumbnail', false, [ 'class' => 'hprwc-press-link__icon', 'loading' => 'lazy', 'alt' => '' ] ) : '';
+				$icon = (int) $publication['icon_id'] > 0 ? wp_get_attachment_image( (int) $publication['icon_id'], 'medium', false, [ 'class' => 'hprwc-press-link__icon', 'loading' => 'lazy', 'alt' => '' ] ) : '';
 				$links[] = '<li class="hprwc-press-link"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener noreferrer">' . $icon . '<span class="hprwc-press-link__name">' . esc_html( (string) $publication['title'] ) . '</span><span class="hprwc-press-link__host">' . esc_html( preg_replace( '#^www\.#', '', $host ) ) . '</span></a></li>';
 			}
 		}

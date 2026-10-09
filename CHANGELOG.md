@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.12.5 — 2026-10-09
+
+- **Press release outlet links: logos no longer cropped.** Outlet icons now load at the uncropped `medium` size instead of the hard-cropped 150×150 `thumbnail`, so wide logos show in full inside their box.
+
 ## 2.12.4 — 2026-10-08
 
 - **Press release outlet links: a styled list instead of bare URLs.** `[publication_press_links]` now outputs one list item per outlet with its icon, name and domain, with classes for styling, instead of raw URLs separated by line breaks.
