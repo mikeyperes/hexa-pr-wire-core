@@ -292,6 +292,13 @@
 	.hprwc-ptable__head span:last-child { display: none; }
 }
 
+/* ---------- action feedback ---------- */
+
+.hprwc-busy { align-items: center; color: var(--muted); display: inline-flex; gap: 8px; }
+.hprwc-row.is-just, .hprwc-ptable__row.is-just { animation: hprwc-just 3s ease-out; box-shadow: inset 3px 0 0 var(--ok-ink); }
+.hprwc-ptable__row.is-just .hprwc-row__detail { font-weight: 600; }
+@keyframes hprwc-just { from { background: #e6f4ea; } to { background: transparent; } }
+
 /* ---------- motion ---------- */
 
 .hprwc-spin {

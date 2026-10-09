@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.12.6 — 2026-10-09
+
+- **Publications dashboard: updates finish in place.** After Update now, Sync now or another action, the card stays on screen while the site is rechecked instead of collapsing to "Checking site…", and the row that changed is highlighted with its result (for example "✓ Updated to 2.3.1"). The working state is a plain spinner with text instead of a greyed-out button.
+
 ## 2.12.5 — 2026-10-09
 
 - **Press release outlet links: logos no longer cropped.** Outlet icons now load at the uncropped `medium` size instead of the hard-cropped 150×150 `thumbnail`, so wide logos show in full inside their box.

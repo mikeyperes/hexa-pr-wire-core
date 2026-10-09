@@ -141,10 +141,14 @@
 	const queue = [];
 	let active = 0;
 
-	function load($card) {
+	/**
+	 * Check one site and redraw its card. With `done` set (after an action), the current card stays
+	 * on screen while checking, and the row that changed is highlighted with the result message.
+	 */
+	function load($card, done) {
 		const pub = $card.data('pub');
 		setState($card, 'loading');
-		$card.find('[data-pub-body]').html('<div class="hprwc-pcard__loading"><span class="hprwc-spin"></span>Checking site…</div>');
+		if (!done) $card.find('[data-pub-body]').html('<div class="hprwc-pcard__loading"><span class="hprwc-spin"></span>Checking site…</div>');
 		return post(cfg.actions.status, { publication_id: pub.id })
 			.done(function (r) {
 				if (!r || !r.success) {
@@ -152,6 +156,7 @@
 					setState($card, 'error');
 				} else if (r.data.connected) {
 					renderConnected($card, r.data);
+					if (done) highlight($card, done);
 				} else {
 					renderOffline($card, r.data);
 				}
@@ -183,27 +188,41 @@
 	/* ---------- actions ---------- */
 
 	function busy($btn, text) {
-		$btn.prop('disabled', true).html('<span class="hprwc-spin"></span>' + text);
+		$btn.prop('disabled', true).hide().after(el('span', 'hprwc-busy').html('<span class="hprwc-spin"></span>' + text));
 	}
 
 	function failed($btn, xhr) {
-		$btn.prop('disabled', false).text('Retry');
+		$btn.siblings('.hprwc-busy').remove();
+		$btn.prop('disabled', false).show().text('Retry');
 		const $d = $btn.closest('.hprwc-row, .hprwc-ptable__row').find('.hprwc-row__detail');
 		$d.find('.hprwc-row__err').remove();
 		$d.append(el('span', 'hprwc-row__err', errorText(xhr)));
 	}
 
+	/** Mark the row an action just changed and say what happened in its status cell. */
+	function highlight($card, done) {
+		const $r = $card.find(done.plugin ? '.hprwc-ptable__row[data-plugin="' + done.plugin + '"]' : '.hprwc-row').filter(function () {
+			return done.plugin || $(this).find('.hprwc-row__label').text() === done.label;
+		}).first();
+		$r.addClass('is-just');
+		if (done.plugin) {
+			const v = $r.find('.hprwc-ptable__ver').first().text();
+			$r.find('.hprwc-row__detail').text($r.hasClass('is-ok') ? '✓ Updated to ' + v : 'Still on ' + v + ' — update did not apply');
+		}
+	}
+
 	function update($card, slug, $btn) {
 		busy($btn, 'Updating…');
 		return post(cfg.actions.update, { publication_id: $card.data('pub').id, plugin: slug })
-			.done(function () { load($card); })
+			.done(function () { load($card, { plugin: slug }); })
 			.fail(function (xhr) { failed($btn, xhr); });
 	}
 
 	function siteAction($card, action, $btn) {
+		const label = $btn.closest('.hprwc-row').find('.hprwc-row__label').text();
 		busy($btn, { sync: 'Syncing…', fifu: 'Cleaning…', echo: 'Switching off…' }[action] || 'Working…');
 		return post(cfg.actions.site, { publication_id: $card.data('pub').id, site_action: action })
-			.done(function () { load($card); })
+			.done(function () { load($card, { label: label }); })
 			.fail(function (xhr) { failed($btn, xhr); });
 	}
 
