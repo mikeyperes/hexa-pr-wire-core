@@ -4,6 +4,42 @@ Shared WordPress plugin core for Hexa plugins.
 
 This package exists to stop each plugin from re-implementing the same admin tabs, activity logs, updater wiring, shortcode lists, and setup patterns differently.
 
+> Feature base for HWS Skills. Read before building on this plugin; use or
+> extend these features instead of rebuilding them.
+
+**Purpose:** shared library bundled inside every Hexa plugin (admin tabs, updater, fields, search, public components). It has no admin screen of its own; the bundling plugin exposes its features.
+
+## Features
+
+### Site search display
+- **Use:** `[hexa_search style="icon-reveal|overlay|pill|underline|command" placeholder="" accent="" radius=""]` (registered by HWS Base Tools).
+- **Code:** `src/SearchDisplay/SearchDisplayRenderer.php`, results tuning in `src/SearchQuery/`, live results in `src/SmartSearch/`.
+- **Extend:** `hexa_plugin_core_search_query_should_handle`, `hexa_plugin_core_smart_search_results`.
+
+### Calendar
+- **Does:** a month calendar of posts from a registered profile.
+- **Use:** register a profile with `CalendarRegistry::register( 'id', [...] )` in a plugin, then `[hexa_calendar id="id"]`. Public data at REST `hexa-plugin-core/v1/calendar/...`.
+- **Code:** `src/Calendar/`
+
+### Full-text search index
+- **Does:** fast live search on large sites: one MySQL FULLTEXT row per published post with the configured search sources; the search engine uses it instead of scanning posts and postmeta.
+- **Use:** `( new SearchIndex( $settings_provider ) )->register()`, `'index' => true` in the search settings, then build once with `rebuild()` pages.
+- **Code:** `src/SearchQuery/SearchIndex.php`
+
+### Directory search
+- **Does:** a searchable, filterable directory from a registered profile.
+- **Use:** `DirectorySearchRegistry::register( 'id', [...] )`, then `[hexa_directory id="id"]`.
+- **Code:** `src/DirectorySearch/`
+
+### Map
+- **Does:** a map of addresses geocoded without an API key.
+- **Use:** `MapRegistry::register( 'id', [...] )`, then `[hexa_map id="id"]`.
+- **Code:** `src/Map/`
+
+### Shared building blocks
+- Content types (`src/ContentTypes/`), ACF field factory (`src/AcfFieldFactory/`), front-end form fields (`src/FrontendForms/`), FAQ sets (`src/FaqSets/`), typography and brand colours (`src/Typography/`, `src/BrandColors/`).
+- **Extend:** `hexa_fields/load_field_groups`, `hexa_plugin_core_recommended_plugin_definitions`, `hexa_plugin_core/plugin_bridge_owners`.
+
 ## Package Identity
 
 These names are fixed. Do not rename them in plugin implementations.
@@ -109,6 +145,16 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
 Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
+
+Version 3.19.0 adds `SearchQuery\SearchIndex`, an optional MySQL full-text index the search engine uses with `'index' => true`, so live search on sites with tens of thousands of posts answers in milliseconds instead of seconds.
+
+Version 3.18.3 keeps theme and page-builder image rules (such as `height: auto`) from shrinking the ImageZoom thumbnail inside its box.
+
+Version 3.18.2 adds the ImageZoom `fit => contain` option (the whole image over a blurred fill of itself, nothing cropped) and keeps an explicit `sizes` list from being overridden by lazy `auto` sizing, so tall thumbnails stay sharp.
+
+Version 3.18.1 keeps page-builder lightboxes (Elementor) from opening on top of the ImageZoom viewer.
+
+Version 3.18.0 adds `PublicComponents\ImageZoom`, a reusable flyer/poster viewer: `ImageZoom::html( $attachment_id )` prints the thumbnail; hovering shows the original image large in a centered preview that fades out when the pointer leaves, and a click or tap opens a full-screen viewer with pinch, wheel and double-tap zoom, finger panning, and swipe-down, Escape or backdrop to close. Docs: `docs/image-zoom.md`.
 
 Version 3.17.0 adds `SearchQuery\ResultTypeLabels`, host-declared labels that flag each search result's kind (for example Press Release, External PR or Site Content), the matching **Result Type** Elementor dynamic tag for search-result Loop Items, and `SearchQueryConfiguration::searchable_post_types()` / `searchable_taxonomies()` for full-site search scopes.
 

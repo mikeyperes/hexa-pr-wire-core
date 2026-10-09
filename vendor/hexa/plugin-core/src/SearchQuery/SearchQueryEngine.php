@@ -217,6 +217,14 @@ final class SearchQueryEngine {
         $terms = SearchTermParser::parse( $raw_query, (string) $settings['term_logic'] );
 
         $groups = [];
+        if ( ! empty( $settings['index'] ) && 'exact' !== $settings['term_logic'] && SearchIndex::ready() ) {
+            $boolean = SearchIndex::boolean_expression( $terms, (string) $settings['term_logic'], (string) $settings['word_matching'], SearchIndex::min_token_length() );
+            if ( '' !== $boolean['expression'] ) {
+                $groups[] = $database->posts . '.ID IN (SELECT hexa_sq_si.post_id FROM ' . SearchIndex::table() . ' hexa_sq_si'
+                    . $database->prepare( ' WHERE MATCH(hexa_sq_si.body) AGAINST (%s IN BOOLEAN MODE))', $boolean['expression'] );
+            }
+            $terms = $boolean['remaining'];
+        }
         foreach ( $terms as $term ) {
             $sources = $this->source_conditions( $database, $term, $settings );
             if ( [] !== $sources ) {

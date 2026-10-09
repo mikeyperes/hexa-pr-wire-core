@@ -5,6 +5,7 @@ namespace HexaPrWire\Core\Frontend;
 use Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex;
 use Hexa\PluginCore\SearchQuery\ElementorSearchAdapter;
 use Hexa\PluginCore\SearchQuery\ResultTypeLabels;
+use Hexa\PluginCore\SearchQuery\SearchIndex;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
 use HexaPrWire\Core\Contracts\Module;
 
@@ -24,11 +25,12 @@ final class SiteSearch implements Module {
 	public const DEFAULT_LABEL = 'Site Content';
 
 	public function register(): void {
-		if ( ! class_exists( ElementorSearchAdapter::class ) || ! class_exists( ResultTypeLabels::class ) ) {
+		if ( ! class_exists( ElementorSearchAdapter::class ) || ! class_exists( ResultTypeLabels::class ) || ! class_exists( SearchIndex::class ) ) {
 			return;
 		}
 
 		( new ElementorPublicTextIndex() )->register();
+		( new SearchIndex( [ $this, 'settings' ] ) )->register();
 		ResultTypeLabels::register( self::LABELS, self::DEFAULT_LABEL );
 		( new ElementorSearchAdapter( [ $this, 'settings' ], self::QUERY_ID, null, 24 ) )->register();
 	}
@@ -47,6 +49,7 @@ final class SiteSearch implements Module {
 			'custom_fields'    => [ 'press_release_location', 'post_summary', ElementorPublicTextIndex::META_KEY ],
 			'results_per_page' => 12,
 			'orderby'          => 'relevance',
+			'index'            => true,
 		];
 	}
 }
