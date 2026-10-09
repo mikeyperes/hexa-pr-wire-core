@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.13.2 — 2026-10-09
+
+- The ordinary search results page (`?s=`, used by the header pop-up) uses the same full-site search, index and 12 results per page as /search/.
+
 ## 2.13.1 — 2026-10-09
 
 - Core 3.19.1: searches with short words such as "5G" or "GLP-1" stay fast.

@@ -7,11 +7,12 @@ use Hexa\PluginCore\SearchQuery\ElementorSearchAdapter;
 use Hexa\PluginCore\SearchQuery\ResultTypeLabels;
 use Hexa\PluginCore\SearchQuery\SearchIndex;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
+use Hexa\PluginCore\SearchQuery\SearchQueryEngine;
 use HexaPrWire\Core\Contracts\Module;
 
 /**
- * Full-site live search for Elementor Pro's Search widget with Query ID
- * `hprw_site_search`. Core owns matching, the live request, and the Result
+ * Full-site search for Elementor Pro's live Search widget (Query ID
+ * `hprw_site_search`) and the ordinary `?s=` results page. Core owns matching, the live request, and the Result
  * Type tag; this module declares only Hexa PR Wire's sources and labels.
  */
 final class SiteSearch implements Module {
@@ -33,6 +34,7 @@ final class SiteSearch implements Module {
 		( new SearchIndex( [ $this, 'settings' ] ) )->register();
 		ResultTypeLabels::register( self::LABELS, self::DEFAULT_LABEL );
 		( new ElementorSearchAdapter( [ $this, 'settings' ], self::QUERY_ID, null, 24 ) )->register();
+		( new SearchQueryEngine( [ $this, 'settings' ] ) )->register();
 	}
 
 	/** @return array<string,mixed> */
