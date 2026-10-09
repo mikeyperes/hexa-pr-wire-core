@@ -15,7 +15,7 @@ function assert_same( mixed $expected, mixed $actual, string $message ): void {
 }
 
 $all = SearchIndex::boolean_expression( [ 'telecom', '5G', 'new york', 'o\'brien' ], 'all', 'prefix', 3 );
-assert_same( '+telecom* +"new york"', $all['expression'], 'Indexable words become required prefixes and phrases' );
+assert_same( '+telecom* +"new york" +brien*', $all['expression'], 'Indexable words become required prefixes and phrases' );
 assert_same( [ '5G', 'o\'brien' ], $all['remaining'], 'Words below the token size fall back to the scan' );
 
 $any = SearchIndex::boolean_expression( [ 'utah', 'clinic' ], 'any', 'whole', 3 );

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.13.1 — 2026-10-09
+
+- Core 3.19.1: searches with short words such as "5G" or "GLP-1" stay fast.
+
 ## 2.13.0 — 2026-10-09
 
 - Site search uses Core 3.19.0's full-text search index, so live results on /search/ arrive in well under a second instead of ~10 seconds.

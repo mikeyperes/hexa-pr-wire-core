@@ -8,9 +8,9 @@ namespace Hexa\PluginCore\SearchQuery;
  * Stores one row per published post holding the same sources a host search
  * configuration matches (fields, taxonomy terms, author, custom fields, user
  * reference names), behind one InnoDB FULLTEXT key. The engine queries it with
- * MATCH ... AGAINST instead of scanning posts and postmeta with REGEXP, and
- * falls back to the scan for words shorter than the server's token size or
- * while the index has never been fully built.
+ * MATCH ... AGAINST instead of scanning posts and postmeta with REGEXP.
+ * Words shorter than the server's token size are pattern-matched on the one
+ * indexed text column; the scan is used only until a full build finishes.
  */
 final class SearchIndex {
     public const TABLE = 'hexa_search_index';
@@ -225,7 +225,9 @@ final class SearchIndex {
 
     /**
      * Converts terms the index can answer into one BOOLEAN MODE expression.
-     * Returns the expression and the terms left for the scan fallback.
+     * Terms holding a word below the token size are returned for a pattern
+     * match on the indexed text; with all-words logic their long words still
+     * narrow the rows through the expression.
      *
      * @param string[] $terms
      * @return array{expression:string,remaining:string[]}
@@ -239,6 +241,11 @@ final class SearchIndex {
             $short = array_filter( $words, static fn( string $word ): bool => self::length( $word ) < $min_length );
             if ( [] === $words || [] !== $short ) {
                 $remaining[] = $term;
+                if ( '+' === $operator ) {
+                    foreach ( array_diff( $words, $short ) as $word ) {
+                        $clauses[] = '+' . $word . '*';
+                    }
+                }
                 continue;
             }
             if ( count( $words ) > 1 ) {

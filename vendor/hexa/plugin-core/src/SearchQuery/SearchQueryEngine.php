@@ -218,12 +218,22 @@ final class SearchQueryEngine {
 
         $groups = [];
         if ( ! empty( $settings['index'] ) && 'exact' !== $settings['term_logic'] && SearchIndex::ready() ) {
-            $boolean = SearchIndex::boolean_expression( $terms, (string) $settings['term_logic'], (string) $settings['word_matching'], SearchIndex::min_token_length() );
-            if ( '' !== $boolean['expression'] ) {
-                $groups[] = $database->posts . '.ID IN (SELECT hexa_sq_si.post_id FROM ' . SearchIndex::table() . ' hexa_sq_si'
-                    . $database->prepare( ' WHERE MATCH(hexa_sq_si.body) AGAINST (%s IN BOOLEAN MODE))', $boolean['expression'] );
+            $matching = 'whole' === $settings['word_matching'] ? 'whole' : 'prefix';
+            $boolean = SearchIndex::boolean_expression( $terms, (string) $settings['term_logic'], $matching, SearchIndex::min_token_length() );
+            $index_conditions = [];
+            foreach ( $boolean['remaining'] as $term ) {
+                $index_conditions[] = $this->match_condition( $database, 'hexa_sq_si.body', $term, $matching );
             }
-            $terms = $boolean['remaining'];
+            $relation = 'any' === $settings['term_logic'] ? ' OR ' : ' AND ';
+            $index_sql = implode( $relation, $index_conditions );
+            if ( '' !== $boolean['expression'] ) {
+                $match = $database->prepare( 'MATCH(hexa_sq_si.body) AGAINST (%s IN BOOLEAN MODE)', $boolean['expression'] );
+                $index_sql = '' === $index_sql ? $match : $match . ( ' OR ' === $relation ? ' OR (' : ' AND (' ) . $index_sql . ')';
+            }
+            if ( '' !== $index_sql ) {
+                $groups[] = $database->posts . '.ID IN (SELECT hexa_sq_si.post_id FROM ' . SearchIndex::table() . ' hexa_sq_si WHERE ' . $index_sql . ')';
+            }
+            $terms = [];
         }
         foreach ( $terms as $term ) {
             $sources = $this->source_conditions( $database, $term, $settings );

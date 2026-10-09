@@ -118,7 +118,7 @@ The first registration adds Core's **Result Type** Elementor text dynamic tag (`
 
 `SearchIndex` is an optional full-text index for large sites, where scanning posts and postmeta with REGEXP on every keystroke takes seconds. Construct it with the same settings provider given to the engine and call `register()`; set `'index' => true` in those settings. It keeps one row per published post in `{prefix}hexa_search_index` with the configured fields, taxonomy term names, author, custom fields and user reference names behind an InnoDB FULLTEXT key, refreshed on save, delete, term and configured meta changes.
 
-Build it once with `rebuild( $after_id = 0, $per_page = 200 )`, repeating with the returned `next_after_id` until it is null (for example from `wp eval`). Until a full build finishes, and for words shorter than MySQL's `innodb_ft_min_token_size` (such as "5G"), the engine keeps the normal scan. With the index, `contains` matching behaves as `prefix`; `exact` term logic always scans.
+Build it once with `rebuild( $after_id = 0, $per_page = 200 )`, repeating with the returned `next_after_id` until it is null (for example from `wp eval`). Until a full build finishes the engine keeps the normal scan. Words shorter than MySQL's `innodb_ft_min_token_size` (such as "5G") are pattern-matched on the indexed text, narrowed by the query's longer words. With the index, `contains` matching behaves as `prefix`; `exact` term logic always scans.
 
 ## Required Host Protocol
 
