@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.13.2
+Stable tag: 2.14.0
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,18 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.14.0 =
+* Bundles Core 3.20.0: the /search/ page and the search results page show live results in the page, keep the current results faded under the spinner while new ones load, and hide the recent list while results show.
+
+= 2.13.2 =
+* The ordinary search results page (?s=, used by the header pop-up) uses the same full-site search, index and 12 results per page as /search/.
+
+= 2.13.1 =
+* Core 3.19.1: searches with short words such as "5G" or "GLP-1" stay fast.
+
+= 2.13.0 =
+* Site search uses Core 3.19.0's full-text search index, so live results arrive in well under a second.
 
 = 2.12.1 =
 * Submitting a release starts SMP Going Live generation in the same save, so the reloaded editor shows it working.

@@ -16,6 +16,11 @@ This package exists to stop each plugin from re-implementing the same admin tabs
 - **Code:** `src/SearchDisplay/SearchDisplayRenderer.php`, results tuning in `src/SearchQuery/`, live results in `src/SmartSearch/`.
 - **Extend:** `hexa_plugin_core_search_query_should_handle`, `hexa_plugin_core_smart_search_results`.
 
+### Search results page (Elementor)
+- **Does:** turns an Elementor Pro Search widget into a full search page: live results appear in the page under the field instead of a dropdown, the current results stay in place (faded) under the spinner while the next ones load, and the page's default content (for example a "recent posts" grid) fades while the first results load and hides while results show. Outside clicks no longer close the results.
+- **Use:** register `ElementorSearchAdapter` for the widget's Query ID, then in Elementor add the CSS class `hexa-search-page-results` to the Search widget and `hexa-search-default` to the default content. Design stays in the site: native widget controls plus the optional `--hexa-search-field-max-width`, `--hexa-search-loading-opacity`, `--hexa-search-loader-*` properties.
+- **Code:** `src/SearchQuery/ElementorSearchAdapter.php`, `src/SearchQuery/assets/elementor-search.js|css`
+
 ### Calendar
 - **Does:** a month calendar of posts from a registered profile.
 - **Use:** register a profile with `CalendarRegistry::register( 'id', [...] )` in a plugin, then `[hexa_calendar id="id"]`. Public data at REST `hexa-plugin-core/v1/calendar/...`.
@@ -145,6 +150,8 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
 Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
+
+Version 3.20.0 adds the Elementor search results page mode (`hexa-search-page-results` and `hexa-search-default` CSS classes): results in the page, the spinner over the current results while loading, default content hidden while results show.
 
 Version 3.19.1 makes short words such as "5G" or the "1" in "GLP-1" fast with the search index: they are matched on the indexed text, narrowed by the query's longer words.
 

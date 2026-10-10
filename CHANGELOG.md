@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.14.0 — 2026-10-10
+
+- Bundles Core 3.20.0 (Elementor search page-results mode). /search/ and the ?s= results page show live results in the page, keep the current results faded under the spinner while the next ones load, and hide the recent list while results show. The layout mechanics now come from Core; the pages keep only their design.
+
 ## 2.13.2 — 2026-10-09
 
 - The ordinary search results page (`?s=`, used by the header pop-up) uses the same full-site search, index and 12 results per page as /search/.

@@ -96,6 +96,17 @@ The adapter rejects admin, WP-CLI, AJAX, REST, cron, XML-RPC, feed, empty, suppr
 
 Core also marks only the registered widgets and loads a small native-search companion. It aborts a superseded request as soon as the visitor types again and rejects stale responses. When the current input becomes shorter than the widget's native minimum character setting, Core clears the old native result markup and collapsed combobox state; Elementor resumes ownership at the threshold. For marked widgets inside another keyboard component, the companion handles Escape before the parent can steal it, returns focus to the input, and closes the result list. When Elementor reopens an existing visible result list, the companion listens to the native `search:results-displayed` lifecycle hook and synchronizes the registered input's `aria-expanded` state; hidden, empty, and unregistered lists remain untouched. A document click outside a registered widget also synchronizes its collapsed input state with Elementor's native outside-click closure, without changing inside clicks or unregistered widgets. It also keeps native input icons anchored to the measured input height when a host deliberately places results in normal document flow. Loading, result-count, and empty updates use a visually hidden live region so they do not become result-grid items; request errors replace stale results with one visible full-width status. Elementor's native spinner and branded empty state stay visible. Core does not replace Elementor's renderer or endpoint.
 
+#### Page-results mode
+
+Add the CSS class `hexa-search-page-results` to a registered Search widget (Advanced → CSS Classes) to use it as a search page instead of a dropdown. The companion then:
+
+- shows live results in normal page flow under the field, spaced by the widget's native "distance from search field" control, and keeps them open on outside clicks and on another widget's `hideOtherResults`;
+- keeps the current results visible at `--hexa-search-loading-opacity` (default `0.4`) while the next request loads, with Elementor's native loader centered over them on a small disc (`--hexa-search-loader-offset`, `--hexa-search-loader-surface-size`, `--hexa-search-loader-surface`, `--hexa-search-loader-shadow`);
+- writes `data-hexa-search-view="idle|loading|results|error"` on the widget and `data-hexa-search-default="visible|loading|hidden"` on every element with the class `hexa-search-default`: default content dims while the first results load and hides while results or the native no-match message show, then returns when the field is cleared;
+- caps only the field with `--hexa-search-field-max-width` while results keep the widget's full width, and keeps the clear icon inside the capped field.
+
+The view settles on Elementor's native `search:results-updated` hook after it renders. All colors, type, borders, card design, and loader color or size stay with the site's native widget controls and Loop Item; Core ships only the layout and state mechanics.
+
 The optional configurator receives the exact query, normalized settings, and verified widget. Use native `WP_Query` arguments there for domain constraints such as an upcoming date window. Post types remain intersected with the normalized allowlist after the callback.
 
 ### `ElementorPublicTextIndex`
