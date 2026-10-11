@@ -20,6 +20,11 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 - **Use:** Elementor dynamic tag `hpr-publication-release-url`.
 - **Code:** `src/Integrations/PublicationReleaseUrlTag.php`
 
+### Category loops across post types
+- **Does:** lets one Elementor Loop Grid list a category's posts and resources together (Elementor allows only one post type).
+- **Use:** Loop Grid source Posts, filtered by the category, with Query ID `category_all_types`.
+- **Code:** `src/Integrations/ElementorCategoryQuery.php`
+
 ### Customer modes and publication access
 - **Does:** what each customer can create, publish or edit, and which publications they can use (see Customer modes below).
 - **Switch:** the customer's profile in WP Admin.

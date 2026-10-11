@@ -115,6 +115,7 @@ final class Plugin {
 			->add( new SiteSearch() )
 			->add( new PublicationShortcodes( $publications, $urls ) )
 			->add( new ElementorPublicationQuery( $publications, $urls ) )
+			->add( new \HexaPrWire\Core\Integrations\ElementorCategoryQuery() )
 			->add( new BillingPricingBridge( $policies, $access ) )
 			->add( new OnboardingApi( $this->destinations ) )
 			->add( new ForceSyncModule( $this->resolver, $this->credentials, $this->destinations, $this->force_sync ) )

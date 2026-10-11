@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.16.0 — 2026-10-11
+
+- New Elementor Query ID `category_all_types`: a Loop Grid filtered by a category lists that category's items from every public post type that uses categories (posts and resources), so the homepage Knowledge Base cards come from the Knowledge Base category instead of hand-made copies.
+
 ## 2.15.1 — 2026-10-11
 
 - Bundles Core 3.21.1: fixes live search hanging with a spinner. The 2.15.0 rule that hides noindex pages made the search database query grow out of control; it is now one fast lookup, with the same results.
