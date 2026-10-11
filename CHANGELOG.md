@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.15.1 — 2026-10-11
+
+- Bundles Core 3.21.1: fixes live search hanging with a spinner. The 2.15.0 rule that hides noindex pages made the search database query grow out of control; it is now one fast lookup, with the same results.
+
 ## 2.15.0 — 2026-10-11
 
 - Bundles Core 3.21.0: site search is public-only for everyone. It returns only published, non-password items, never anything marked noindex (such as review copies) and never the homepage; signed-in editors no longer see private posts in the regular search.

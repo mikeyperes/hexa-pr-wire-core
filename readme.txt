@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.15.0
+Stable tag: 2.15.1
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.15.1 =
+* Bundles Core 3.21.1: fixes live search hanging with a spinner. The 2.15.0 rule that hides noindex pages made the search database query grow out of control; it is now one fast lookup, with the same results.
 
 = 2.15.0 =
 * Bundles Core 3.21.0: site search is public-only for everyone. It returns only published, non-password items, never anything marked noindex (such as review copies) and never the homepage; signed-in editors no longer see private posts in the regular search.

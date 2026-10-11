@@ -263,3 +263,5 @@ Public directory pages with live search over posts or users use `Hexa\PluginCore
 ## Public-only results (3.21.0)
 
 Every prepared search runs `SearchQueryEngine::restrict_to_public()`: published only, no password-protected items, nothing marked noindex in Rank Math or Yoast, and never the front page or the posts page. Signed-in users get the same results as visitors.
+
+The noindex rule is never a `meta_query`: WordPress turns OR/NOT EXISTS meta clauses into unkeyed postmeta joins that multiply per meta row. `restrict_to_public()` only sets `hexa_search_public_only`, and the engine's search SQL adds one `ID NOT IN (SELECT post_id FROM postmeta WHERE ...)` subquery on the indexed `meta_key` (3.21.1). The call is idempotent.

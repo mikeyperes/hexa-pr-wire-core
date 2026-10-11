@@ -13,6 +13,7 @@ use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
 final class SearchQueryEngine {
     public const EXPLICIT_QUERY_VAR = 'hexa_search_query_explicit';
     public const TIME_WINDOW_QUERY_VAR = 'hexa_search_time_window';
+    public const PUBLIC_ONLY_QUERY_VAR = 'hexa_search_public_only';
 
     /** @var callable */
     private $settings_provider;
@@ -177,19 +178,20 @@ final class SearchQueryEngine {
             $query->set( 'post__not_in', $excluded );
         }
 
-        $meta_query = $query->get( 'meta_query' );
-        $meta_query = is_array( $meta_query ) ? $meta_query : [];
-        $meta_query[] = [
-            'relation' => 'OR',
-            [ 'key' => 'rank_math_robots', 'compare' => 'NOT EXISTS' ],
-            [ 'key' => 'rank_math_robots', 'value' => '"noindex"', 'compare' => 'NOT LIKE' ],
-        ];
-        $meta_query[] = [
-            'relation' => 'OR',
-            [ 'key' => '_yoast_wpseo_meta-robots-noindex', 'compare' => 'NOT EXISTS' ],
-            [ 'key' => '_yoast_wpseo_meta-robots-noindex', 'value' => '1', 'compare' => '!=' ],
-        ];
-        $query->set( 'meta_query', $meta_query );
+        // Noindex is excluded by one indexed subquery in the search SQL, not a meta_query: WordPress
+        // turns OR/NOT EXISTS meta clauses into unkeyed postmeta joins that multiply per meta row.
+        $query->set( self::PUBLIC_ONLY_QUERY_VAR, 1 );
+    }
+
+    /**
+     * Excludes every post marked noindex by Rank Math or Yoast with one subquery on the indexed meta_key.
+     *
+     * @param object $database wpdb-compatible object.
+     */
+    public static function noindex_exclusion_sql( $database ): string {
+        return $database->posts . '.ID NOT IN (SELECT hexa_sq_ni.post_id FROM ' . $database->postmeta . ' hexa_sq_ni WHERE '
+            . "(hexa_sq_ni.meta_key = 'rank_math_robots' AND hexa_sq_ni.meta_value LIKE '%\"noindex\"%')"
+            . " OR (hexa_sq_ni.meta_key = '_yoast_wpseo_meta-robots-noindex' AND hexa_sq_ni.meta_value = '1'))";
     }
 
     /**
@@ -225,12 +227,19 @@ final class SearchQueryEngine {
         $prepared = $this->prepared_queries[ $query ];
         unset( $this->prepared_queries[ $query ] );
 
-        return $this->build_search_sql(
+        $sql = $this->build_search_sql(
             $prepared['raw_query'],
             $prepared['settings'],
             null,
             $prepared['meta_constraints']
         );
+
+        global $wpdb;
+        if ( method_exists( $query, 'get' ) && $query->get( self::PUBLIC_ONLY_QUERY_VAR ) && is_object( $wpdb ) ) {
+            $sql .= ' AND ' . self::noindex_exclusion_sql( $wpdb ) . ' ';
+        }
+
+        return $sql;
     }
 
     /**
