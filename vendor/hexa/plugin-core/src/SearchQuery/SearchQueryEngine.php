@@ -130,9 +130,8 @@ final class SearchQueryEngine {
 
         $query->set( 'post_type', [] !== $post_types ? $post_types : $settings['post_types'] );
         $query->set( self::TIME_WINDOW_QUERY_VAR, $time_window );
+        self::restrict_to_public( $query );
         if ( $explicit ) {
-            $query->set( 'post_status', 'publish' );
-            $query->set( 'has_password', false );
             $query->set( 'ignore_sticky_posts', true );
         }
         if ( $settings['results_per_page'] > 0 ) {
@@ -151,6 +150,46 @@ final class SearchQueryEngine {
         ];
 
         return $settings;
+    }
+
+    /**
+     * Site search only ever returns what any visitor may see and search engines may list: published,
+     * not password-protected, not marked noindex (Rank Math or Yoast), and never the site's own front or
+     * posts page. This holds for signed-in editors too, whose default WordPress search includes private posts.
+     *
+     * @param object $query
+     */
+    public static function restrict_to_public( $query ): void {
+        $query->set( 'post_status', 'publish' );
+        $query->set( 'has_password', false );
+
+        $excluded = array_map( 'intval', (array) $query->get( 'post__not_in' ) );
+        if ( function_exists( 'get_option' ) ) {
+            foreach ( [ 'page_on_front', 'page_for_posts' ] as $option ) {
+                $page_id = (int) get_option( $option );
+                if ( $page_id > 0 ) {
+                    $excluded[] = $page_id;
+                }
+            }
+        }
+        $excluded = array_values( array_unique( array_filter( $excluded ) ) );
+        if ( [] !== $excluded ) {
+            $query->set( 'post__not_in', $excluded );
+        }
+
+        $meta_query = $query->get( 'meta_query' );
+        $meta_query = is_array( $meta_query ) ? $meta_query : [];
+        $meta_query[] = [
+            'relation' => 'OR',
+            [ 'key' => 'rank_math_robots', 'compare' => 'NOT EXISTS' ],
+            [ 'key' => 'rank_math_robots', 'value' => '"noindex"', 'compare' => 'NOT LIKE' ],
+        ];
+        $meta_query[] = [
+            'relation' => 'OR',
+            [ 'key' => '_yoast_wpseo_meta-robots-noindex', 'compare' => 'NOT EXISTS' ],
+            [ 'key' => '_yoast_wpseo_meta-robots-noindex', 'value' => '1', 'compare' => '!=' ],
+        ];
+        $query->set( 'meta_query', $meta_query );
     }
 
     /**

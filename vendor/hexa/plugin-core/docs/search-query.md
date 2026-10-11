@@ -259,3 +259,7 @@ Restore the original host option and remove every test fixture after verificatio
 ## Related
 
 Public directory pages with live search over posts or users use `Hexa\PluginCore\DirectorySearch` (`docs/directory-search.md`), which shares this module's term parser and `SearchMatchSql` matcher.
+
+## Public-only results (3.21.0)
+
+Every prepared search runs `SearchQueryEngine::restrict_to_public()`: published only, no password-protected items, nothing marked noindex in Rank Math or Yoast, and never the front page or the posts page. Signed-in users get the same results as visitors.

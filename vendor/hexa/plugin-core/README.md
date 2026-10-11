@@ -151,6 +151,8 @@ Version 3.7.2 keeps every `Map` item card fully inside the map, including on pho
 
 Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
 
+Version 3.21.0 makes site search public-only for everyone: `SearchQueryEngine::restrict_to_public()` limits every prepared search (the regular search page and the Elementor Search widget) to published, non-password items, drops anything marked noindex (Rank Math `rank_math_robots`, Yoast `_yoast_wpseo_meta-robots-noindex`) and never returns the site's front or posts page. Before, the regular search page used WordPress's default, which shows private posts to signed-in editors.
+
 Version 3.20.0 adds the Elementor search results page mode (`hexa-search-page-results` and `hexa-search-default` CSS classes): results in the page, the spinner over the current results while loading, default content hidden while results show.
 
 Version 3.19.1 makes short words such as "5G" or the "1" in "GLP-1" fast with the search index: they are matched on the indexed text, narrowed by the query's longer words.

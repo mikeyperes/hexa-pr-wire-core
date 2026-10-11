@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.15.0 — 2026-10-11
+
+- Bundles Core 3.21.0: site search is public-only for everyone. It returns only published, non-password items, never anything marked noindex (such as review copies) and never the homepage; signed-in editors no longer see private posts in the regular search.
+
 ## 2.14.0 — 2026-10-10
 
 - Bundles Core 3.20.0 (Elementor search page-results mode). /search/ and the ?s= results page show live results in the page, keep the current results faded under the spinner while the next ones load, and hide the recent list while results show. The layout mechanics now come from Core; the pages keep only their design.
