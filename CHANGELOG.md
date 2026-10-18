@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.16.1 - 2026-10-18
+
+- Release editor: the Release status and Payment panel keeps long values, such as the card transaction ID, inside the box instead of running off the right edge.
+
 ## 2.16.0 — 2026-10-11
 
 - New Elementor Query ID `category_all_types`: a Loop Grid filtered by a category lists that category's items from every public post type that uses categories (posts and resources), so the homepage Knowledge Base cards come from the Knowledge Base category instead of hand-made copies.

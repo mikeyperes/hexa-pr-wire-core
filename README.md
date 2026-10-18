@@ -9,6 +9,10 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+### Release status panel
+- **Does:** on the release editor, shows content counts (words, images, links, headings, featured image) and the linked WooCommerce payment (order, status, total, method, transaction ID, paid date). Long values wrap inside the box.
+- **Code:** `src/Admin/ReleaseStatus.php`
+
 ### Publication lists
 - **Does:** the network's publications for marketing pages.
 - **Use:** `[display_standard_releases_table]` (all active standard-tier outlets), `[display_featured_standard_releases_links]` (featured outlets), `[display_new_sources]` (featured new outlets with icons), `[publication_press_links]` (inside a release: list of outlets where it was published, each with icon, name and domain).

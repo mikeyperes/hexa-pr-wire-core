@@ -69,12 +69,19 @@ final class ReleaseStatus implements Module {
 			'h3' => [ 'H3 headings', $s['h3'] ],
 		];
 		?>
+		<style>
+			.hprwc-release-status table { border: 0; table-layout: fixed; width: 100%; }
+			.hprwc-release-status td { padding: 6px 8px; vertical-align: top; }
+			.hprwc-release-status td:first-child { width: 42%; white-space: nowrap; }
+			.hprwc-release-status td:last-child { text-align: right; overflow-wrap: anywhere; word-break: break-word; }
+			.hprwc-release-status code { font-size: 11px; background: none; padding: 0; }
+		</style>
 		<div class="hprwc-release-status" data-hprwc-release-status data-site-host="<?php echo esc_attr( $host ); ?>">
-			<table class="widefat striped" style="border:0"><tbody>
+			<table class="widefat striped"><tbody>
 				<?php foreach ( $rows as $key => [ $label, $value ] ) : ?>
-					<tr><td><?php echo esc_html( $label ); ?></td><td style="text-align:right"><strong data-hprwc-stat="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( (string) $value ); ?></strong></td></tr>
+					<tr><td><?php echo esc_html( $label ); ?></td><td><strong data-hprwc-stat="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( (string) $value ); ?></strong></td></tr>
 				<?php endforeach; ?>
-				<tr><td>Featured image</td><td style="text-align:right"><strong><?php echo has_post_thumbnail( $post ) ? 'Yes' : 'No'; ?></strong></td></tr>
+				<tr><td>Featured image</td><td><strong><?php echo has_post_thumbnail( $post ) ? 'Yes' : 'No'; ?></strong></td></tr>
 			</tbody></table>
 			<h4 style="margin:12px 0 6px">Payment</h4>
 			<?php $this->render_payment( $post ); ?>
@@ -98,9 +105,10 @@ final class ReleaseStatus implements Module {
 			'Transaction' => $order->get_transaction_id() ?: '—',
 			'Paid' => $paid ? wp_date( 'M j, Y g:i a', $paid->getTimestamp() ) : 'Not paid',
 		];
-		echo '<table class="widefat striped" style="border:0"><tbody>';
+		echo '<table class="widefat striped"><tbody>';
 		foreach ( $rows as $label => $value ) {
-			echo '<tr><td>' . esc_html( $label ) . '</td><td style="text-align:right">' . esc_html( (string) $value ) . '</td></tr>';
+			$cell = 'Transaction' === $label && '—' !== $value ? '<code>' . esc_html( (string) $value ) . '</code>' : esc_html( (string) $value );
+			echo '<tr><td>' . esc_html( $label ) . '</td><td>' . $cell . '</td></tr>';
 		}
 		echo '</tbody></table>';
 		if ( current_user_can( 'edit_shop_orders' ) ) {
