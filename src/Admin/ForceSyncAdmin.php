@@ -6,6 +6,7 @@ use HexaPrWire\Core\CredentialRepository;
 use HexaPrWire\Core\DestinationRegistry;
 use HexaPrWire\Core\ForceSyncService;
 use HexaPrWire\Core\PublicationResolver;
+use HexaPrWire\Core\Syndication\OutletCategories;
 use HexaPrWire\Core\Syndication\OutletPush;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,6 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * can refresh it; only administrators can force an outlet to pull the release.
  * The panel loads its state over AJAX: right after a save it waits for the
  * real-time outlet push to finish, otherwise it re-checks every outlet link.
+ *
+ * Administrators and the release's own author can also place the release in
+ * one existing category per outlet: each saved outlet row searches that
+ * outlet's categories live, and choosing one re-sends the release there.
  */
 final class ForceSyncAdmin {
 	private const NONCE_ACTION = 'hprwc_force_sync_admin';
@@ -27,11 +32,16 @@ final class ForceSyncAdmin {
 
 	private const AJAX_FORCE = 'hprwc_force_sync_publication';
 
+	private const AJAX_CATEGORY_SEARCH = 'hprwc_outlet_category_search';
+
+	private const AJAX_CATEGORY_SAVE = 'hprwc_outlet_category_save';
+
 	public function __construct(
 		private PublicationResolver $resolver,
 		private CredentialRepository $credentials,
 		private DestinationRegistry $destinations,
-		private ForceSyncService $force_sync
+		private ForceSyncService $force_sync,
+		private OutletCategories $categories
 	) {}
 
 	public function register(): void {
@@ -45,6 +55,8 @@ final class ForceSyncAdmin {
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'wp_ajax_' . self::AJAX_RESOLVE, [ $this, 'ajax_resolve_publications' ] );
 		add_action( 'wp_ajax_' . self::AJAX_FORCE, [ $this, 'ajax_force_publication' ] );
+		add_action( 'wp_ajax_' . self::AJAX_CATEGORY_SEARCH, [ $this, 'ajax_category_search' ] );
+		add_action( 'wp_ajax_' . self::AJAX_CATEGORY_SAVE, [ $this, 'ajax_category_save' ] );
 	}
 
 	/** The legacy Code Snippets box stays stored for rollback but never renders. */
@@ -77,6 +89,8 @@ final class ForceSyncAdmin {
 				'actions'       => [
 					'resolve' => self::AJAX_RESOLVE,
 					'force'   => self::AJAX_FORCE,
+					'categorySearch' => self::AJAX_CATEGORY_SEARCH,
+					'categorySave'   => self::AJAX_CATEGORY_SAVE,
 				],
 			]
 		);
@@ -96,6 +110,13 @@ final class ForceSyncAdmin {
 					<p class="hprwc-dist__summary" data-hprwc-summary aria-live="polite">Loading outlet links…</p>
 				</div>
 				<div class="hprwc-dist__actions">
+					<?php if ( $this->can_pick_category( $post ) ) : ?>
+						<label class="hprwc-switch" title="Place this release in one existing category on each outlet">
+							<input type="checkbox" data-hprwc-categories-toggle>
+							<span class="hprwc-switch__track" aria-hidden="true"></span>
+							<span class="hprwc-switch__label">Outlet categories</span>
+						</label>
+					<?php endif; ?>
 					<button type="button" class="hprwc-btn" data-hprwc-run="check" disabled>
 						<span class="hprwc-btn__icon dashicons dashicons-update" aria-hidden="true"></span>Refresh
 					</button>
@@ -162,6 +183,8 @@ final class ForceSyncAdmin {
 				'title'          => (string) $target['title'],
 				'domain'         => (string) $target['domain'],
 				'live_url'       => $this->resolver->build_live_url( $target, $post ),
+				'outlet'         => $this->outlet_slug( $target ),
+				'category'       => OutletCategories::for_outlet( $post_id, $this->outlet_slug( $target ) ),
 				'saved'          => $is_saved,
 				'status'         => $is_saved ? $this->present_status( $result ) : $this->state( 'missing', 'Not created', 'Update the release to send it here.' ),
 			];
@@ -175,6 +198,7 @@ final class ForceSyncAdmin {
 				'published'    => $published,
 				'push_pending' => $published && false !== wp_next_scheduled( OutletPush::PUSH_HOOK, [ $post_id ] ),
 				'can_force'    => $is_admin && $published && $this->credentials->exists(),
+				'can_category' => $this->can_pick_category( $post ),
 			]
 		);
 	}
@@ -202,6 +226,82 @@ final class ForceSyncAdmin {
 		}
 
 		wp_send_json_success( [ 'publication_id' => $publication_id, 'status' => $status ] );
+	}
+
+	/** Live search of one saved outlet's existing categories. */
+	public function ajax_category_search(): void {
+		[ $post, $target ] = $this->category_request();
+		unset( $post );
+		$search = sanitize_text_field( wp_unslash( (string) ( $_POST['search'] ?? '' ) ) );
+		$result = $this->categories->search( (string) $target['domain'], mb_substr( $search, 0, 60 ) );
+		if ( ! $result['ok'] ) {
+			wp_send_json_error( [ 'message' => $result['message'] ], 502 );
+		}
+		wp_send_json_success( [ 'categories' => $result['categories'] ] );
+	}
+
+	/**
+	 * Save (or clear) the release's category on one outlet, then re-send the
+	 * release there so the outlet applies it now.
+	 */
+	public function ajax_category_save(): void {
+		[ $post, $target ] = $this->category_request();
+		$slug   = sanitize_title( wp_unslash( (string) ( $_POST['category'] ?? '' ) ) );
+		$outlet = $this->outlet_slug( $target );
+
+		if ( '' === $slug ) {
+			OutletCategories::set( (int) $post->ID, $outlet, null );
+			$category = null;
+		} else {
+			$category = $this->categories->find( (string) $target['domain'], $slug );
+			if ( null === $category ) {
+				wp_send_json_error( [ 'message' => 'That category does not exist on ' . $target['title'] . '. Pick one from the list.' ], 422 );
+			}
+			OutletCategories::set( (int) $post->ID, $outlet, $category );
+		}
+
+		$status = null;
+		if ( 'publish' === $post->post_status && $this->credentials->exists() ) {
+			$status = $this->present_status( $this->force_sync->run( (int) $post->ID, (int) $target['publication_id'], 'force' ) );
+		}
+
+		wp_send_json_success( [ 'publication_id' => (int) $target['publication_id'], 'category' => $category, 'status' => $status ] );
+	}
+
+	/**
+	 * The release and one of its saved outlets, for a category request the
+	 * current user may make; otherwise the request ends with an error.
+	 *
+	 * @return array{0:\WP_Post,1:array<string,mixed>}
+	 */
+	private function category_request(): array {
+		$this->verify_nonce();
+		$post_id        = absint( $_POST['post_id'] ?? 0 );
+		$publication_id = absint( $_POST['publication_id'] ?? 0 );
+		$post           = $post_id > 0 ? get_post( $post_id ) : null;
+		if ( ! $post instanceof \WP_Post || ! $this->can_pick_category( $post ) ) {
+			wp_send_json_error( [ 'message' => 'Only an administrator or the release\'s author can choose outlet categories.' ], 403 );
+		}
+		foreach ( $this->destinations->enforce( $this->resolver->resolve_post( $post_id ) )['targets'] as $target ) {
+			if ( (int) $target['publication_id'] === $publication_id ) {
+				return [ $post, $target ];
+			}
+		}
+		wp_send_json_error( [ 'message' => 'Save the release with this outlet selected before choosing its category.' ], 409 );
+	}
+
+	/** The outlet's publication term slug: the key of its feed and of its category choice. */
+	private function outlet_slug( array $target ): string {
+		$term = get_term( (int) ( $target['term_ids'][0] ?? 0 ), PublicationResolver::TAXONOMY );
+		return $term instanceof \WP_Term ? $term->slug : '';
+	}
+
+	/** Administrators, and the release's author when they can edit it. */
+	private function can_pick_category( \WP_Post $post ): bool {
+		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+			return false;
+		}
+		return $this->is_admin_user() || (int) $post->post_author === get_current_user_id();
 	}
 
 	/**

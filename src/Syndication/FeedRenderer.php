@@ -25,9 +25,12 @@ final class FeedRenderer {
 	 * image: third-party `rss2_item` output (e.g. FIFU adding the outlet logo)
 	 * is not part of the Hexa PR Wire feed contract.
 	 *
+	 * With $outlet (one outlet's feed) each item also carries the release's
+	 * chosen category on that outlet as `<hpr:outletCategory>`.
+	 *
 	 * @param array<int,array<string,mixed>> $query_sets
 	 */
-	public function build( array $query_sets ): string {
+	public function build( array $query_sets, string $outlet = '' ): string {
 		$queries = [];
 		foreach ( $query_sets as $query_args ) {
 			$queries[] = new \WP_Query( array_merge( [
@@ -56,7 +59,7 @@ final class FeedRenderer {
 					continue;
 				}
 				$rendered[ $post->ID ] = true;
-				$this->item( $post );
+				$this->item( $post, $outlet );
 			}
 		}
 		echo '</channel></rss>';
@@ -87,7 +90,7 @@ final class FeedRenderer {
 			. ' xmlns:hpr="https://hexaprwire.com/ns/press-release/1.0">';
 	}
 
-	private function item( \WP_Post $post ): void {
+	private function item( \WP_Post $post, string $outlet = '' ): void {
 		$GLOBALS['post'] = $post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 		setup_postdata( $post );
 		$author = get_userdata( (int) $post->post_author );
@@ -128,6 +131,10 @@ final class FeedRenderer {
 				$category_slugs[] = $term->slug;
 				echo '<category domain="category" nicename="' . esc_attr( $term->slug ) . '"><![CDATA[' . $this->cdata( $term->name ) . ']]></category>';
 			}
+		}
+		$outlet_category = '' !== $outlet ? OutletCategories::for_outlet( $post->ID, $outlet ) : null;
+		if ( null !== $outlet_category ) {
+			echo '<hpr:outletCategory nicename="' . esc_attr( $outlet_category['slug'] ) . '"><![CDATA[' . $this->cdata( $outlet_category['name'] ) . ']]></hpr:outletCategory>';
 		}
 		if ( $category_slugs ) {
 			echo '<item_cat><![CDATA[' . $this->cdata( implode( ',', $category_slugs ) ) . ']]></item_cat>';

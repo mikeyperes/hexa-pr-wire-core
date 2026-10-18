@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.17.0 - 2026-10-18
+
+- Distribution panel: an Outlet categories switch for administrators and the release's author. Each saved outlet row gets a live search of that outlet's existing categories (through its Distributor's `categories` route, or WordPress's public category list on older Distributors); choosing one saves it and re-sends the release to that outlet.
+- The outlet feed carries the choice as `<hpr:outletCategory>`, only in that outlet's own feed. Stored on the release in `_hprwc_outlet_categories`.
+
 ## 2.16.1 - 2026-10-18
 
 - Release editor: the Release status and Payment panel keeps long values, such as the card transaction ID, inside the box instead of running off the right edge.

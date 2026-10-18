@@ -51,6 +51,16 @@ final class OutletClient {
 		return $this->request( 'POST', $host, 'plugins/update', [ 'plugin' => $plugin ], 240 );
 	}
 
+	/**
+	 * The outlet's existing categories (`search` text or exact `slug`).
+	 *
+	 * @param array<string,string> $args
+	 * @return array{ok:bool,status:int,message:string,data:array<string,mixed>}
+	 */
+	public function categories( string $host, array $args = [] ): array {
+		return $this->request( 'GET', $host, add_query_arg( array_map( 'rawurlencode', $args ), 'categories' ), [], 15 );
+	}
+
 	/** @return array{ok:bool,status:int,message:string,data:array<string,mixed>} */
 	private function request( string $method, string $host, string $route, array $body, int $timeout ): array {
 		$token = $this->credentials->get();

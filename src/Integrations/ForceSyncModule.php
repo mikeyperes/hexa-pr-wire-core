@@ -8,6 +8,8 @@ use HexaPrWire\Core\CredentialRepository;
 use HexaPrWire\Core\DestinationRegistry;
 use HexaPrWire\Core\ForceSyncService;
 use HexaPrWire\Core\PublicationResolver;
+use HexaPrWire\Core\Syndication\OutletCategories;
+use HexaPrWire\Core\Syndication\OutletClient;
 
 final class ForceSyncModule implements Module {
 	public function __construct(
@@ -21,7 +23,8 @@ final class ForceSyncModule implements Module {
 		if ( is_admin() ) {
 			add_action( 'admin_init', [ $this->credentials, 'migrate_legacy_credential' ], 20 );
 			add_action( 'admin_init', [ $this, 'seed_destinations' ], 25 );
-			( new ForceSyncAdmin( $this->resolver, $this->credentials, $this->destinations, $this->service ) )->register();
+			$categories = new OutletCategories( new OutletClient( $this->credentials, $this->resolver, $this->destinations ) );
+			( new ForceSyncAdmin( $this->resolver, $this->credentials, $this->destinations, $this->service, $categories ) )->register();
 		}
 	}
 

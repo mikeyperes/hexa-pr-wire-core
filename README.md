@@ -9,6 +9,11 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+### Outlet categories
+- **Does:** places a release in one existing category on each outlet it goes to, in addition to Press Release. Categories are searched live on the outlet and are never created.
+- **Use:** release editor, Distribution panel, Outlet categories switch (administrators and the release's author); Choose on an outlet row, type to search, pick one. Remove goes back to Press Release only.
+- **Code:** `src/Syndication/OutletCategories.php`, `src/Admin/ForceSyncAdmin.php`, `assets/admin.js`; feed element `<hpr:outletCategory>` in `src/Syndication/FeedRenderer.php`.
+
 ### Release status panel
 - **Does:** on the release editor, shows content counts (words, images, links, headings, featured image) and the linked WooCommerce payment (order, status, total, method, transaction ID, paid date). Long values wrap inside the box.
 - **Code:** `src/Admin/ReleaseStatus.php`

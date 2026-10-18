@@ -80,7 +80,7 @@ final class FeedRegistry implements Module {
 		$key = 'hprwc_feed_' . md5( wp_json_encode( [ $terms, $slugs, $limit, get_option( self::VERSION_OPTION, '' ) ] ) );
 		$xml = get_transient( $key );
 		if ( ! is_string( $xml ) ) {
-			$xml = $this->renderer->build( [ $query ] );
+			$xml = $this->renderer->build( [ $query ], 1 === count( $terms ) ? $terms[0] : '' );
 			set_transient( $key, $xml, HOUR_IN_SECONDS );
 		}
 		$this->renderer->send( $xml );

@@ -82,11 +82,158 @@
 		const $main = $('<div>').addClass('hprwc-row__main').appendTo($row);
 		$('<span>').addClass('hprwc-row__name').text(target.title).appendTo($main);
 		$('<a>', { href: target.live_url, target: '_blank', rel: 'noopener noreferrer', class: 'hprwc-row__url' }).text(target.live_url || target.domain).appendTo($main);
+		$main.append(categoryFor(target));
 		const $status = $('<div>').addClass('hprwc-row__status').appendTo($row);
 		$('<span>').addClass('hprwc-pill').attr('data-hprwc-pill', '').appendTo($status);
 		$('<span>').addClass('hprwc-row__detail').attr('data-hprwc-detail', '').appendTo($status);
 		renderStatus($row, target.status);
 		return $row;
+	}
+
+	/* Outlet categories: one existing category per saved outlet, searched live on that outlet. */
+
+	const SEARCH_DELAY_MS = 250;
+	const TOGGLE_KEY = 'hprwcOutletCategories';
+
+	function categoriesOn() {
+		return $panel.hasClass('is-categories');
+	}
+
+	function categoryFor(target) {
+		const $cat = $('<div>').addClass('hprwc-cat').attr('data-hprwc-cat', target.publication_id);
+		const $line = $('<div>').addClass('hprwc-cat__line').appendTo($cat);
+		$('<span>').addClass('hprwc-cat__label').text('Category').appendTo($line);
+		if (target.category) {
+			$('<span>').addClass('hprwc-cat__chip').text(target.category.name).appendTo($line);
+		} else {
+			$('<span>').addClass('hprwc-cat__none').text('Press Release only').appendTo($line);
+		}
+		if (state.can_category && target.saved) {
+			$('<button>', { type: 'button', class: 'button-link hprwc-cat__edit', 'data-hprwc-cat-edit': target.publication_id }).text(target.category ? 'Change' : 'Choose').appendTo($line);
+			if (target.category) {
+				$('<button>', { type: 'button', class: 'button-link hprwc-cat__clear', 'data-hprwc-cat-clear': target.publication_id }).text('Remove').appendTo($line);
+			}
+		} else if (state.can_category) {
+			$('<span>').addClass('hprwc-cat__hint').text('Update the release first').appendTo($line);
+		}
+		$('<span>').addClass('hprwc-cat__msg').attr({ 'data-hprwc-cat-msg': '', 'aria-live': 'polite' }).appendTo($line);
+		return $cat;
+	}
+
+	function targetById(id) {
+		return state.targets.filter(function (t) { return t.publication_id === id; })[0] || null;
+	}
+
+	function catMessage(id, text, tone) {
+		$panel.find('[data-hprwc-cat="' + id + '"] [data-hprwc-cat-msg]').attr('data-tone', tone || 'info').text(text || '');
+	}
+
+	function closePickers() {
+		$panel.find('.hprwc-cat__picker').remove();
+	}
+
+	function openPicker(id) {
+		closePickers();
+		const target = targetById(id);
+		if (!target) return;
+		const $cat = $panel.find('[data-hprwc-cat="' + id + '"]');
+		const $picker = $('<div>').addClass('hprwc-cat__picker').appendTo($cat);
+		const $input = $('<input>', { type: 'search', class: 'hprwc-cat__search', placeholder: 'Search ' + target.title + ' categories…', autocomplete: 'off', 'aria-label': 'Search ' + target.title + ' categories' }).appendTo($picker);
+		const $list = $('<ul>').addClass('hprwc-cat__results').attr('role', 'listbox').appendTo($picker);
+		let timer = null;
+		let request = null;
+		let lastTerm = null;
+
+		function search(term) {
+			if (term === lastTerm) return;
+			lastTerm = term;
+			if (request && request.readyState !== 4) request.abort();
+			$list.empty().append($('<li>').addClass('hprwc-cat__state').append($('<span>').addClass('hprwc-spin')).append(document.createTextNode('Loading categories…')));
+			request = $.post(config.ajaxUrl, {
+				action: config.actions.categorySearch,
+				nonce: config.nonce,
+				post_id: config.postId,
+				publication_id: id,
+				search: term
+			}).done(function (response) {
+				const rows = response && response.success && response.data ? response.data.categories || [] : [];
+				$list.empty();
+				if (!rows.length) {
+					$('<li>').addClass('hprwc-cat__state').text(term ? 'No category matches "' + term + '".' : 'This outlet has no categories.').appendTo($list);
+					return;
+				}
+				rows.forEach(function (row) {
+					const $item = $('<li>', { role: 'option', tabindex: 0, class: 'hprwc-cat__option', 'data-slug': row.slug, 'data-name': row.name });
+					if (target.category && target.category.slug === row.slug) $item.addClass('is-current').attr('aria-selected', 'true');
+					$('<span>').addClass('hprwc-cat__option-name').text(row.path || row.name).appendTo($item);
+					$('<span>').addClass('hprwc-cat__option-count').text(row.count + ' posts').appendTo($item);
+					$list.append($item);
+				});
+			}).fail(function (xhr, status) {
+				if (status === 'abort') return;
+				$list.empty().append($('<li>').addClass('hprwc-cat__state is-error').text(responseMessage(xhr)));
+			});
+		}
+
+		$input.on('input', function () {
+			window.clearTimeout(timer);
+			const term = $.trim($input.val());
+			timer = window.setTimeout(function () { search(term); }, SEARCH_DELAY_MS);
+		}).on('keydown', function (e) {
+			if (e.key === 'Escape') { closePickers(); }
+			if (e.key === 'ArrowDown') { e.preventDefault(); $list.find('.hprwc-cat__option').first().trigger('focus'); }
+			if (e.key === 'Enter') { e.preventDefault(); $list.find('.hprwc-cat__option').first().trigger('click'); }
+		});
+		$list.on('click', '.hprwc-cat__option', function () {
+			saveCategory(id, $(this).attr('data-slug'), $(this).attr('data-name'));
+		}).on('keydown', '.hprwc-cat__option', function (e) {
+			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
+			if (e.key === 'ArrowDown') { e.preventDefault(); $(this).next('.hprwc-cat__option').trigger('focus'); }
+			if (e.key === 'ArrowUp') { e.preventDefault(); const $prev = $(this).prev('.hprwc-cat__option'); ($prev.length ? $prev : $input).trigger('focus'); }
+			if (e.key === 'Escape') { closePickers(); }
+		});
+
+		$input.trigger('focus');
+		search('');
+	}
+
+	function saveCategory(id, slug, name) {
+		const target = targetById(id);
+		if (!target) return;
+		closePickers();
+		const published = state.published;
+		catMessage(id, slug ? 'Saving ' + name + (published ? ' and sending to ' + target.title + '…' : '…') : 'Removing…', 'info');
+		if (published) renderStatus($panel.find('.hprwc-row[data-publication-id="' + id + '"]'), null, 'Sending…');
+		$panel.find('[data-hprwc-cat="' + id + '"] button').prop('disabled', true);
+		$.post(config.ajaxUrl, {
+			action: config.actions.categorySave,
+			nonce: config.nonce,
+			post_id: config.postId,
+			publication_id: id,
+			category: slug || ''
+		}).done(function (response) {
+			const data = response && response.data ? response.data : {};
+			target.category = data.category || null;
+			if (data.status) target.status = data.status;
+			const $row = $panel.find('.hprwc-row[data-publication-id="' + id + '"]');
+			$row.find('[data-hprwc-cat]').replaceWith(categoryFor(target));
+			renderStatus($row, target.status);
+			const applied = data.status && data.status.state === 'live';
+			catMessage(id, target.category
+				? (published ? (applied ? 'Saved and sent.' : 'Saved. The outlet did not confirm yet.') : 'Saved. Applied when the release is published.')
+				: 'Removed.', applied || !published ? 'success' : 'warning');
+			$panel.find('[data-hprwc-summary]').text(summarize());
+		}).fail(function (xhr) {
+			renderStatus($panel.find('.hprwc-row[data-publication-id="' + id + '"]'), target.status);
+			$panel.find('[data-hprwc-cat="' + id + '"] button').prop('disabled', false);
+			catMessage(id, responseMessage(xhr), 'error');
+		});
+	}
+
+	function setCategoriesMode(on) {
+		$panel.toggleClass('is-categories', !!on);
+		$panel.find('[data-hprwc-categories-toggle]').prop('checked', !!on);
+		if (!on) closePickers();
 	}
 
 	function render(data) {
@@ -110,6 +257,12 @@
 			setNotice('');
 		}
 		$panel.find('[data-hprwc-summary]').text(summarize());
+		const hasCategory = state.targets.some(function (t) { return !!t.category; });
+		$panel.toggleClass('has-categories', hasCategory);
+		if (hasCategory && !$panel.data('hprwc-cat-init')) {
+			$panel.data('hprwc-cat-init', true);
+			setCategoriesMode(true);
+		}
 		syncButtons();
 	}
 
@@ -290,6 +443,27 @@
 		$panel.on('click', '[data-hprwc-run]', function () {
 			run($(this).data('hprwc-run') === 'force' ? 'force' : 'check');
 		});
+		$panel.on('change', '[data-hprwc-categories-toggle]', function () {
+			setCategoriesMode(this.checked);
+			try { window.localStorage.setItem(TOGGLE_KEY, this.checked ? '1' : '0'); } catch (e) {}
+		});
+		$panel.on('click', '[data-hprwc-cat-edit]', function () {
+			const id = parseInt($(this).attr('data-hprwc-cat-edit'), 10);
+			if ($panel.find('[data-hprwc-cat="' + id + '"] .hprwc-cat__picker').length) {
+				closePickers();
+			} else {
+				openPicker(id);
+			}
+		});
+		$panel.on('click', '[data-hprwc-cat-clear]', function () {
+			saveCategory(parseInt($(this).attr('data-hprwc-cat-clear'), 10), '', '');
+		});
+		$(document).on('mousedown.hprwcCat', function (e) {
+			if (!$(e.target).closest('.hprwc-cat').length) closePickers();
+		});
+		try {
+			if (window.localStorage.getItem(TOGGLE_KEY) === '1') setCategoriesMode(true);
+		} catch (e) {}
 		$panel.on('click', '[data-hprwc-select]', function () {
 			$panel.find('.hprwc-row__check:not(:disabled)').prop('checked', $(this).data('hprwc-select') === 'all');
 		});
