@@ -138,7 +138,8 @@
 		if (!target) return;
 		const $cat = $panel.find('[data-hprwc-cat="' + id + '"]');
 		const $picker = $('<div>').addClass('hprwc-cat__picker').appendTo($cat);
-		const $input = $('<input>', { type: 'search', class: 'hprwc-cat__search', placeholder: 'Search ' + target.title + ' categories…', autocomplete: 'off', 'aria-label': 'Search ' + target.title + ' categories' }).appendTo($picker);
+		// Plain attributes: jQuery UI on the editor treats an `autocomplete` property as its widget.
+		const $input = $('<input>').attr({ type: 'search', class: 'hprwc-cat__search', placeholder: 'Search ' + target.title + ' categories…', autocomplete: 'off', 'aria-label': 'Search ' + target.title + ' categories' }).appendTo($picker);
 		const $list = $('<ul>').addClass('hprwc-cat__results').attr('role', 'listbox').appendTo($picker);
 		let timer = null;
 		let request = null;

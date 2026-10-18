@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.17.1 - 2026-10-18
+
+- Outlet categories: the category search box now opens on editors that load jQuery UI Autocomplete (it read the box's `autocomplete` attribute as its widget and stopped).
+
 ## 2.17.0 - 2026-10-18
 
 - Distribution panel: an Outlet categories switch for administrators and the release's author. Each saved outlet row gets a live search of that outlet's existing categories (through its Distributor's `categories` route, or WordPress's public category list on older Distributors); choosing one saves it and re-sends the release to that outlet.
