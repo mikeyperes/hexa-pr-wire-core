@@ -18,6 +18,7 @@ final class BillingPricingBridge implements Module {
 		add_action( 'woocommerce_before_calculate_totals', [ $this, 'apply_price' ], 40 );
 		add_filter( 'woocommerce_get_item_data', [ $this, 'display_item' ], 30, 2 );
 		add_action( 'hpr_billing_checkout_order_details', [ $this, 'render_checkout_picker' ] );
+		add_action( 'woocommerce_after_checkout_validation', [ $this, 'require_publication' ], 30, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', [ $this, 'save_item' ], 30, 4 );
 		add_action( 'woocommerce_order_status_processing', [ $this, 'assign_fulfillment_publication' ], 30 );
 		add_action( 'woocommerce_order_status_completed', [ $this, 'assign_fulfillment_publication' ], 30 );
@@ -104,7 +105,7 @@ final class BillingPricingBridge implements Module {
 		?>
 		<div class="hpr-checkout-order__pick">
 			<label for="hprwc-checkout-publication">Publication</label>
-			<select id="hprwc-checkout-publication" data-product="<?php echo esc_attr( (string) $product_id ); ?>" onchange="(function(s){var q=location.search.replace(/[?&](add-to-cart|publication)=[^&]*/g,'').replace(/^&/,'?');location.href=location.pathname+(q?q+'&':'?')+'add-to-cart='+encodeURIComponent(s.dataset.product)+'&publication='+encodeURIComponent(s.value);})(this)">
+			<select id="hprwc-checkout-publication" required data-product="<?php echo esc_attr( (string) $product_id ); ?>" onchange="(function(s){var q=location.search.replace(/[?&](add-to-cart|publication)=[^&]*/g,'').replace(/^&/,'?');location.href=location.pathname+(q?q+'&':'?')+'add-to-cart='+encodeURIComponent(s.dataset.product)+'&publication='+encodeURIComponent(s.value);})(this)">
 				<option value="" <?php selected( 0, $current ); ?>>Choose a publication</option>
 				<?php foreach ( $outlets as $term ) :
 					$price = $this->filtered_price( '' !== $default ? $default : null, $user_id, (int) $term->term_id ); ?>
@@ -113,6 +114,25 @@ final class BillingPricingBridge implements Module {
 			</select>
 		</div>
 		<?php
+	}
+
+	/** A standard release cannot be paid for until its publication is chosen and allowed. */
+	public function require_publication( array $data, \WP_Error $errors ): void {
+		unset( $data );
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return;
+		}
+		foreach ( WC()->cart->get_cart() as $item ) {
+			if ( ! $this->is_standard_product( absint( $item['product_id'] ?? 0 ) ) ) {
+				continue;
+			}
+			$term_id = absint( $item['_hprwc_publication_term_id'] ?? 0 );
+			if ( $term_id <= 0 ) {
+				$errors->add( 'hprwc_publication_required', 'Choose a publication for your release before paying.' );
+			} elseif ( ! $this->policy->can_use_publication( get_current_user_id(), $term_id ) ) {
+				$errors->add( 'hprwc_publication_unavailable', 'That publication is not available for your account. Choose another one.' );
+			}
+		}
 	}
 
 	/** @param array<int,array<string,string>> $data @param array<string,mixed> $item */

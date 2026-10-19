@@ -100,13 +100,17 @@ final class CustomerProfile implements Module {
 								<?php if ( $outlets ) : ?><span class="hprwc-tag"><?php echo esc_html( sprintf( _n( '%d outlet', '%d outlets', $outlets ), $outlets ) ); ?></span><?php endif; ?>
 								<span class="hprwc-inherited">Blocked by group</span>
 							</span>
+							<?php if ( $outlets ) : ?>
+							<span class="hprwc-price hprwc-fill"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]{0,2}" data-hprwc-fill placeholder="Set all" aria-label="Set the price of every <?php echo esc_attr( $term->name ); ?> outlet"></span>
+							<?php else : ?>
 							<span class="hprwc-price"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]{0,2}" name="hprwc_publication_prices[<?php echo esc_attr( (string) $id ); ?>]" value="<?php echo esc_attr( (string) ( $prices[ $id ] ?? '' ) ); ?>" placeholder="<?php echo esc_attr( '' !== $default_price ? $default_price : 'Default' ); ?>" aria-label="Price for <?php echo esc_attr( $term->name ); ?>"></span>
+							<?php endif; ?>
 						</li>
 					<?php endforeach; ?>
 						<li class="hprwc-empty" hidden>No publications match your search.</li>
 					</ul>
 				</div>
-				<p class="description">An empty price uses this customer's standard price<?php if ( '' !== $default_price ) : ?> ($<span data-hprwc-default-label><?php echo esc_html( $default_price ); ?></span>)<?php endif; ?>. Prices never change access.</p>
+				<p class="description">Group rows only fill their outlets' prices; each outlet keeps its own. An empty price uses this customer's standard price<?php if ( '' !== $default_price ) : ?> ($<span data-hprwc-default-label><?php echo esc_html( $default_price ); ?></span>)<?php endif; ?>. Prices never change access.</p>
 				<?php do_action( 'hprwc_customer_billing_services', $user ); ?>
 			</section>
 
@@ -200,6 +204,8 @@ final class CustomerProfile implements Module {
 		$allowed = isset( $_POST['hprwc_allowed_publications'] ) && is_array( $_POST['hprwc_allowed_publications'] ) ? wp_unslash( $_POST['hprwc_allowed_publications'] ) : [];
 		$excluded = isset( $_POST['hprwc_excluded_publications'] ) && is_array( $_POST['hprwc_excluded_publications'] ) ? wp_unslash( $_POST['hprwc_excluded_publications'] ) : [];
 		$prices = isset( $_POST['hprwc_publication_prices'] ) && is_array( $_POST['hprwc_publication_prices'] ) ? wp_unslash( $_POST['hprwc_publication_prices'] ) : [];
+		// Only outlets are sold, so only outlet prices are stored.
+		$prices = array_intersect_key( $prices, array_flip( array_map( static fn( \WP_Term $term ): int => (int) $term->term_id, PublicationPicker::outlets() ) ) );
 		$this->policies->save( $user_id, $mode, $allowed, $prices, $access_mode, $excluded );
 		$this->save_emails( $user_id, $this->posted_string( 'hprwc_notification_emails' ) );
 		update_user_meta( $user_id, 'email_subject', sanitize_text_field( $this->posted_string( 'hprwc_email_subject' ) ) );

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.17.2 - 2026-10-19
+
+- Checkout: a standard release can no longer be paid for without a publication. Checkout refuses the order until one is chosen and allowed for the customer, and the dropdown is marked required.
+- Customer profile: group rows (for example Adam Torkildson) no longer have a price box that checkout ignored. Their "Set all" box fills the price of every outlet in the group, and only outlet prices are saved.
+- Customer profile: the list summary counts outlets only ("47 outlets, all open"), not groups.
+
 ## 2.17.1 - 2026-10-18
 
 - Outlet categories: the category search box now opens on editors that load jQuery UI Autocomplete (it read the box's `autocomplete` attribute as its widget and stopped).

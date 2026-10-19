@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.17.1
+Stable tag: 2.17.2
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.17.2 =
+* Checkout requires a publication for a standard release; customer profile group rows fill their outlets' prices and the count shows outlets only.
 
 = 2.17.1 =
 * Outlet categories: the category search box opens on editors that load jQuery UI Autocomplete.

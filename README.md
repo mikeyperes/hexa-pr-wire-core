@@ -36,7 +36,8 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ### Customer modes and publication access
 - **Does:** what each customer can create, publish or edit, and which publications they can use (see Customer modes below).
-- **Switch:** the customer's profile in WP Admin.
+- **Switch:** the customer's profile in WP Admin. Prices are set per outlet; a group row's "Set all" box only fills its outlets.
+- **Checkout:** a standard release needs a chosen, allowed publication before payment (`BillingPricingBridge`).
 - **Extend:** `hprwc_customer_default_price`, `hprwc_push_on_publish`.
 
 ### Site search

@@ -3,6 +3,7 @@
 
 	function initEntitlements($box) {
 		const $rows = $box.find('.hprwc-pub');
+		const $outlets = $rows.not('.is-group');
 		const column = () => ({ restricted: 'allow', excluded: 'exclude' }[$box.attr('data-mode')] || '');
 
 		function refresh() {
@@ -16,12 +17,13 @@
 				}
 			});
 
-			const total = $rows.length;
-			let text = total + ' publications, all open';
+			// Groups are not sold, so the summary counts outlets only.
+			const total = $outlets.length;
+			let text = total + ' outlets, all open';
 			if (column() === 'allow') {
-				text = $rows.find('.hprwc-col-allow input:checked').length + ' of ' + total + ' can publish';
+				text = $outlets.find('.hprwc-col-allow input:checked').length + ' of ' + total + ' can publish';
 			} else if (column() === 'exclude') {
-				text = $rows.filter('.is-inherited').add($rows.has('.hprwc-col-exclude input:checked')).length + ' of ' + total + ' blocked';
+				text = $outlets.filter('.is-inherited').add($outlets.has('.hprwc-col-exclude input:checked')).length + ' of ' + total + ' blocked';
 			}
 			$box.find('.hprwc-summary').text(text);
 		}
@@ -52,10 +54,21 @@
 				refresh();
 			}
 		});
+		// A group's "Set all" box fills the price of every outlet under it.
+		$box.on('input', '[data-hprwc-fill]', function () {
+			const value = this.value.trim();
+			const fill = function (parent) {
+				$rows.filter('[data-parent="' + parent + '"]').each(function () {
+					$(this).find('.hprwc-price input[name]').val(value);
+					fill(String($(this).data('term')));
+				});
+			};
+			fill(String($(this).closest('.hprwc-pub').data('term')));
+		});
 		// Empty publication prices fall back to the standard price: mirror it live.
 		$box.on('input', '[data-hprwc-default-price]', function () {
 			const value = this.value.trim() || String($(this).data('fallback') || '') || 'Default';
-			$rows.find('.hprwc-price input').attr('placeholder', value);
+			$rows.find('.hprwc-price input[name]').attr('placeholder', value);
 			$box.find('[data-hprwc-default-label]').text(value);
 		});
 		refresh();
