@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.20.1 - 2026-10-20
+
+- Customers see the Categories box again and choose their own categories (they show on Hexa PR Wire). Undoes the 2.20.0 change that hid it and kept customer releases in Press Release. The Pay for this release button stays.
+
 ## 2.20.0 - 2026-10-20
 
 - Release Status: when no payment is linked, the release's customer gets "Pay for this release". It opens checkout for that exact release (with its publication), so Hexa PR Wire Billing 1.3.0 links the payment to it instead of creating a new blank draft.
