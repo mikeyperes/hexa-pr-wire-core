@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.20.0 - 2026-10-20
+
+- Release Status: when no payment is linked, the release's customer gets "Pay for this release". It opens checkout for that exact release (with its publication), so Hexa PR Wire Billing 1.3.0 links the payment to it instead of creating a new blank draft.
+- Release editor: non-administrators no longer see the Categories box. The Publications box shows the release's category read-only, and a customer's save keeps the release in Press Release (`hprwc_release_category` filter).
+
 ## 2.19.1 - 2026-10-20
 
 - A customer's release list (the default All view) now shows their releases published under Hexa PR Wire. WordPress adds "author = me" to that view for users who cannot edit others' posts; the customer list now relies on release ownership only.

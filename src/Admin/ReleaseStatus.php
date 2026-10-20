@@ -89,11 +89,43 @@ final class ReleaseStatus implements Module {
 		<?php
 	}
 
+	/**
+	 * Checkout for this exact release, so the payment links to it instead of creating
+	 * a new draft (Hexa PR Wire Billing's ReleaseLink). Only for the release's customer.
+	 */
+	private function pay_url( \WP_Post $post ): string {
+		$user = wp_get_current_user();
+		$catalog = '\\HexaPrWire\\Billing\\Commerce\\ProductCatalog';
+		if ( ! class_exists( $catalog ) || ! function_exists( 'wc_get_checkout_url' ) || 'trash' === $post->post_status
+			|| ! in_array( \HexaPrWire\Core\Customer\RoleLifecycle::ROLE, (array) $user->roles, true )
+			|| \HexaPrWire\Core\Customer\ReleaseOwner::id( $post ) !== (int) $user->ID ) {
+			return '';
+		}
+		$product_id = $catalog::product_id( $catalog::STANDARD );
+		if ( $product_id <= 0 ) {
+			return '';
+		}
+		$args = [ 'add-to-cart' => $product_id, 'release' => $post->ID ];
+		$term = (int) get_post_meta( $post->ID, PublicationPicker::LOCK_META, true );
+		if ( $term <= 0 ) {
+			$terms = wp_get_object_terms( $post->ID, 'publication', [ 'fields' => 'ids' ] );
+			$term = is_array( $terms ) && 1 === count( $terms ) ? (int) $terms[0] : 0;
+		}
+		if ( $term > 0 ) {
+			$args['publication'] = $term;
+		}
+		return add_query_arg( $args, wc_get_checkout_url() );
+	}
+
 	private function render_payment( \WP_Post $post ): void {
 		$order_id = (int) get_post_meta( $post->ID, 'billing_invoice_id', true );
 		$order = $order_id && function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : false;
 		if ( ! $order ) {
 			echo '<p class="description">No payment is linked to this release.</p>';
+			$pay = $this->pay_url( $post );
+			if ( '' !== $pay ) {
+				echo '<p><a class="button button-primary" href="' . esc_url( $pay ) . '" target="_blank" rel="noopener">Pay for this release</a></p>';
+			}
 			return;
 		}
 		$paid = $order->get_date_paid();

@@ -12,12 +12,21 @@ use HexaPrWire\Core\Contracts\Module;
  *   flat list with "Select all".
  * - A single-outlet order is locked to the purchased outlet: no picker, just
  *   the outlet's name (also enforced on save by AccessController).
+ * - Non-administrators do not get the Categories box; this box shows the
+ *   release's category read-only, and customers' releases stay in Press Release.
  */
 final class PublicationPicker implements Module {
 	public const LOCK_META = '_hprwc_locked_publication_term';
 
+	/** Category every customer release belongs to (filter: hprwc_release_category). */
+	public static function release_category(): ?\WP_Term {
+		$term = get_category_by_slug( (string) apply_filters( 'hprwc_release_category', 'press-release' ) );
+		return $term instanceof \WP_Term ? $term : null;
+	}
+
 	public function register(): void {
 		add_action( 'add_meta_boxes_post', [ $this, 'boxes' ], 20 );
+		add_action( 'save_post_post', [ $this, 'keep_release_category' ], 20, 2 );
 		add_action( 'admin_footer-post.php', [ $this, 'admin_tree_script' ] );
 		add_action( 'admin_footer-post-new.php', [ $this, 'admin_tree_script' ] );
 	}
@@ -27,10 +36,26 @@ final class PublicationPicker implements Module {
 			return;
 		}
 		remove_meta_box( 'publicationdiv', 'post', 'side' );
+		remove_meta_box( 'categorydiv', 'post', 'side' );
 		add_meta_box( 'hprwc-publications', 'Publications', [ $this, 'render' ], 'post', 'side', 'default' );
 	}
 
+	/** A customer's save keeps the release in the release category. */
+	public function keep_release_category( int $post_id, \WP_Post $post ): void {
+		$user = wp_get_current_user();
+		$term = self::release_category();
+		if ( ! $term || wp_is_post_revision( $post_id ) || 'auto-draft' === $post->post_status || ! in_array( \HexaPrWire\Core\Customer\RoleLifecycle::ROLE, (array) $user->roles, true ) ) {
+			return;
+		}
+		wp_set_post_categories( $post_id, [ (int) $term->term_id ] );
+	}
+
 	public function render( \WP_Post $post ): void {
+		$categories = wp_get_post_categories( $post->ID, [ 'fields' => 'names' ] );
+		$category = is_array( $categories ) && [] !== $categories ? implode( ', ', $categories ) : ( self::release_category()?->name ?? '' );
+		if ( '' !== $category ) {
+			echo '<p>Category: <strong>' . esc_html( $category ) . '</strong></p>';
+		}
 		$locked = (int) get_post_meta( $post->ID, self::LOCK_META, true );
 		if ( $locked > 0 ) {
 			$term = get_term( $locked, 'publication' );
