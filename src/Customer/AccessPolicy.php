@@ -27,7 +27,7 @@ final class AccessPolicy {
 		if ( ! $this->is_customer( $user_id ) || 'post' !== $post->post_type ) {
 			return true;
 		}
-		return SubmissionMode::is_full( $this->mode( $user_id ) ) || (int) $post->post_author === $user_id;
+		return SubmissionMode::is_full( $this->mode( $user_id ) ) || ReleaseOwner::id( $post ) === $user_id;
 	}
 
 	public function can_use_publication( int $user_id, int $term_id ): bool {

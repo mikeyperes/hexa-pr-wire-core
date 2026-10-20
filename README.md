@@ -37,6 +37,7 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 ### Customer modes and publication access
 - **Does:** what each customer can create, publish or edit, and which publications they can use (see Customer modes below).
 - **Switch:** the customer's profile in WP Admin. Prices are set per outlet; a group row's "Set all" box only fills its outlets.
+- **Public author:** new releases go out under the customer, Hexa PR Wire (login `hexaprwire`, filter `hprwc_house_author_id`) or a user an administrator picks (`hprwc_public_author` user meta); each release can switch to Hexa PR Wire in its editor. Ownership follows "Submitted by" (`Customer\ReleaseOwner`), never the public author.
 - **Admin scope:** customers see only Posts and Media (their own). Every other content type is closed by permission and Elementor screens are closed (`Customer\AdminScope`). New "hide from customers" rules go there.
 - **Checkout:** a standard release needs a chosen, allowed publication before payment (`BillingPricingBridge`).
 - **Extend:** `hprwc_customer_default_price`, `hprwc_push_on_publish`.

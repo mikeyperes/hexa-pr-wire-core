@@ -35,7 +35,7 @@ final class SubmissionNotifications implements Module {
 		$config = $this->settings->all();
 		$recipients = $this->settings->admin_emails();
 		// A customer-published release also goes to that customer's own account email.
-		$author = 'published' === $kind ? get_userdata( (int) $post->post_author ) : false;
+		$author = 'published' === $kind ? get_userdata( \HexaPrWire\Core\Customer\ReleaseOwner::id( $post ) ) : false;
 		if ( $author instanceof \WP_User && is_email( $author->user_email ) ) {
 			$recipients[] = $author->user_email;
 		}

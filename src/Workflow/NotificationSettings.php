@@ -42,7 +42,7 @@ final class NotificationSettings {
 	}
 
 	public function interpolate( string $template, \WP_Post $post, ?\WP_User $user = null ): string {
-		$user ??= get_userdata( (int) $post->post_author ) ?: null;
+		$user ??= get_userdata( \HexaPrWire\Core\Customer\ReleaseOwner::id( $post ) ) ?: null;
 		$values = [
 			'{title}' => get_the_title( $post ),
 			'{first_name}' => $user ? (string) $user->first_name : '',

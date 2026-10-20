@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.18.0
+Stable tag: 2.19.0
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.19.0 =
+* Public author: customers publish under themselves or Hexa PR Wire (administrators can pick any user), per customer and per release; Submitted By always stays the customer. Release actions on the profile are administrator-only.
 
 = 2.18.0 =
 * Customers in WP Admin see only their own posts and media: every other content type is closed by permission, and Elementor and other staff screens are closed.

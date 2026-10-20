@@ -19,6 +19,7 @@ final class OwnershipService implements Module {
 		if ( $owner > 0 ) {
 			update_post_meta( $post_id, 'submitted_by', $owner );
 			update_post_meta( $post_id, '_submitted_by', 'field_651368fa55448' );
+			do_action( 'hprwc_release_owner_captured', $post_id, $owner );
 		}
 	}
 }

@@ -116,7 +116,11 @@ final class AccessController implements Module {
 			return;
 		}
 		$post_type = $query->get( 'post_type' );
-		if ( empty( $post_type ) || 'post' === $post_type || 'attachment' === $post_type ) {
+		if ( empty( $post_type ) || 'post' === $post_type ) {
+			// Releases follow their owner, not the public author (see ReleaseOwner).
+			$ids = ReleaseOwner::post_ids( $user_id );
+			$query->set( 'post__in', [] === $ids ? [ 0 ] : $ids );
+		} elseif ( 'attachment' === $post_type ) {
 			$query->set( 'author', $user_id );
 		}
 	}

@@ -296,12 +296,12 @@ final class ForceSyncAdmin {
 		return $term instanceof \WP_Term ? $term->slug : '';
 	}
 
-	/** Administrators, and the release's author when they can edit it. */
+	/** Administrators, and the release's owner when they can edit it. */
 	private function can_pick_category( \WP_Post $post ): bool {
 		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
 			return false;
 		}
-		return $this->is_admin_user() || (int) $post->post_author === get_current_user_id();
+		return $this->is_admin_user() || \HexaPrWire\Core\Customer\ReleaseOwner::id( $post ) === get_current_user_id();
 	}
 
 	/**

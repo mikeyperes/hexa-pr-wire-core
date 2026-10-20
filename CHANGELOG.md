@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.19.0 - 2026-10-20
+
+- Public author (`Customer\PublicAuthor`): each customer's new releases are published under themselves (default) or Hexa PR Wire. The customer switches this on their own profile; an administrator can also pick any user in the profile's Account card. Each release has a "Publish under Hexa PR Wire" switch in its editor. "Submitted by" always stays the customer.
+- Release ownership (`Customer\ReleaseOwner`): access, the customer's release list, notifications, outlet category choice and the users-list release counts follow "Submitted by" when it is a customer, and the author otherwise, so a release published under Hexa PR Wire stays with its customer. Releases whose "Submitted by" is an administrator keep belonging to their customer author.
+- Release actions ("Create draft for this customer") are administrator-only. Customers could see the button on their own profile and use it to create a draft without paying.
+
 ## 2.18.0 - 2026-10-20
 
 - Customer admin scope (`Customer\AdminScope`): a Hexa PR Wire customer works only with Posts and Media. Every other admin content type (Press Releases, Articles, Resources, Testimonials, Team Members, Affiliate Organizations, Elementor templates, Publications, Pages and any type a plugin adds later) is closed by permission for customer requests, so its menu, list, editor and REST route all refuse together. Public reading is unchanged.

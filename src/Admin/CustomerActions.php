@@ -21,7 +21,7 @@ final class CustomerActions implements Module {
 	}
 
 	public function profile_action( \WP_User $user ): void {
-		if ( ! current_user_can( 'edit_user', $user->ID ) || ! $this->policy->is_customer( (int) $user->ID ) ) {
+		if ( ! $this->is_staff( (int) $user->ID ) ) {
 			return;
 		}
 		?>
@@ -32,7 +32,7 @@ final class CustomerActions implements Module {
 
 	/** @param array<string,string> $actions @return array<string,string> */
 	public function row_actions( array $actions, \WP_User $user ): array {
-		if ( current_user_can( 'edit_user', $user->ID ) && $this->policy->is_customer( (int) $user->ID ) ) {
+		if ( $this->is_staff( (int) $user->ID ) ) {
 			$actions['hprwc_create_draft'] = '<a href="' . esc_url( $this->create_url( (int) $user->ID ) ) . '">Create release draft</a>';
 		}
 		return $actions;
@@ -41,7 +41,7 @@ final class CustomerActions implements Module {
 	public function create_draft(): void {
 		$user_id = absint( $_GET['user_id'] ?? 0 );
 		check_admin_referer( self::ACTION . '_' . $user_id );
-		if ( $user_id <= 0 || ! current_user_can( 'edit_user', $user_id ) || ! $this->policy->is_customer( $user_id ) ) {
+		if ( $user_id <= 0 || ! $this->is_staff( $user_id ) ) {
 			wp_die( 'You cannot create a release draft for this account.', 'Forbidden', [ 'response' => 403 ] );
 		}
 		$user = get_userdata( $user_id );
@@ -59,6 +59,14 @@ final class CustomerActions implements Module {
 		Activity::add( 'Administrator created a customer release draft.', 'success', [ 'post_id' => $post_id, 'user_id' => $user_id ], 'customers' );
 		wp_safe_redirect( get_edit_post_link( $post_id, '' ) ?: admin_url( 'post.php?post=' . $post_id . '&action=edit' ) );
 		exit;
+	}
+
+	/**
+	 * Release drafts are created by staff for a customer. Every user may edit their own
+	 * profile, so edit_user alone let customers see and use this; edit_users is staff-only.
+	 */
+	private function is_staff( int $customer_id ): bool {
+		return current_user_can( 'edit_users' ) && current_user_can( 'edit_user', $customer_id ) && $this->policy->is_customer( $customer_id );
 	}
 
 	public function remember_new_user( int $user_id ): void {

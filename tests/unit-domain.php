@@ -23,6 +23,14 @@ function trailingslashit( string $value ): string {
 	return untrailingslashit( $value ) . '/';
 }
 
+$GLOBALS['hpr_test_meta'] = [];
+$GLOBALS['hpr_test_roles'] = [ 7 => [ 'hexa_pr_wire_user' ], 8 => [ 'hexa_pr_wire_user' ], 2 => [ 'administrator' ] ];
+function get_post_meta( int $id, string $key, bool $single = false ): mixed { return $GLOBALS['hpr_test_meta'][ $id ][ $key ] ?? ''; }
+function get_userdata( int $id ): mixed {
+	if ( ! isset( $GLOBALS['hpr_test_roles'][ $id ] ) ) { return false; }
+	$user = new WP_User(); $user->ID = $id; $user->roles = $GLOBALS['hpr_test_roles'][ $id ]; return $user;
+}
+class WP_User { public int $ID = 0; public array $roles = []; }
 class WP_Post {
 	public function __construct( public int $ID, public int $post_author, public string $post_type = 'post' ) {}
 }
@@ -30,6 +38,10 @@ class WP_Post {
 require_once dirname( __DIR__ ) . '/src/Contracts/CustomerPolicyRepository.php';
 require_once dirname( __DIR__ ) . '/src/Customer/SubmissionMode.php';
 require_once dirname( __DIR__ ) . '/src/Customer/AccessPolicy.php';
+require_once dirname( __DIR__ ) . '/vendor/hexa/plugin-core/src/CoreContracts/ModuleInterface.php';
+require_once dirname( __DIR__ ) . '/src/Contracts/Module.php';
+require_once dirname( __DIR__ ) . '/src/Customer/RoleLifecycle.php';
+require_once dirname( __DIR__ ) . '/src/Customer/ReleaseOwner.php';
 require_once dirname( __DIR__ ) . '/src/Domain/Publication/PublicationUrl.php';
 
 $assert = static function ( bool $condition, string $message ): void {
@@ -66,6 +78,11 @@ unset( $repository->excluded[9] );
 $assert( $policy->can_edit_post( 7, new WP_Post( 1, 7 ) ), 'customers can edit their own releases' );
 $assert( ! $policy->can_edit_post( 7, new WP_Post( 2, 8 ) ), 'constrained customers cannot edit another customer release' );
 $assert( $policy->can_edit_post( 10, new WP_Post( 3, 8 ) ), 'full-access customers can edit other releases' );
+$GLOBALS['hpr_test_meta'][4] = [ 'submitted_by' => '7' ];
+$assert( $policy->can_edit_post( 7, new WP_Post( 4, 2 ) ), 'a customer keeps their release when it is published under Hexa PR Wire' );
+$assert( ! $policy->can_edit_post( 8, new WP_Post( 4, 2 ) ), 'another customer cannot edit a release submitted by someone else' );
+$GLOBALS['hpr_test_meta'][5] = [ 'submitted_by' => '2' ];
+$assert( $policy->can_edit_post( 7, new WP_Post( 5, 7 ) ), 'a release submitted by an administrator still belongs to its customer author' );
 $assert( [ 11 ] === $policy->filter_publications( 7, [ 11, 12, 11, 0 ] ), 'term filters remove unauthorized and invalid IDs' );
 $assert( [ 11, 12 ] === $policy->filter_publications_for_existing_post( 7, [ 11, 12, 13 ], [ 12 ] ), 'existing post assignments are preserved without allowing new unauthorized terms' );
 $repository->configured[7] = false;

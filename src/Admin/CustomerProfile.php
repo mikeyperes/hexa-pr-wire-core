@@ -4,6 +4,7 @@ namespace HexaPrWire\Core\Admin;
 
 use HexaPrWire\Core\Contracts\Module;
 use HexaPrWire\Core\Contracts\Mailer;
+use HexaPrWire\Core\Customer\PublicAuthor;
 use HexaPrWire\Core\Customer\SubmissionMode;
 use HexaPrWire\Core\Infrastructure\WordPress\WordPressCustomerPolicyRepository;
 use HexaPrWire\Core\Support\Activity;
@@ -57,6 +58,7 @@ final class CustomerProfile implements Module {
 					<div><span class="hprwc-badge <?php echo $is_customer ? 'success' : 'warning'; ?>"><?php echo $is_customer ? 'Hexa PR Wire Customer' : 'Not a customer'; ?></span>
 					<?php if ( ! $is_customer ) : ?><p class="description">Set the Role above to “Hexa PR Wire Customer” for these settings to take effect.</p><?php endif; ?></div>
 				</div>
+				<?php $this->public_author_field( $user_id ); ?>
 				<div class="hprwc-field">
 					<label class="hprwc-label" for="hprwc_submission_mode">Release permission</label>
 					<div><select name="hprwc_submission_mode" id="hprwc_submission_mode">
@@ -174,6 +176,26 @@ final class CustomerProfile implements Module {
 	 * @param \WP_Term[] $terms
 	 * @return array<int,array{0:\WP_Term,1:int,2:int}>
 	 */
+	/** Who new releases are published under. "Submitted by" always stays the customer. */
+	private function public_author_field( int $user_id ): void {
+		$value = PublicAuthor::setting( $user_id );
+		$users = get_users( [ 'fields' => [ 'ID', 'display_name', 'user_login' ], 'orderby' => 'display_name', 'exclude' => array_filter( [ $user_id, PublicAuthor::house_id() ] ) ] );
+		?>
+		<div class="hprwc-field">
+			<label class="hprwc-label" for="hprwc_public_author">Public author</label>
+			<div><select name="hprwc_public_author" id="hprwc_public_author">
+				<option value="" <?php selected( '', $value ); ?>>The customer (default)</option>
+				<?php if ( PublicAuthor::house_id() > 0 ) : ?><option value="<?php echo esc_attr( PublicAuthor::HOUSE ); ?>" <?php selected( PublicAuthor::HOUSE, $value ); ?>>Hexa PR Wire</option><?php endif; ?>
+				<optgroup label="Another user">
+				<?php foreach ( $users as $other ) : ?>
+					<option value="<?php echo esc_attr( (string) $other->ID ); ?>" <?php selected( (string) $other->ID, $value ); ?>><?php echo esc_html( $other->display_name . ' (' . $other->user_login . ')' ); ?></option>
+				<?php endforeach; ?>
+				</optgroup>
+			</select><p class="description">Who new releases are published under. "Submitted by" stays this customer, and each release can be switched in its editor. The customer can switch only between themselves and Hexa PR Wire.</p></div>
+		</div>
+		<?php
+	}
+
 	private function publication_rows( array $terms ): array {
 		$ids = array_map( static fn( \WP_Term $term ): int => (int) $term->term_id, $terms );
 		$children = [];
@@ -207,6 +229,9 @@ final class CustomerProfile implements Module {
 		// Only outlets are sold, so only outlet prices are stored.
 		$prices = array_intersect_key( $prices, array_flip( array_map( static fn( \WP_Term $term ): int => (int) $term->term_id, PublicationPicker::outlets() ) ) );
 		$this->policies->save( $user_id, $mode, $allowed, $prices, $access_mode, $excluded );
+		if ( isset( $_POST['hprwc_public_author'] ) && is_scalar( $_POST['hprwc_public_author'] ) ) {
+			PublicAuthor::save_setting( $user_id, (string) wp_unslash( $_POST['hprwc_public_author'] ) );
+		}
 		$this->save_emails( $user_id, $this->posted_string( 'hprwc_notification_emails' ) );
 		update_user_meta( $user_id, 'email_subject', sanitize_text_field( $this->posted_string( 'hprwc_email_subject' ) ) );
 		update_user_meta( $user_id, 'welcome_message', wp_kses_post( $this->posted_string( 'hprwc_welcome_message' ) ) );
@@ -313,9 +338,10 @@ final class CustomerProfile implements Module {
 		}
 		global $wpdb;
 		$counts = [];
-		$rows = $wpdb->get_results( "SELECT post_author, SUM(CASE WHEN post_status='draft' THEN 1 ELSE 0 END) drafts, COUNT(*) total FROM {$wpdb->posts} WHERE post_type='post' AND post_status NOT IN ('trash','auto-draft') GROUP BY post_author" );
+		// Counted by owner: "Submitted by" when set, so releases under Hexa PR Wire still count for their customer.
+		$rows = $wpdb->get_results( "SELECT COALESCE(NULLIF(m.meta_value, ''), p.post_author) AS owner_id, SUM(CASE WHEN p.post_status='draft' THEN 1 ELSE 0 END) drafts, COUNT(*) total FROM {$wpdb->posts} p LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = 'submitted_by' WHERE p.post_type='post' AND p.post_status NOT IN ('trash','auto-draft') GROUP BY owner_id" );
 		foreach ( (array) $rows as $row ) {
-			$counts[ (int) $row->post_author ] = [ 'draft' => (int) $row->drafts, 'total' => (int) $row->total ];
+			$counts[ (int) $row->owner_id ] = [ 'draft' => (int) $row->drafts, 'total' => (int) $row->total ];
 		}
 		return $counts;
 	}

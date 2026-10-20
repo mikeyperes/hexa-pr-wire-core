@@ -20,6 +20,7 @@ use HexaPrWire\Core\Cli\Commands;
 use HexaPrWire\Core\CredentialRepository;
 use HexaPrWire\Core\Customer\AccessController;
 use HexaPrWire\Core\Customer\AdminScope;
+use HexaPrWire\Core\Customer\PublicAuthor;
 use HexaPrWire\Core\Customer\AccessPolicy;
 use HexaPrWire\Core\Customer\RoleLifecycle;
 use HexaPrWire\Core\DestinationRegistry;
@@ -95,6 +96,7 @@ final class Plugin {
 			->add( new FieldGroups( new ReleaseLocation( $access ) ) )
 			->add( new AccessController( $access, $policies ) )
 			->add( new AdminScope( $access ) )
+			->add( new PublicAuthor( $access ) )
 				->add( new CustomerNavigation( $access ) )
 				->add( new CustomerProfile( $policies, $notification_settings, $mailer ) )
 				->add( new CustomerActions( $access ) )
