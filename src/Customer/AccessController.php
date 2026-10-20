@@ -25,7 +25,6 @@ final class AccessController implements Module {
 		add_filter( 'get_terms_args', [ $this, 'scope_publication_terms' ], 20, 2 );
 		add_action( 'set_object_terms', [ $this, 'enforce_term_assignment' ], 100, 6 );
 		add_action( 'load-post-new.php', [ $this, 'redirect_disallowed_new_post' ] );
-		add_action( 'admin_menu', [ $this, 'limit_customer_menus' ], 999 );
 		add_filter( 'show_admin_bar', [ $this, 'filter_admin_bar' ] );
 	}
 
@@ -212,19 +211,6 @@ final class AccessController implements Module {
 		if ( 'post' === $post_type && $this->policy->is_customer( $user_id ) && ! $this->policy->can_create( $user_id ) ) {
 			wp_safe_redirect( add_query_arg( 'hprwc_notice', 'create_forbidden', admin_url( 'edit.php' ) ) );
 			exit;
-		}
-	}
-
-	public function limit_customer_menus(): void {
-		$user_id = get_current_user_id();
-		if ( ! $this->policy->is_customer( $user_id ) ) {
-			return;
-		}
-		foreach ( [ 'edit.php?post_type=publication', 'edit.php?post_type=page', 'edit-comments.php', 'tools.php' ] as $slug ) {
-			remove_menu_page( $slug );
-		}
-		if ( ! $this->policy->can_create( $user_id ) ) {
-			remove_submenu_page( 'edit.php', 'post-new.php' );
 		}
 	}
 

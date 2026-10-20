@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.0 - 2026-10-20
+
+- Customer admin scope (`Customer\AdminScope`): a Hexa PR Wire customer works only with Posts and Media. Every other admin content type (Press Releases, Articles, Resources, Testimonials, Team Members, Affiliate Organizations, Elementor templates, Publications, Pages and any type a plugin adds later) is closed by permission for customer requests, so its menu, list, editor and REST route all refuse together. Public reading is unchanged.
+- Elementor's admin screens are removed from customers' menus and redirect to their Posts list if opened directly.
+- The customer menu rules (Comments, Tools, Add New when the customer cannot create) moved from `AccessController` into `AdminScope`, the one place for customer visibility rules.
+
 ## 2.17.2 - 2026-10-19
 
 - Checkout: a standard release can no longer be paid for without a publication. Checkout refuses the order until one is chosen and allowed for the customer, and the dropdown is marked required.
