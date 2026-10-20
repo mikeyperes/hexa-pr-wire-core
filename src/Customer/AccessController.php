@@ -120,6 +120,10 @@ final class AccessController implements Module {
 			// Releases follow their owner, not the public author (see ReleaseOwner).
 			$ids = ReleaseOwner::post_ids( $user_id );
 			$query->set( 'post__in', [] === $ids ? [ 0 ] : $ids );
+			// WordPress's "All" view adds author=me for users who cannot edit others' posts,
+			// which would hide their releases published under Hexa PR Wire.
+			$query->set( 'author', '' );
+			$query->set( 'author_name', '' );
 		} elseif ( 'attachment' === $post_type ) {
 			$query->set( 'author', $user_id );
 		}

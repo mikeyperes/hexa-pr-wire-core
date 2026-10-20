@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.19.1 - 2026-10-20
+
+- A customer's release list (the default All view) now shows their releases published under Hexa PR Wire. WordPress adds "author = me" to that view for users who cannot edit others' posts; the customer list now relies on release ownership only.
+
 ## 2.19.0 - 2026-10-20
 
 - Public author (`Customer\PublicAuthor`): each customer's new releases are published under themselves (default) or Hexa PR Wire. The customer switches this on their own profile; an administrator can also pick any user in the profile's Account card. Each release has a "Publish under Hexa PR Wire" switch in its editor. "Submitted by" always stays the customer.
