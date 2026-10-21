@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.20.4 - 2026-10-21
+
+- Customers no longer see Press Release in the Categories box (All and Most Used). Every customer save keeps Press Release on the release next to the one category they pick. Staff are unchanged.
+- VERSION file brought in line (it had stayed at 2.20.1).
+
 ## 2.20.3 - 2026-10-21
 
 - Distribution panel: the "Distribution" title no longer picks up WordPress's editor heading padding, so it lines up with its summary line and the header buttons.

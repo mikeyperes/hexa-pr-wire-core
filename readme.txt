@@ -4,7 +4,7 @@ Tags: press releases, syndication, publication taxonomy
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 2.20.3
+Stable tag: 2.20.4
 License: Proprietary
 
 Source-side customer permissions, publication registry, editorial workflow, syndication, notifications, and secure Force Sync controls for Hexa PR Wire.
@@ -41,6 +41,9 @@ Force requests require an administrator, never follow redirects, and are limited
 to the publication ID/hostname pairs in the approved destination registry.
 
 == Changelog ==
+
+= 2.20.4 =
+* Customers no longer see Press Release in the Categories box; it stays on every customer release next to the category they pick.
 
 = 2.20.3 =
 * Distribution panel: the title lines up with its summary again.
