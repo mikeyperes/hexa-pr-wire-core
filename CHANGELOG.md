@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.20.3 - 2026-10-21
+
+- Distribution panel: the "Distribution" title no longer picks up WordPress's editor heading padding, so it lines up with its summary line and the header buttons.
+
 ## 2.20.2 - 2026-10-21
 
 - Customers no longer see the Echo RSS plugin's Auto Generated Post Information box or Rank Math's "Thank you for using Rank Math" footer line. Two new Editor Screens toggles, on by default; staff keep both.
