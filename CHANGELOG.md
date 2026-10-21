@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.20.2 - 2026-10-21
+
+- Customers no longer see the Echo RSS plugin's Auto Generated Post Information box or Rank Math's "Thank you for using Rank Math" footer line. Two new Editor Screens toggles, on by default; staff keep both.
+
 ## 2.20.1 - 2026-10-20
 
 - Customers see the Categories box again and choose their own categories (they show on Hexa PR Wire). Undoes the 2.20.0 change that hid it and kept customer releases in Press Release. The Pay for this release button stays.
