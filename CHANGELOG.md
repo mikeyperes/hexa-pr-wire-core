@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.21.0 - 2026-10-22
+
+- Site search moves to Hexa Core's one search (`[hexa_search id="hprw_site"]`): a box with a Category filter above the homepage's latest press releases, the Search page and the `?s=` results page. The list refreshes in place with one loader. The Elementor Search widget adapter is gone.
+- Bundles Hexa WP Core 3.30.4.
+
 ## 2.20.4 - 2026-10-21
 
 - Customers no longer see Press Release in the Categories box (All and Most Used). Every customer save keeps Press Release on the release next to the one category they pick. Staff are unchanged.

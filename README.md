@@ -44,9 +44,9 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 - **Extend:** `hprwc_customer_default_price`, `hprwc_push_on_publish`.
 
 ### Site search
-- **Does:** full-site live search for /search/ and the ?s= results page; each result is labelled Press Release (post), External PR (press-release type) or Site Content (everything else), from a full-text index.
-- **Use:** an Elementor Search widget with Query ID `hprw_site_search` and the CSS class `hexa-search-page-results`; the content shown before a search gets `hexa-search-default`; the result card shows the label with the Core dynamic tag `hexa-result-type`.
-- **Code:** `src/Frontend/SiteSearch.php` (settings and wiring only); engine, index, labels and the page-results mode come from Core's `SearchQuery`.
+- **Does:** full-site search box with a Category filter above the homepage's latest press releases, the /search/ page and the ?s= results page; it narrows the list under it in place with one loader. Each result is labelled Press Release (post), External PR (press-release type) or Site Content (everything else), from a full-text index.
+- **Use:** a Shortcode widget with `[hexa_search id="hprw_site"]` above an Elementor Loop Grid carrying the CSS class `hexa-listing-results` (the results page's Current Query loop needs no class); the result card shows the label with the Core dynamic tag `hexa-result-type`.
+- **Code:** `src/Frontend/SiteSearch.php` (settings and wiring only); engine, index and labels come from Core's `SearchQuery`; the box, refresh and loader from Core's `Search`.
 
 ### REST routes
 - `hprwc/v1/author`, `hprwc/v1/deletions`, and the outlet onboarding routes below.
