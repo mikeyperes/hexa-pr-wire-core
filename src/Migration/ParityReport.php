@@ -33,9 +33,9 @@ final class ParityReport {
 		$core = class_exists( '\\HexaPluginCorePackageRegistry' ) ? \HexaPluginCorePackageRegistry::report() : [];
 		$selected_version = (string) ( $core['selected']['version'] ?? '' );
 		$selected_hash = (string) ( $core['selected']['hash'] ?? '' );
-		$expected_hash = is_readable( HPRWC_DIR . 'vendor/hexa/plugin-core/PACKAGE_HASH' ) ? trim( (string) file_get_contents( HPRWC_DIR . 'vendor/hexa/plugin-core/PACKAGE_HASH' ) ) : '';
-		$actual_hash = class_exists( '\\HexaPluginCorePackageRegistry' ) ? \HexaPluginCorePackageRegistry::source_hash( HPRWC_DIR . 'vendor/hexa/plugin-core' ) : '';
-		$vendored_version = is_readable( HPRWC_DIR . 'vendor/hexa/plugin-core/VERSION' ) ? trim( (string) file_get_contents( HPRWC_DIR . 'vendor/hexa/plugin-core/VERSION' ) ) : '';
+		$expected_hash = is_readable( HPRWC_DIR . 'lib/hexa-wordpress-plugin-core/PACKAGE_HASH' ) ? trim( (string) file_get_contents( HPRWC_DIR . 'lib/hexa-wordpress-plugin-core/PACKAGE_HASH' ) ) : '';
+		$actual_hash = class_exists( '\\HexaPluginCorePackageRegistry' ) ? \HexaPluginCorePackageRegistry::source_hash( HPRWC_DIR . 'lib/hexa-wordpress-plugin-core' ) : '';
+		$vendored_version = is_readable( HPRWC_DIR . 'lib/hexa-wordpress-plugin-core/VERSION' ) ? trim( (string) file_get_contents( HPRWC_DIR . 'lib/hexa-wordpress-plugin-core/VERSION' ) ) : '';
 		$this->check( $checks, 'shared_core_version', '' !== $selected_version && version_compare( $selected_version, '3.0.6', '>=' ), $selected_version ?: 'missing' );
 		// Another plugin may supply a newer selected Core; only an identical version must be byte-identical.
 		$selected_matches = $selected_version !== $vendored_version || hash_equals( $expected_hash, $selected_hash );

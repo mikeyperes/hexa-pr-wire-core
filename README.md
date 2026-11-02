@@ -9,6 +9,8 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+- Hexa PR Wire source-site sitemap recommendations through shared Core, with explicit administrator endpoints. [Contract](docs/sitemaps.md).
+
 - Shared Core 3.48.0 bundle synchronized for the upcoming sitemap engine integration.
 
 ### Outlet categories

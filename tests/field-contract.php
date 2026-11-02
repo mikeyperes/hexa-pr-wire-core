@@ -3,10 +3,10 @@
 function sanitize_key( mixed $value ): string { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ?: '' ); }
 function sanitize_text_field( mixed $value ): string { return trim( strip_tags( (string) $value ) ); }
 
-require_once dirname( __DIR__ ) . '/vendor/hexa/plugin-core/src/CoreContracts/ModuleInterface.php';
-require_once dirname( __DIR__ ) . '/vendor/hexa/plugin-core/src/AcfFieldFactory/AcfFieldFactory.php';
-require_once dirname( __DIR__ ) . '/vendor/hexa/plugin-core/src/FieldStructures/AcfFieldGroupSettingsStore.php';
-require_once dirname( __DIR__ ) . '/vendor/hexa/plugin-core/src/FieldStructures/AcfFieldGroupRegistry.php';
+require_once dirname( __DIR__ ) . '/lib/hexa-wordpress-plugin-core/src/CoreContracts/ModuleInterface.php';
+require_once dirname( __DIR__ ) . '/lib/hexa-wordpress-plugin-core/src/AcfFieldFactory/AcfFieldFactory.php';
+require_once dirname( __DIR__ ) . '/lib/hexa-wordpress-plugin-core/src/FieldStructures/AcfFieldGroupSettingsStore.php';
+require_once dirname( __DIR__ ) . '/lib/hexa-wordpress-plugin-core/src/FieldStructures/AcfFieldGroupRegistry.php';
 require_once dirname( __DIR__ ) . '/src/Contracts/Module.php';
 require_once dirname( __DIR__ ) . '/src/Contracts/CustomerPolicyRepository.php';
 require_once dirname( __DIR__ ) . '/src/Customer/SubmissionMode.php';

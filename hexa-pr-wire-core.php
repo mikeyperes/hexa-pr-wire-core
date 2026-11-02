@@ -3,10 +3,12 @@
  * Plugin Name: Hexa PR Wire Core
  * Plugin URI: https://hexaprwire.com/
  * Description: Source-side customer access, publication registry, editorial workflow, feeds, links, and secure delivery controls for Hexa PR Wire.
- * Version: 2.21.1
+ * Version: 2.22.0
  * Requires at least: 6.5
  * Requires PHP: 8.0
  * Author: Hexa PR Wire
+ * GitHub Plugin URI: mikeyperes/hexa-pr-wire-core
+ * GitHub Branch: main
  * Text Domain: hexa-pr-wire-core
  */
 
@@ -16,16 +18,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HPRWC_VERSION', '2.21.1' );
+require_once __DIR__ . '/src/Bootstrap/PluginMetadata.php';
+
+define( 'HPRWC_VERSION', Bootstrap\PluginMetadata::VERSION );
 define( 'HPRWC_FILE', __FILE__ );
 define( 'HPRWC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HPRWC_URL', plugin_dir_url( __FILE__ ) );
 
-require_once HPRWC_DIR . 'vendor/hexa/plugin-core/bootstrap.php';
+require_once HPRWC_DIR . 'lib/hexa-wordpress-plugin-core/bootstrap.php';
 
-\HexaPluginCorePackageRegistry::register_candidate(
+\hexa_plugin_core_register_package(
 	'hexa-pr-wire-core',
-	HPRWC_DIR . 'vendor/hexa/plugin-core',
+	HPRWC_DIR . 'lib/hexa-wordpress-plugin-core',
 	[
 		'minimum_version' => '3.20.0',
 		'priority'        => 40,

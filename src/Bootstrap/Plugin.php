@@ -93,6 +93,8 @@ final class Plugin {
 				->add( new RoleLifecycle() )
 				->add( new Commands() )
 			->add( new ContentModel() )
+            ->add( new \Hexa\PluginCore\Sitemaps\SitemapModule() )
+            ->add( new \HexaPrWire\Core\Seo\SitemapRecommendations() )
 			->add( new FieldGroups( new ReleaseLocation( $access ) ) )
 			->add( new AccessController( $access, $policies ) )
 			->add( new AdminScope( $access ) )

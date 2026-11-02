@@ -38,7 +38,7 @@ class WP_Post {
 require_once dirname( __DIR__ ) . '/src/Contracts/CustomerPolicyRepository.php';
 require_once dirname( __DIR__ ) . '/src/Customer/SubmissionMode.php';
 require_once dirname( __DIR__ ) . '/src/Customer/AccessPolicy.php';
-require_once dirname( __DIR__ ) . '/vendor/hexa/plugin-core/src/CoreContracts/ModuleInterface.php';
+require_once dirname( __DIR__ ) . '/lib/hexa-wordpress-plugin-core/src/CoreContracts/ModuleInterface.php';
 require_once dirname( __DIR__ ) . '/src/Contracts/Module.php';
 require_once dirname( __DIR__ ) . '/src/Customer/RoleLifecycle.php';
 require_once dirname( __DIR__ ) . '/src/Customer/ReleaseOwner.php';
