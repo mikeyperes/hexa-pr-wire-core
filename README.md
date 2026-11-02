@@ -9,6 +9,8 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+- Shared Core 3.48.0 bundle synchronized for the upcoming sitemap engine integration.
+
 ### Outlet categories
 - **Does:** places a release in one existing category on each outlet it goes to, in addition to Press Release. Categories are searched live on the outlet and are never created.
 - **Use:** release editor, Distribution panel, Outlet categories switch (administrators and the release's author); Choose on an outlet row, type to search, pick one. Remove goes back to Press Release only.

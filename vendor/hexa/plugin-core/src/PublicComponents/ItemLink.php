@@ -30,6 +30,10 @@ final class ItemLink {
         'lightbox_open'    => 'Open full page',
         'lightbox_loading' => 'Loading…',
         'lightbox_error'   => 'This could not load.',
+        'lightbox_prev'    => 'Previous',
+        'lightbox_next'    => 'Next',
+        // The item's place among the component's items: %1$s is its number, %2$s the total.
+        'lightbox_count'   => '%1$s of %2$s',
     ];
 
     /**

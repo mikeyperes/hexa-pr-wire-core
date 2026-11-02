@@ -106,12 +106,12 @@ final class SearchBox {
             . '<label class="hls-field hls-field--text"><span class="hls-visually-hidden">' . esc_html( $labels['search'] ) . '</span>'
             . self::icon( 'hls-icon' )
             . '<input class="hls-input" type="search" name="' . esc_attr( $site ? 's' : Search::PARAM_TEXT ) . '" value="' . esc_attr( $state['text'] ) . '" placeholder="' . esc_attr( $placeholder ) . '" autocomplete="off" enterkeyhint="search"></label>'
-            . '<div class="hls-filters">' . QueryFilterSet::controls( $filters, $state['values'], Search::PARAM_FILTER, 'hls', $state['scope'], $counts ) . '</div>'
+            . '<div class="hls-filters">' . QueryFilterSet::controls( $filters, $state['values'], Search::PARAM_FILTER, 'hls', $state['scope'], $counts, [], (string) ( $options['filter_layout'] ?? 'dropdown' ) ) . '</div>'
             . self::sort( $state, $labels )
             . '<a class="hls-clear" href="' . esc_url( $site ? PublicComponent::url( $base, [ 's' => '' ] ) : $base ) . '"' . ( $active ? '' : ' hidden' ) . '>' . esc_html( $labels['clear'] ) . '</a>'
             . '<button class="hls-submit hls-visually-hidden" type="submit">' . esc_html( $labels['search'] ) . '</button>'
             . '</div>'
-            . '<p class="hls-status" role="status" aria-live="polite"' . ( '' === $status ? ' hidden' : '' ) . '>' . esc_html( $status ) . '</p>'
+            . '<p class="hls-status" role="status" aria-live="polite"' . ( '' === $status ? ' hidden' : '' ) . '>' . self::status_html( $status ) . '</p>'
             . '</form>' . $results;
         if ( $cards ) {
             $html = '<div class="' . esc_attr( trim( 'hls-wrap ' . $own ) ) . '">' . $html . '</div>';
@@ -306,6 +306,9 @@ final class SearchBox {
             $css .= '.hls.hls.hls--none .hls-icon{display:none}';
         }
 
+        if ( 'none' !== $style ) {
+            $css .= '.hls .hls-chips{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0}.hls .hls-chips legend{font-size:var(--hls-small)}.hls .hls-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hls-border);border-radius:999px;padding:6px 12px;cursor:pointer}.hls .hls-chip:has(input:checked){border-color:var(--hls-accent);font-weight:700}.hls .hls-chip:focus-within{outline:2px solid currentColor;outline-offset:2px}';
+        }
         return $css;
     }
 
@@ -324,11 +327,11 @@ var text=form.querySelector('.hls-input'),timer=null,controller=null,seq=0,last=
 function url(page){var p=new URLSearchParams(),on=false;each(form.elements,function(el){if(!el.name||el.disabled||el.type==='submit')return;if((el.type==='checkbox'||el.type==='radio')&&!el.checked)return;var v=(el.value||'').trim();if(el.tagName==='SELECT'&&el.getAttribute('data-hls-default')===v)return;if(v!==''||el.name==='s'){p.append(el.name,v);if(el.type!=='hidden'&&v!=='')on=true;}});if(page>1){p.set('hp',page);on=true;}if(!on)p.delete('hs');var a=form.getAttribute('action')||location.pathname,q=p.toString();return a+(q?(a.indexOf('?')>-1?'&':'?')+q:'');}
 function busy(on){form.setAttribute('aria-busy',on?'true':'false');each(document.querySelectorAll(sel),function(t){t.classList.toggle('hls-loading',on);t.setAttribute('aria-busy',on?'true':'false');});}
 function sync(doc){var nf=doc.getElementById(form.id);if(!nf)return;var box=form.querySelector('.hls-filters'),nb=nf.querySelector('.hls-filters');if(box&&nb){var open=[];each(box.querySelectorAll('details[open]'),function(d){open.push(d.getAttribute('data-hls-key'));});box.innerHTML=nb.innerHTML;each(box.querySelectorAll('details'),function(d){if(open.indexOf(d.getAttribute('data-hls-key'))>-1)d.open=true;});}
-['.hls-status','.hls-clear'].forEach(function(s){var a=form.querySelector(s),b=nf.querySelector(s);if(a&&b){a.textContent=b.textContent;if(b.hasAttribute('hidden'))a.setAttribute('hidden','');else a.removeAttribute('hidden');}});}
+['.hls-status','.hls-clear'].forEach(function(s){var a=form.querySelector(s),b=nf.querySelector(s);if(a&&b){a.innerHTML=b.innerHTML;if(b.hasAttribute('hidden'))a.setAttribute('hidden','');else a.removeAttribute('hidden');}});}
 function go(u,append){if(!append&&u===last)return;if(!append)last=u;var id=++seq;if(controller)controller.abort();controller=window.AbortController?new AbortController():null;var current=document.querySelectorAll(sel);if(!current.length){location.assign(u);return;}busy(true);
 fetch(u,{credentials:'same-origin',headers:{'Accept':'text/html'},signal:controller?controller.signal:undefined}).then(function(r){if(!r.ok&&r.status!==404)throw new Error('HTTP '+r.status);return r.text();}).then(function(html){if(id!==seq)return;var doc=new DOMParser().parseFromString(html,'text/html');var fresh=doc.querySelectorAll(sel);
 each(current,function(t,i){var n=fresh[i];if(!n){if(!append)t.innerHTML='';return;}if(append){var list=t.querySelector('.hls-list'),nl=n.querySelector('.hls-list');if(list&&nl){each(nl.children,function(c){list.appendChild(document.importNode(c,true));});var pg=t.querySelector('.hls-pages,.hls-more'),np=n.querySelector('.hls-pages,.hls-more');if(pg)pg.parentNode.removeChild(pg);if(np)t.appendChild(document.importNode(np,true));restart(t);watch();return;}}var m=document.importNode(n,true);t.parentNode.replaceChild(m,t);restart(m);});
-if(!append)sync(doc);if(window.history&&history.replaceState)history.replaceState(history.state,'',u);watch();
+if(!append){sync(doc);var ours=document.querySelectorAll('[data-hls-sync]'),theirs=doc.querySelectorAll('[data-hls-sync]');each(ours,function(el,i){if(theirs[i])el.innerHTML=theirs[i].innerHTML;});}if(window.history&&history.replaceState)history.replaceState(history.state,'',u);watch();
 document.dispatchEvent(new CustomEvent('hexa-search:updated',{detail:{form:form,url:u}}));document.dispatchEvent(new CustomEvent('hexa-listing:updated',{detail:{form:form,url:u}}));
 }).catch(function(e){if(e&&e.name==='AbortError')return;if(id!==seq)return;last=null;var s=form.querySelector('.hls-status');if(s){s.textContent=form.getAttribute('data-hls-error')||'';s.removeAttribute('hidden');}}).then(function(){if(id===seq)busy(false);});}
 var io=window.IntersectionObserver&&form.getAttribute('data-hls-auto')?new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting&&form.getAttribute('aria-busy')!=='true'){io.unobserve(en.target);en.target.click();}});},{rootMargin:'400px 0px'}):null;
@@ -337,7 +340,7 @@ document.addEventListener('click',function(e){var a=e.target.closest?e.target.cl
 form.addEventListener('submit',function(e){e.preventDefault();window.clearTimeout(timer);go(url());});
 if(text){text.addEventListener('input',function(){window.clearTimeout(timer);var v=text.value.trim();if(v&&v.length<min)return;timer=window.setTimeout(function(){go(url());},350);});}
 form.addEventListener('change',function(e){if(e.target===text)return;window.clearTimeout(timer);go(url());});
-var clear=form.querySelector('.hls-clear');if(clear){clear.addEventListener('click',function(e){e.preventDefault();if(text)text.value='';each(form.querySelectorAll('.hls-filters input,.hls-filters select'),function(el){if(el.type==='checkbox')el.checked=false;else el.value='';});each(form.querySelectorAll('details[open]'),function(d){d.open=false;});go(url());});}
+var clear=form.querySelector('.hls-clear');if(clear){clear.addEventListener('click',function(e){e.preventDefault();if(text)text.value='';each(form.querySelectorAll('.hls-filters input,.hls-filters select'),function(el){if(el.type==='checkbox')el.checked=false;else if(el.type==='radio')el.checked=el.value==='';else el.value='';});each(form.querySelectorAll('details[open]'),function(d){d.open=false;});go(url());});}
 document.addEventListener('click',function(e){each(form.querySelectorAll('details[open]'),function(d){if(!d.contains(e.target))d.open=false;});});
 form.addEventListener('toggle',function(e){var d=e.target;if(!d||d.tagName!=='DETAILS'||!d.open)return;var p=d.querySelector('.hls-filter-panel');if(!p)return;p.style.left='';p.style.right='';if(p.getBoundingClientRect().right>document.documentElement.clientWidth-8){p.style.left='auto';p.style.right='0';}},true);
 form.addEventListener('keydown',function(e){if(e.key==='Escape'){var d=e.target.closest?e.target.closest('details'):null;if(d){d.open=false;var s=d.querySelector('summary');if(s)s.focus();}}});
@@ -430,5 +433,10 @@ JS;
      */
     private static function assets( string $style ): string {
         return '<style class="hexa-search-css">' . self::css( $style ) . '</style><script class="hexa-search-js" data-cfasync="false">' . self::js() . '</script>';
+    }
+
+    /** The status line, escaped, with its first number in <b class="hls-count"> so a design can style the count. */
+    private static function status_html( string $status ): string {
+        return (string) preg_replace( '/\d[\d,.]*/', '<b class="hls-count">$0</b>', esc_html( $status ), 1 );
     }
 }
