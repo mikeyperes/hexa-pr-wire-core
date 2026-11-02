@@ -62,7 +62,7 @@ final class RecommendationRegistry {
         $add('index','Sitemap index','index','','','/sitemap_index.xml',true);
         $rows['index']['current']=$enabled;
         $types = get_post_types(['public'=>true], 'objects');
-        foreach (array_merge(['attachment'],self::excluded_post_types()) as $name) {
+        foreach (['attachment','elementor_library','e-landing-page','e-floating-buttons'] as $name) {
             if ($object=get_post_type_object($name)) $types[$name]=$object;
         }
         foreach ($types as $name=>$object) {
