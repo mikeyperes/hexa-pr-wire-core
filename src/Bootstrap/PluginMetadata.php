@@ -8,5 +8,5 @@ final class PluginMetadata {
     public const MAIN_FILE='hexa-pr-wire-core.php';
     public const GITHUB_REPOSITORY='mikeyperes/hexa-pr-wire-core';
     public const GITHUB_BRANCH='main';
-    public const VERSION='2.22.0';
+    public const VERSION='2.22.1';
 }
