@@ -1763,3 +1763,5 @@ PublicComponents\InlineStyles::enqueue(handle, css) queues deduplicated inline s
 SubmissionStore::scan($after,$limit,$collection,$upper) provides ascending snapshot-bounded reads. Hosts must authorize access; see docs/frontend-forms.md for the cursor envelope and deletion reconciliation.
 
 SubmissionStore::deleted($after,$limit) provides an ascending deletion_id cursor, original subscriber ID, collection and UTC time only. delete/erase atomically journal with removal (InnoDB); lists() includes known empty collections and totals. See docs/frontend-forms.md.
+
+Term choice limits support `excluded_terms` (IDs or callback) outside the choice count and `applies_to` (WP_Post callback) for host ownership checks. Only signed-in users are limited; CLI and cron saves are exempt.

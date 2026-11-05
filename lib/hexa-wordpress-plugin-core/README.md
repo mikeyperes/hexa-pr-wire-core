@@ -48,6 +48,7 @@
 
 - Opt-in shared sitemap recommendations, explicit Rank Math changes, saved conditions, REST/AJAX and JSON WP-CLI. [Contract](docs/sitemaps.md).
 - Plugin-owned sitemaps: each plugin declares its sitemaps and gets its own Sitemaps section; other screens show them read-only with a link to the owner. [Contract](docs/sitemaps.md#plugin-owned-sitemaps).
+- Site-type sitemap rules: a plugin can recommend a sitemap on or off for one site type only (for example authors off on a person website), and the lookup uses the site's own type by default. [Contract](docs/sitemaps.md#plugin-owned-sitemaps).
 
 - Search filter chips: opt-in `filter_layout="chips"` renders accessible single-choice radio chips, including All, with the same markup under `style="none"`. Dropdowns remain the default. [Markup](docs/search-filter-chips.md).
 
@@ -60,7 +61,7 @@
 - **Code:** `bootstrap.php`, `src/CoreBootstrap/`, `src/CoreContracts/`, `src/CoreRuntime/`
 
 ### Admin tabs and dashboard shell
-- **Does:** the plugin's one admin page: top tabs or a grouped, collapsible sidebar with plugin and Core versions, tabs loaded by AJAX with the tab kept in the URL, plus the automatic Hexa Core tab showing this README.
+- **Does:** the plugin's one admin page: top tabs or a grouped, collapsible sidebar with plugin and Core versions and a search box that filters its sections, tabs loaded by AJAX with the tab kept in the URL, plus the automatic Hexa Core tab showing this README.
 - **Use:** `( new HostTabsRenderer() )->render( [ tabs, active, page_url, ajax_action, nonce, root_id, panel_id, layout => 'sidebar', groups, sidebar_identity, render_callback ] )`; `TabRegistry`/`TabDefinition` for the list; `( new CoreTabModule( new CoreTabConfig( [ tabs_filter, render_filter, core_root, readme_path, library_path ] ) ) )->register()`.
 - **Extend:** the host's `<prefix>_dashboard_tabs` and `<prefix>_render_dashboard_tab` filters.
 - **Code:** `src/WpAdminTabs/` (docs: `docs/tabs.md`)
@@ -157,9 +158,15 @@
 - **Use:** `FieldSchema::normalize()`, `RichTextValue::sanitize()`/`plain_text()`; `ImageUploadPolicy::validate()`/`accept_attribute()`, `WordPressImageUploader::store()`.
 - **Code:** `src/FrontendForms/`, `src/MediaUploads/` (docs: `docs/frontend-forms.md`, `docs/media-uploads.md`)
 
+### Live slug field
+- **Does:** a name box and a slug box; the slug fills in as the name is typed, typing in the slug box takes it over and is cleaned to slug form live, emptying it hands it back. Optional live preview such as a shortcode. Works on markup loaded later by AJAX.
+- **Use:** `WpAdminComponents\SlugField::render(['name_field'=>'name','slug_field'=>'id','preview'=>'[my_shortcode id="{slug}"]'])`; options `separator`, `max`, `slug_readonly`, `help`, labels and values. Always save `SlugConverter::from_name()` of the posted slug on the server.
+- **Code:** `src/WpAdminComponents/SlugField.php`, `src/DataNormalization/SlugConverter.php`.
+
 ### Data normalization
 - **Does:** reads field and meta values safely and turns them into clean text, URLs, emails, dates, numbers, rows, images and galleries for a plugin's own data mapping.
 - **Use:** `FieldReader::read()`/`first()`, `ValueNormalizer::text()`/`url()`/`email()`/`date()`/`rows()`, `MediaNormalizer::image()`/`gallery()`/`schema_image()`.
+- **Slugs:** `SlugConverter::from_name('Spring Café & News!')` gives `spring-cafe-and-news` (lowercase, accents removed, `&` to `and`, one dash between words, 80 characters by default; pass `'_'` for underscores). `is_valid()` checks a slug; `js()` is the identical browser function (`window.HexaSlug.fromName`).
 - **Code:** `src/DataNormalization/` (docs: `docs/data-normalization.md`)
 
 ### Website type and main entity
@@ -397,3 +404,5 @@ Run the complete PHP suite with `php tests/run.php`.
 Before adding code in another Codex or Claude chat, read `AGENTS.md`, `HEXA_PLUGIN_CORE_LIBRARY.md`, `docs/folder-map.md`, `docs/setup-protocol.md`, `docs/implementation-checklist.md`, `docs/integration-tests.md`, `docs/new-plugin-master-checklist.md` and the doc for the folder being changed. A feature that does not fit an existing namespace gets its namespace documented first. Every new or changed feature updates its entry in `## Features` in the same commit.
 
 - `src/Sitemaps/`: shared sitemap registry, conditions, Rank Math comparison and administrator endpoints. See `docs/sitemaps.md`.
+
+Term choice limits support `excluded_terms` (IDs or callback) outside the choice count and `applies_to` (WP_Post callback) for host ownership checks. Only signed-in users are limited; CLI and cron saves are exempt.

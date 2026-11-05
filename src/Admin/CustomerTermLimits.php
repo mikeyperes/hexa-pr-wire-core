@@ -4,6 +4,8 @@ namespace HexaPrWire\Core\Admin;
 
 use Hexa\PluginCore\Taxonomies\TermChoiceLimits;
 use HexaPrWire\Core\Contracts\Module;
+use HexaPrWire\Core\Customer\ReleaseOwner;
+use HexaPrWire\Core\Customer\RoleLifecycle;
 
 /**
  * Customer limits on release categories and tags (Hexa PR Wire → Editor
@@ -21,10 +23,15 @@ final class CustomerTermLimits implements Module {
 	private const SAVE_ACTION = 'hprwc_save_customer_term_limits';
 
 	public function register(): void {
-		( new TermChoiceLimits( [
-			[ 'taxonomy' => 'category', 'max' => self::single_category() ? 1 : 0, 'capability' => self::STAFF, 'post_types' => [ 'post' ] ],
-			[ 'taxonomy' => 'post_tag', 'max' => self::max_tags(), 'capability' => self::STAFF, 'post_types' => [ 'post' ] ],
-		] ) )->register();
+		if ( self::is_customer() ) {
+			( new TermChoiceLimits( [
+				[ 'taxonomy' => 'category', 'excluded_terms' => static function (): array {
+					$term = self::release_category();
+					return $term ? [ (int) $term->term_id ] : [];
+				}, 'max' => self::single_category() ? 1 : 0, 'capability' => self::STAFF, 'post_types' => [ 'post' ], 'applies_to' => [ $this, 'owns_release' ] ],
+				[ 'taxonomy' => 'post_tag', 'max' => self::max_tags(), 'capability' => self::STAFF, 'post_types' => [ 'post' ], 'applies_to' => [ $this, 'owns_release' ] ],
+			] ) )->register();
+		}
 		add_action( 'admin_post_' . self::SAVE_ACTION, [ $this, 'save' ] );
 		add_filter( 'get_terms_args', [ $this, 'hide_release_category' ], 10, 2 );
 		// save_post (not save_post_post, which fires first) so this runs after
@@ -39,7 +46,12 @@ final class CustomerTermLimits implements Module {
 	}
 
 	private static function is_customer(): bool {
-		return is_user_logged_in() && ! current_user_can( self::STAFF );
+		return is_user_logged_in() && in_array( RoleLifecycle::ROLE, (array) wp_get_current_user()->roles, true ) && ! current_user_can( self::STAFF );
+	}
+
+	/** Limit only the signed-in customer's own editorial choice. */
+	public function owns_release( \WP_Post $post ): bool {
+		return self::is_customer() && ReleaseOwner::id( $post ) === get_current_user_id();
 	}
 
 	/** Leaves the release category out of the customer's Categories box (All and Most Used). */
@@ -69,7 +81,7 @@ final class CustomerTermLimits implements Module {
 	/** A customer's save keeps the release category next to the category they picked. */
 	public function keep_release_category( int $post_id, \WP_Post $post ): void {
 		$term = self::release_category();
-		if ( 'post' !== $post->post_type || ! $term || ! self::is_customer() || wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) || 'auto-draft' === $post->post_status ) {
+		if ( 'post' !== $post->post_type || ! $term || ! $this->owns_release( $post ) || ( defined( 'WP_CLI' ) && WP_CLI ) || wp_doing_cron() || wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) || 'auto-draft' === $post->post_status ) {
 			return;
 		}
 		wp_set_post_categories( $post_id, [ (int) $term->term_id ], true );

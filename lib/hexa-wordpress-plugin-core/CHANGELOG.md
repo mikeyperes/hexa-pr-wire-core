@@ -1,6 +1,16 @@
+# 3.56.1
+
+- Term choice limits skip anonymous, CLI and cron saves, preserve excluded mandatory terms, and accept a host ownership predicate.
+
 # Hexa WordPress Plugin Core changelog
 
 Release notes moved from the README (3.31.1). Newest first; each Core release adds its line here.
+
+Version 3.56.0: name-to-slug conversion: `DataNormalization\SlugConverter` (PHP, with an identical browser twin) and `WpAdminComponents\SlugField`, a name box whose slug box fills in live as you type.
+
+Version 3.55.0: every plugin dashboard with the sidebar layout gets a search box at the top of its sidebar that filters the sections as you type (by section name, ID or group name); Enter opens the first match, Escape clears it.
+
+Version 3.54.0: sitemap site-type rules: a declared row with `site_types` applies only on those site types without taking ownership; recommendation callables receive the site type; the lookup defaults to the site's own type through `hexa_plugin_core_site_type`.
 
 Version 3.53.0: SchemaNodes adds `exhibition_event()` (schema.org ExhibitionEvent with dates, venue Place and address, organizer, works shown as VisualArtwork, and extra properties such as contributor) and `award_text()` (one award as the text Person and Organization `award` takes, since schema.org has no Award type).
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.22.3 - 2026-11-05
+
+- Customer term limits apply only to signed-in customers saving their own release; Press Release is excluded from the choice count. System and staff saves never trim categories.
+- Bundles Hexa WP Core 3.56.1.
+
+
 ## 2.21.0 - 2026-10-22
 
 - Site search moves to Hexa Core's one search (`[hexa_search id="hprw_site"]`): a box with a Category filter above the homepage's latest press releases, the Search page and the `?s=` results page. The list refreshes in place with one loader. The Elementor Search widget adapter is gone.
