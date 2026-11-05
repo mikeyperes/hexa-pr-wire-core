@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.22.5 - 2026-11-05
+
+- Corrects the category-link lookup syntax so the release edit screen loads.
+- Bundles Hexa WP Core 3.56.1.
+
 ## 2.22.4 - 2026-11-05
 
 - Distribution category names open the outlet-provided category link in a new tab, including existing saved choices. No outlet content or category assignments change.

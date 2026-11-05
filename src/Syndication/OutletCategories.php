@@ -126,6 +126,7 @@ final class OutletCategories {
 				set_transient( $key, $category['link'], self::CACHE_TTL );
 				return $category['link'];
 			}
+		}
 		return '';
 	}
 
