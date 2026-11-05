@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.44.2
+Current release: 3.51.2
 ```
 
 Do not rename these.
@@ -1754,3 +1754,12 @@ php tests/litespeed-cache.php
 ## User profile route
 
 Call `\Hexa\PluginCore\Users\UserProfileBridge::register()` from `hexa_plugin_core_package_selected` to expose `GET/POST /wp-json/hexa-plugin-core/v1/users/{id}/profile` (needs `list_users` and `edit_user`). GET returns `rows`, safe `meta`, `legacy_avatar_url` and `avatar_provider`. POST accepts `native` (display_name, first_name, last_name, nickname, user_url, description, user_email), `meta`, `fields` and `avatar: {media_id}`, then returns the fresh profile plus `written`. Role, login, password, capability and session keys are always refused.
+
+## Collection submissions
+FrontendForms\SubmissionStore provides collection storage, unique email keys, IP/header normalization, rate limits and safe CSV. Hosts own enablement, authorization, consent, notifications and privacy hook registration. See docs/collection-submissions.md.
+
+PublicComponents\InlineStyles::enqueue(handle, css) queues deduplicated inline shortcode CSS through WordPress, with late footer printing. FrontendForms\SubmissionStore::delete(collection, id) deletes one collection-bound row after host authorization.
+
+SubmissionStore::scan($after,$limit,$collection,$upper) provides ascending snapshot-bounded reads. Hosts must authorize access; see docs/frontend-forms.md for the cursor envelope and deletion reconciliation.
+
+SubmissionStore::deleted($after,$limit) provides an ascending deletion_id cursor, original subscriber ID, collection and UTC time only. delete/erase atomically journal with removal (InnoDB); lists() includes known empty collections and totals. See docs/frontend-forms.md.

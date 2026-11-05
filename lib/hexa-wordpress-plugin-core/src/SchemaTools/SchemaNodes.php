@@ -61,6 +61,19 @@ final class SchemaNodes {
         return self::finish( [ '@type' => $type, '@id' => $id ] + $properties );
     }
 
+    /** Podcast/media builders accept schema.org properties and derive stable IDs from url. */
+    private static function identified_media(string $type, string $fragment, array $properties): array {
+        $id = (string) ($properties['@id'] ?? SchemaIds::for_url((string) ($properties['url'] ?? $properties['contentUrl'] ?? ''), $fragment));
+        unset($properties['@id']);
+        return self::node($type, $properties, $id);
+    }
+    public static function podcast_series(array $properties): array { return self::identified_media('PodcastSeries', 'podcast-series', $properties); }
+    public static function podcast_season(array $properties): array { return self::identified_media('PodcastSeason', 'podcast-season', $properties); }
+    public static function podcast_episode(array $properties): array { return self::identified_media('PodcastEpisode', 'podcast-episode', $properties); }
+    public static function audio_object(array $properties): array { return self::identified_media('AudioObject', 'audio', $properties); }
+    public static function video_object(array $properties): array { return self::identified_media('VideoObject', 'video', $properties); }
+    public static function data_feed(array $properties): array { return self::identified_media('DataFeed', 'datafeed', $properties); }
+
     public static function organization( array $properties, string $type = 'Organization' ): array {
         if ( ! self::named_or_identified( $properties ) ) {
             return [];
@@ -357,6 +370,70 @@ final class SchemaNodes {
                 'url'         => ValueNormalizer::url( $row['url'] ?? '' ),
             ] + $properties
         );
+    }
+
+    /**
+     * An exhibition, show or fair (schema.org ExhibitionEvent).
+     * Field row keys: name, start_date, end_date, description, url, venue,
+     * city, address, organizer, organizer_url, works (list of names or rows),
+     * image. `$properties` adds or overrides properties, e.g. contributor.
+     */
+    public static function exhibition_event( array $row, string $id = '', array $properties = [] ): array {
+        $name = ValueNormalizer::text( $row['name'] ?? '' );
+        if ( '' === $name ) {
+            return [];
+        }
+        $venue = ValueNormalizer::text( $row['venue'] ?? '' );
+        $location = null;
+        if ( '' !== $venue || '' !== ValueNormalizer::text( $row['city'] ?? '' ) ) {
+            $location = self::finish(
+                [
+                    '@type'   => 'Place',
+                    'name'    => '' !== $venue ? $venue : ValueNormalizer::text( $row['city'] ?? '' ),
+                    'address' => self::finish( [ '@type' => 'PostalAddress', 'streetAddress' => ValueNormalizer::text( $row['address'] ?? '' ), 'addressLocality' => ValueNormalizer::text( $row['city'] ?? '' ) ] ),
+                ]
+            );
+        }
+        $works = [];
+        foreach ( (array) ( $row['works'] ?? [] ) as $work ) {
+            $work_name = is_array( $work ) ? ( $work['name'] ?? $work['value'] ?? '' ) : $work;
+            $node = self::thing( (string) $work_name, is_array( $work ) ? (string) ( $work['url'] ?? '' ) : '', 'VisualArtwork' );
+            if ( $node ) {
+                $works[] = $node;
+            }
+        }
+        $organizer = ValueNormalizer::text( $row['organizer'] ?? '' );
+        return self::finish(
+            [
+                '@type'       => 'ExhibitionEvent',
+                '@id'         => $id,
+                'name'        => $name,
+                'startDate'   => ValueNormalizer::date( $row['start_date'] ?? $row['date'] ?? '' ),
+                'endDate'     => ValueNormalizer::date( $row['end_date'] ?? '' ),
+                'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
+                'description' => ValueNormalizer::text( $row['description'] ?? '' ),
+                'url'         => ValueNormalizer::url( $row['url'] ?? '' ),
+                'image'       => self::image_value( $row['image'] ?? null ),
+                'location'    => $location,
+                'organizer'   => '' !== $organizer ? self::thing( $organizer, (string) ( $row['organizer_url'] ?? '' ), 'Organization' ) : null,
+                'workFeatured' => $works,
+            ] + $properties
+        );
+    }
+
+    /**
+     * One award as the text schema.org's Person/Organization `award` takes
+     * (schema.org has no Award type). Field row keys: name, year, given_by.
+     * Gives "Best in Show, Palm Beach Art Show (2025)".
+     */
+    public static function award_text( array $row ): string {
+        $name = ValueNormalizer::text( $row['name'] ?? '' );
+        if ( '' === $name ) {
+            return '';
+        }
+        $given_by = ValueNormalizer::text( $row['given_by'] ?? '' );
+        $year     = ValueNormalizer::text( $row['year'] ?? '' );
+        return $name . ( '' !== $given_by ? ', ' . $given_by : '' ) . ( '' !== $year ? ' (' . $year . ')' : '' );
     }
 
     /** A named reference to an entity that has no node of its own on the page. */

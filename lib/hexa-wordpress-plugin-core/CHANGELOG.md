@@ -2,6 +2,14 @@
 
 Release notes moved from the README (3.31.1). Newest first; each Core release adds its line here.
 
+Version 3.53.0: SchemaNodes adds `exhibition_event()` (schema.org ExhibitionEvent with dates, venue Place and address, organizer, works shown as VisualArtwork, and extra properties such as contributor) and `award_text()` (one award as the text Person and Organization `award` takes, since schema.org has no Award type).
+
+Version 3.50.1: WordPress-handle inline styles survive discarded shortcode expansions and print once even for late Elementor widgets; submission storage gains collection-bound single-row deletion.
+
+Version 3.50.0: reusable FrontendForms SubmissionStore adds unique collection/email storage, safe request metadata, Cloudflare-aware IP resolution, atomic rate counters, cursor-based CSV and personal-data helpers.
+
+
+Version 3.49.0: the sitemap engine keeps a hardcoded junk list (page-builder templates, theme parts, shop internals, post formats). Junk sitemaps are never recommended, are flagged `junk` in the lookup, can be turned off together (`disable_junk`, `wp hexa sitemaps disable-junk`) and can be moved back to the main list one by one (`promote`).
 
 Version 3.47.1: the map shortcode takes `pulse="ring"`: happening-now pins pulse as small HTML rings animated with transform and opacity, so the map is no longer redrawn every frame. Without the attribute the pulse is unchanged.
 
