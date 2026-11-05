@@ -75,7 +75,7 @@ final class DeliveryNotifications implements Module {
 		$message_key = 'live' === $type ? 'live_message' : 'draft_message';
 		$subject = $this->settings->interpolate( (string) $config[ $subject_key ], $post, $user ?: null );
 		$message = $this->settings->interpolate( (string) $config[ $message_key ], $post, $user ?: null );
-		$sent = $this->mailer->send( $recipients, $subject, $message );
+		$sent = $this->mailer->send( $recipients, $subject, $message, $this->settings->admin_emails() );
 		Activity::add( ucfirst( $type ) . '-release notification ' . ( $sent ? 'sent.' : 'failed.' ), $sent ? 'success' : 'error', [ 'post_id' => $post_id, 'recipient_count' => count( $recipients ) ], 'notifications' );
 		if ( ! $sent ) {
 			wp_send_json_error( [ 'code' => 'mail_failed', 'message' => 'WordPress could not send the message.' ], 502 );

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.22.6 - 2026-11-05
+
+- Restores the configured team BCC on customer live-links and draft-update notifications.
+- Adds optional BCC support to the shared mailer with normalized recipients and no overlap with To.
+- Bundles Hexa WP Core 3.56.1.
+
 ## 2.22.5 - 2026-11-05
 
 - Corrects the category-link lookup syntax so the release edit screen loads.

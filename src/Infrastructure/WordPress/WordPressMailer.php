@@ -5,9 +5,13 @@ namespace HexaPrWire\Core\Infrastructure\WordPress;
 use HexaPrWire\Core\Contracts\Mailer;
 
 final class WordPressMailer implements Mailer {
-	/** @param string[] $recipients */
-	public function send( array $recipients, string $subject, string $message ): bool {
-		$recipients = array_values( array_unique( array_filter( array_map( 'sanitize_email', $recipients ), 'is_email' ) ) );
+	/**
+	 * @param string[] $recipients
+	 * @param string[] $bcc
+	 */
+	public function send( array $recipients, string $subject, string $message, array $bcc = [] ): bool {
+		$recipients = $this->normalize_emails( $recipients );
+		$bcc = array_values( array_diff( $this->normalize_emails( $bcc ), $recipients ) );
 		if ( ! $recipients ) {
 			return false;
 		}
@@ -16,6 +20,9 @@ final class WordPressMailer implements Mailer {
 		$from = is_string( $domain ) ? 'no-reply@' . preg_replace( '/^www\./', '', $domain ) : '';
 		$reply_to = sanitize_email( (string) ( get_option( 'options_website_email', '' ) ?: get_option( 'options_contact_email', '' ) ?: get_option( 'admin_email' ) ) );
 		$headers = [ 'Content-Type: text/html; charset=UTF-8' ];
+		if ( $bcc ) {
+			$headers[] = 'Bcc: ' . implode( ', ', $bcc );
+		}
 		if ( is_email( $from ) ) {
 			$headers[] = 'From: ' . $site_name . ' <' . $from . '>';
 		}
@@ -25,5 +32,10 @@ final class WordPressMailer implements Mailer {
 		$signature = wp_kses_post( (string) get_option( 'options_email_signature', '' ) );
 		$separator = '' !== trim( $signature ) ? '<br><br>' : '';
 		return wp_mail( $recipients, sanitize_text_field( $subject ), wp_kses_post( $message . $separator . $signature ), $headers );
+	}
+
+	/** @param string[] $emails @return string[] */
+	private function normalize_emails( array $emails ): array {
+		return array_values( array_unique( array_filter( array_map( static fn( string $email ): string => strtolower( sanitize_email( $email ) ), $emails ), 'is_email' ) ) );
 	}
 }

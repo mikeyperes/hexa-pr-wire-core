@@ -9,6 +9,8 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+- Customer live-links and draft-update emails keep customers in To and blind-copy the configured administrator recipients. The shared mailer normalizes recipients and omits BCC addresses already in To.
+
 - Shared Core 3.48.2 prevents helper recommendations and colliding taxonomy activation while preserving the six source-site recommendations.
 
 - Hexa PR Wire source-site sitemap recommendations through shared Core, with explicit administrator endpoints. [Contract](docs/sitemaps.md).
