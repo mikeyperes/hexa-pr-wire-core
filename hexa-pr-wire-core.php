@@ -3,7 +3,7 @@
  * Plugin Name: Hexa PR Wire Core
  * Plugin URI: https://hexaprwire.com/
  * Description: Source-side customer access, publication registry, editorial workflow, feeds, links, and secure delivery controls for Hexa PR Wire.
- * Version: 2.22.3
+ * Version: 2.22.4
  * Requires at least: 6.5
  * Requires PHP: 8.0
  * Author: Hexa PR Wire

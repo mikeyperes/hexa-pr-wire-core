@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.22.4 - 2026-11-05
+
+- Distribution category names open the outlet-provided category link in a new tab, including existing saved choices. No outlet content or category assignments change.
+- Bundles Hexa WP Core 3.56.1.
+
 ## 2.22.3 - 2026-11-05
 
 - Customer term limits apply only to signed-in customers saving their own release; Press Release is excluded from the choice count. System and staff saves never trim categories.

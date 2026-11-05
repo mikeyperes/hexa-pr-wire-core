@@ -63,13 +63,13 @@ final class OutletCategories {
 	 * from its Distributor, falling back to WordPress's public category list
 	 * when the outlet runs a Distributor without the categories route.
 	 *
-	 * @return array{ok:bool,message:string,categories:array<int,array{slug:string,name:string,path:string,count:int}>}
+	 * @return array{ok:bool,message:string,categories:array<int,array{slug:string,name:string,path:string,count:int,link:string}>}
 	 */
 	public function search( string $host, string $search = '', string $slug = '' ): array {
 		$host   = strtolower( $host );
 		$search = sanitize_text_field( $search );
 		$slug   = sanitize_title( $slug );
-		$key    = 'hprwc_outlet_cats_' . md5( $host . '|' . $search . '|' . $slug );
+		$key    = 'hprwc_outlet_cats_v2_' . md5( $host . '|' . $search . '|' . $slug );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) {
 			return $cached;
@@ -93,20 +93,46 @@ final class OutletCategories {
 		return $answer;
 	}
 
-	/** @return array{slug:string,name:string}|null The outlet's existing category with exactly this slug. */
+	/** @return array{slug:string,name:string,link:string}|null The outlet's existing category with exactly this slug. */
 	public function find( string $host, string $slug ): ?array {
 		foreach ( $this->search( $host, '', $slug )['categories'] as $category ) {
 			if ( $category['slug'] === sanitize_title( $slug ) ) {
-				return [ 'slug' => $category['slug'], 'name' => $category['name'] ];
+				return [ 'slug' => $category['slug'], 'name' => $category['name'], 'link' => $category['link'] ?: $this->category_link( $host, $slug ) ];
 			}
 		}
 		return null;
 	}
 
-	/** @return array<int,array{slug:string,name:string,path:string,count:int}>|null */
+	/** Presentation only: resolve old saved choices without rewriting release data. */
+	public function for_display( int $post_id, string $outlet, string $host ): ?array {
+		$category = self::for_outlet( $post_id, $outlet );
+		if ( null === $category ) {
+			return null;
+		}
+		$resolved = $this->find( $host, $category['slug'] );
+		$category['link'] = (string) ( $resolved['link'] ?? '' );
+		return $category;
+	}
+
+	/** Read the outlet's canonical term link; never infer its permalink structure. */
+	private function category_link( string $host, string $slug ): string {
+		$key = 'hprwc_outlet_cat_link_' . md5( strtolower( $host ) . '|' . sanitize_title( $slug ) );
+		$cached = get_transient( $key );
+		if ( is_string( $cached ) ) {
+			return $cached;
+		}
+		foreach ( $this->public_search( $host, [ 'slug' => sanitize_title( $slug ) ] ) ?? [] as $category ) {
+			if ( $category['slug'] === sanitize_title( $slug ) && '' !== $category['link'] ) {
+				set_transient( $key, $category['link'], self::CACHE_TTL );
+				return $category['link'];
+			}
+		return '';
+	}
+
+	/** @return array<int,array{slug:string,name:string,path:string,count:int,link:string}>|null */
 	private function public_search( string $host, array $args ): ?array {
 		$response = wp_remote_get(
-			add_query_arg( array_merge( [ 'per_page' => 30, 'orderby' => 'count', 'order' => 'desc', '_fields' => 'id,name,slug,parent,count' ], $args ), 'https://' . $host . '/wp-json/wp/v2/categories' ),
+			add_query_arg( array_merge( [ 'per_page' => 30, 'orderby' => 'count', 'order' => 'desc', '_fields' => 'id,name,slug,parent,count,link' ], $args ), 'https://' . $host . '/wp-json/wp/v2/categories' ),
 			[ 'timeout' => 15, 'redirection' => 2, 'reject_unsafe_urls' => true, 'limit_response_size' => MB_IN_BYTES, 'headers' => [ 'Accept' => 'application/json' ] ]
 		);
 		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
@@ -116,7 +142,7 @@ final class OutletCategories {
 		return is_array( $rows ) ? $this->normalize( $rows ) : null;
 	}
 
-	/** @return array<int,array{slug:string,name:string,path:string,count:int}> */
+	/** @return array<int,array{slug:string,name:string,path:string,count:int,link:string}> */
 	private function normalize( array $rows ): array {
 		$out = [];
 		foreach ( $rows as $row ) {
@@ -129,6 +155,7 @@ final class OutletCategories {
 				'name'  => sanitize_text_field( $name ),
 				'path'  => sanitize_text_field( html_entity_decode( (string) ( $row['path'] ?? $name ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ),
 				'count' => (int) ( $row['count'] ?? 0 ),
+				'link'  => esc_url_raw( (string) ( $row['link'] ?? '' ), [ 'http', 'https' ] ),
 			];
 		}
 		return array_slice( $out, 0, 30 );

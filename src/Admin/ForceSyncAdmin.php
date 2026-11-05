@@ -184,7 +184,7 @@ final class ForceSyncAdmin {
 				'domain'         => (string) $target['domain'],
 				'live_url'       => $this->resolver->build_live_url( $target, $post ),
 				'outlet'         => $this->outlet_slug( $target ),
-				'category'       => OutletCategories::for_outlet( $post_id, $this->outlet_slug( $target ) ),
+				'category'       => $this->categories->for_display( $post_id, $this->outlet_slug( $target ), (string) $target['domain'] ),
 				'saved'          => $is_saved,
 				'status'         => $is_saved ? $this->present_status( $result ) : $this->state( 'missing', 'Not created', 'Update the release to send it here.' ),
 			];

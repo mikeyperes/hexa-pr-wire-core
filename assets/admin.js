@@ -104,7 +104,10 @@
 		const $line = $('<div>').addClass('hprwc-cat__line').appendTo($cat);
 		$('<span>').addClass('hprwc-cat__label').text('Category').appendTo($line);
 		if (target.category) {
-			$('<span>').addClass('hprwc-cat__chip').text(target.category.name).appendTo($line);
+			const $name = target.category.link
+				? $('<a>', { href: target.category.link, target: '_blank', rel: 'noopener noreferrer' })
+				: $('<span>');
+			$name.addClass('hprwc-cat__chip').text(target.category.name).appendTo($line);
 		} else {
 			$('<span>').addClass('hprwc-cat__none').text('Press Release only').appendTo($line);
 		}
