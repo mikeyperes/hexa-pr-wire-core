@@ -41,43 +41,43 @@ final class ReleaseProfileRepository {
 	}
 
 	public function people( string $name, int $page ): array {
-		$empty = [ 'items' => [], 'page' => $page, 'total' => 0, 'total_pages' => 0 ];
 		$name = trim( sanitize_text_field( $name ) );
 		$profiles = new VerifiedProfiles();
 		if ( ! $profiles->available() || mb_strlen( $name ) < 2 || mb_strlen( $name ) > 120 ) {
-			return $empty;
+			return $this->empty_page( $page );
 		}
 		$types = ProfileTypes::post_types();
 		if ( ! $types ) {
-			return $empty;
+			return $this->empty_page( $page );
 		}
-		$ids = get_posts( [
+		// Explicit person metadata makes the database page and count the same eligible set.
+		$query = new \WP_Query( [
 			'post_type' => $types,
 			'post_status' => 'publish',
+			'has_password' => false,
 			's' => $name,
 			'search_columns' => [ 'post_title' ],
-			'posts_per_page' => -1,
+			'meta_key' => 'profile_type',
+			'meta_value' => 'person',
+			'posts_per_page' => self::PAGE_SIZE,
+			'paged' => $page,
 			'fields' => 'ids',
-			'orderby' => 'title',
-			'order' => 'ASC',
+			'orderby' => [ 'title' => 'ASC', 'ID' => 'ASC' ],
 		] );
-		$people = [];
-		foreach ( $ids as $id ) {
-			$person = $profiles->public_person( $id );
-			if ( $person ) {
-				$people[] = $person;
-			}
-		}
+		$people = array_map( [ $profiles, 'public_person' ], $query->posts );
 		return [
-			'items' => array_slice( $people, ( $page - 1 ) * self::PAGE_SIZE, self::PAGE_SIZE ),
+			'items' => $people,
 			'page' => $page,
-			'total' => count( $people ),
-			'total_pages' => (int) ceil( count( $people ) / self::PAGE_SIZE ),
+			'total' => $query->found_posts,
+			'total_pages' => $query->max_num_pages,
 		];
 	}
 
 	public function releases( array $selection, int $page ): array {
 		$category = CustomerTermLimits::release_category();
+		if ( ! $category ) {
+			return $this->empty_page( $page );
+		}
 		$args = [
 			'post_type' => 'post',
 			'post_status' => 'publish',
@@ -86,11 +86,8 @@ final class ReleaseProfileRepository {
 			'paged' => $page,
 			'orderby' => [ 'date' => 'DESC', 'ID' => 'DESC' ],
 			'ignore_sticky_posts' => true,
-			'category__in' => $category ? [ $category->term_id ] : [],
+			'category__in' => [ $category->term_id ],
 		];
-		if ( ! $category ) {
-			return [ 'items' => [], 'page' => $page, 'total' => 0, 'total_pages' => 0 ];
-		}
 		if ( isset( $selection['author'] ) ) {
 			$args['author'] = (int) $selection['author'];
 		} else {
@@ -113,5 +110,9 @@ final class ReleaseProfileRepository {
 			];
 		}
 		return [ 'items' => $items, 'page' => $page, 'total' => $query->found_posts, 'total_pages' => $query->max_num_pages ];
+	}
+
+	private function empty_page( int $page ): array {
+		return [ 'items' => [], 'page' => $page, 'total' => 0, 'total_pages' => 0 ];
 	}
 }

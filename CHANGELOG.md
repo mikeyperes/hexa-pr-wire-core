@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.24.1 - 2026-11-16
+
+- Pages public person search in the database, constrained to explicit SMP person metadata, with query-derived totals and stable ordering.
+- Reuses one empty-page result and returns before building a release query when its category is missing.
+- Keeps Hexa WP Core 3.63.0.
+
 ## 2.24.0 - 2026-11-16
 
 - Serves separate public author and person-profile identities, exact author URL lookup, person search and published release lists by author or associated person.
