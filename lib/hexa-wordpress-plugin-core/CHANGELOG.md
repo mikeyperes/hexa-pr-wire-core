@@ -1,3 +1,7 @@
+## 3.63.0 - 2026-11-16
+
+- Add the shared public press-release author/person lookup and paginated release-list client, with safe HTTPS transport and response checks.
+
 ## 3.62.1 - 2026-11-15
 
 - Normalize calling URLs and domains once in the shared signed transport, including www and trailing-dot handling; refuse IP or malformed identities.

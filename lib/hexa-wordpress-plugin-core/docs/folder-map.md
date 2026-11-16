@@ -125,3 +125,7 @@ Then update:
 - `src/PdfPrint/`: `Hexa\PluginCore\PdfPrint`, generic HTML print/PDF.
 
 - `src/ApiKeys/`: reusable key setup and domain-bound HMAC JSON transport. See `docs/signed-json.md`.
+
+## Press-release profile client
+
+`src/PressReleaseProfiles/` maps to `Hexa\PluginCore\PressReleaseProfiles`. It owns the public read-only source protocol, safe HTTPS requests and response-shape checks; hosts own profile selection and publication policy. See [protocol](press-release-profiles.md).

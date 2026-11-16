@@ -9,6 +9,11 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+### Public author and person release API
+- **Does:** validates a public author ID or exact canonical author profile URL separately from a published person-profile ID. Searches published person profiles and lists published, unprotected release-category posts authored by that user or associated with that person.
+- **Use:** public GET routes under `hprwc/v1`: `authors`, `authors/{id}`, `authors/{id}/releases`, `verified-profiles`, `verified-profiles/{id}`, `verified-profiles/{id}/releases`. Consumers use Core's `PressReleaseProfilesClient`; no private account fields or credentials are returned.
+- **Code:** `src/Integrations/ReleaseProfileApi.php`, `src/Integrations/ReleaseProfileRepository.php`; [contract](docs/verified-profiles.md). Bundles Hexa WP Core 3.63.0.
+
 ### Verified Profiles query and release subjects
 - **Does:** administrators search published SMP person profiles in the release editor, or review AI subject proposals supported by the release headline or opening text. Headline matches rank first. Organization proposals, unsupported names and low-confidence proposals are excluded. A subject without an existing profile stays visible for review.
 - **Use:** open a release, use **Verified Profiles**, select **Use on next save**, then save the release. Existing associations stay in place; the query never creates profiles. Enable a profile type and configure SMP Verified Profiles' Profile Generation connection first.

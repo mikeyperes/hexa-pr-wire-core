@@ -104,6 +104,7 @@ final class Plugin {
 				->add( new CustomerActions( $access ) )
 				->add( new ReleaseStatus() )
 				->add( new \HexaPrWire\Core\Admin\ReleaseProfiles() )
+				->add( new \HexaPrWire\Core\Integrations\ReleaseProfileApi() )
 				->add( new \HexaPrWire\Core\Integrations\SmpGoLiveProcessing() )
 				->add( new EditorChecklist() )
 				->add( new EditorStyles() )

@@ -40,12 +40,22 @@ final class VerifiedProfiles {
 	}
 
 	public function person( int $id ): ?array {
-		$post = get_post( $id );
+		return current_user_can( 'read_post', $id ) ? $this->public_person( $id ) : null;
+	}
+
+	public function public_person( int $id ): ?array {
+		$post = $id > 0 ? get_post( $id ) : null;
 		if ( ! $this->available() || ! $post instanceof \WP_Post || 'publish' !== $post->post_status
-			|| ! in_array( $post->post_type, ProfileTypes::post_types(), true )
-			|| 'person' !== ProfileSchema::profile_type( $id ) || ! current_user_can( 'read_post', $id ) ) {
+			|| '' !== $post->post_password || ! in_array( $post->post_type, ProfileTypes::post_types(), true )
+			|| 'person' !== ProfileSchema::profile_type( $id ) ) {
 			return null;
 		}
-		return [ 'id' => $id, 'name' => get_the_title( $id ), 'url' => get_permalink( $id ) ];
+		return [
+			'id' => $id,
+			'name' => get_the_title( $id ),
+			'url' => get_permalink( $id ),
+			'image_url' => get_the_post_thumbnail_url( $id, 'medium' ) ?: '',
+			'entity_type' => 'person',
+		];
 	}
 }

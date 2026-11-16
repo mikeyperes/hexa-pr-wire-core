@@ -66,6 +66,7 @@ src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/Calendar/           Hexa\PluginCore\Calendar
 src/Map/                Hexa\PluginCore\Map
 src/QueryFilter/        Hexa\PluginCore\QueryFilter
+src/PressReleaseProfiles/ Hexa\PluginCore\PressReleaseProfiles
 src/PublicComponents/   Hexa\PluginCore\PublicComponents
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
 src/Taxonomies/         Hexa\PluginCore\Taxonomies

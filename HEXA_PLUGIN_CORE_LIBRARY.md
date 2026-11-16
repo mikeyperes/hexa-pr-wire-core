@@ -1777,3 +1777,7 @@ Term choice limits support `excluded_terms` (IDs or callback) outside the choice
 ## Signed JSON requests
 
 Use `Hexa\PluginCore\ApiKeys\SignedJsonClient` for domain-bound HMAC HTTPS calls. Hosts provide endpoints, header prefix, key and calling URL or domain; Core normalizes the domain, signs exact body bytes and generates a new nonce per send. See `docs/signed-json.md`.
+
+## Press-release profile client
+
+`Hexa\PluginCore\PressReleaseProfiles\PressReleaseProfilesClient` reads public authors, exact author URLs, person searches and release lists from a configured HTTPS origin. Use `author`, `find_author`, `author_releases`, `search_people`, `person` and `releases`; all return success/data or failure/code/message envelopes. See `docs/press-release-profiles.md`. Hosts own the source URL, selected identity, UI and output.

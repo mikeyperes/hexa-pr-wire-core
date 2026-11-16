@@ -18,6 +18,11 @@
 
 ## Features
 
+### Press-release profile client
+- **Does:** validates and reads public author identities, person-profile search, exact person identity, and paginated releases by author or person from a configured HTTPS source. Redirects are disabled; safe HTTP transport rejects private network targets.
+- **Use:** `PressReleaseProfiles\PressReleaseProfilesClient`: `author()`, `find_author()`, `author_releases()`, `search_people()`, `person()`, `releases()`. Each takes the source origin first and returns a success/data or failure/code/message envelope.
+- **Code:** `src/PressReleaseProfiles/`; [protocol](docs/press-release-profiles.md). Hosts own endpoints, publication policy, settings and output.
+
 ### Signed JSON requests
 - **Does:** signs exact JSON bytes with method, path, timestamp, a fresh cryptographic nonce and the normalized calling domain; sends HTTPS POST without redirects or cookies.
 - **Use:** `ApiKeys\SignedJsonClient($header_prefix)->post($url, $payload, $key, $domain, $timeout)` returns the WordPress HTTP response. Hosts own endpoint settings, key storage, response handling.

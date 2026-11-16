@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.24.0 - 2026-11-16
+
+- Serves separate public author and person-profile identities, exact author URL lookup, person search and published release lists by author or associated person.
+- Excludes unpublished and password-protected releases and person profiles; exposes no account credentials or private profile fields.
+- Bundles Hexa WP Core 3.63.0 and its shared consuming client.
+
 ## 2.23.0 - 2026-11-16
 
 - Adds the release editor Verified Profiles query for published person profiles.
