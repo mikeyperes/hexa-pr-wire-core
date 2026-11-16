@@ -199,7 +199,7 @@ final class Dashboard implements Module {
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="hprwc-panel">
 			<input type="hidden" name="action" value="hprwc_save_notifications"><?php wp_nonce_field( 'hprwc_save_notifications' ); ?>
 			<h2>Notification templates</h2>
-			<p>Placeholders: <code>{title}</code>, <code>{first_name}</code>, <code>{last_name}</code>, <code>{full_name}</code>, <code>{permalink}</code>, <code>{edit_url}</code>, <code>{dashboard_url}</code>, <code>{link_output}</code>.</p>
+			<p>Placeholders: <code>{title}</code>, <code>{publications}</code> (assigned outlets, one per line), <code>{first_name}</code>, <code>{last_name}</code>, <code>{full_name}</code>, <code>{permalink}</code>, <code>{edit_url}</code>, <code>{dashboard_url}</code>, <code>{link_output}</code>.</p>
 			<?php foreach ( $fields as $key => $label ) : ?>
 				<fieldset class="hprwc-template"><legend><strong><?php echo esc_html( $label ); ?></strong></legend>
 				<label>Subject<input class="large-text" name="settings[<?php echo esc_attr( $key ); ?>_subject]" value="<?php echo esc_attr( (string) $config[ $key . '_subject' ] ); ?>"></label>

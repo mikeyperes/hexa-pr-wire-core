@@ -9,6 +9,11 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+### Submission email outlets
+- **Does:** pending-review and customer-published alerts list the release's assigned publication outlets under “Syndicated to:”, one outlet per line. Parent groups are excluded using the release editor's existing outlet rule.
+- **Use:** Notification templates support `{publications}`; both submission defaults include it, and the Notifications screen lists the placeholder.
+- **Code:** `src/Workflow/NotificationSettings.php`, `src/Admin/PublicationPicker.php`, `src/Admin/Dashboard.php`.
+
 ### Public author and person release API
 - **Does:** validates a public author ID or exact canonical author profile URL separately from a published person-profile ID. Searches published profiles explicitly marked as people, excludes rejected profile rows, and lists published, unprotected release-category posts authored by that user or associated with that person.
 - **Use:** public GET routes under `hprwc/v1`: `authors`, `authors/{id}`, `authors/{id}/releases`, `verified-profiles`, `verified-profiles/{id}`, `verified-profiles/{id}/releases`. Consumers use Core's `PressReleaseProfilesClient`; no private account fields or credentials are returned.

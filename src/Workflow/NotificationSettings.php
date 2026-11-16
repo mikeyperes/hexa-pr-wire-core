@@ -2,6 +2,8 @@
 
 namespace HexaPrWire\Core\Workflow;
 
+use HexaPrWire\Core\Admin\PublicationPicker;
+
 final class NotificationSettings {
 	public const OPTION = 'hprwc_notification_settings';
 
@@ -10,9 +12,9 @@ final class NotificationSettings {
 		$stored = get_option( self::OPTION, [] );
 		$defaults = [
 			'pending_subject' => 'Release pending review: {title}',
-			'pending_message' => "A Hexa PR Wire release is ready for review.\n\nTitle: {title}\nCustomer: {full_name}\nEdit: {edit_url}",
+			'pending_message' => "A Hexa PR Wire release is ready for review.\n\nTitle: {title}\nCustomer: {full_name}\n\nSyndicated to:\n{publications}\n\nEdit: {edit_url}",
 			'published_subject' => 'Customer release published: {title}',
-			'published_message' => "A Hexa PR Wire customer published a release without review.\n\nTitle: {title}\nCustomer: {full_name}\nView: {permalink}\nEdit: {edit_url}",
+			'published_message' => "A Hexa PR Wire customer published a release without review.\n\nTitle: {title}\nCustomer: {full_name}\n\nSyndicated to:\n{publications}\n\nView: {permalink}\nEdit: {edit_url}",
 			'draft_subject' => (string) get_option( 'options_notify_draft_update_subject', '' ) ?: 'Update to your press release: {title}',
 			'draft_message' => (string) get_option( 'options_notify_draft_update_message', '' ) ?: "Hello {first_name},<br><br>Your Hexa PR Wire draft has been updated.<br><br><a href=\"{edit_url}\">Review your draft</a>.",
 			'live_subject' => 'Your Press Release is Live: {title}',
@@ -45,6 +47,7 @@ final class NotificationSettings {
 		$user ??= get_userdata( \HexaPrWire\Core\Customer\ReleaseOwner::id( $post ) ) ?: null;
 		$values = [
 			'{title}' => get_the_title( $post ),
+			'{publications}' => str_contains( $template, '{publications}' ) ? $this->publications( $post ) : '',
 			'{first_name}' => $user ? (string) $user->first_name : '',
 			'{last_name}' => $user ? (string) $user->last_name : '',
 			'{full_name}' => $user ? (string) $user->display_name : '',
@@ -54,6 +57,16 @@ final class NotificationSettings {
 			'{link_output}' => (string) get_post_meta( $post->ID, 'link_output', true ),
 		];
 		return strtr( $template, $values );
+	}
+
+	private function publications( \WP_Post $post ): string {
+		$selected = wp_get_object_terms( $post->ID, 'publication', [ 'fields' => 'ids' ] );
+		if ( is_wp_error( $selected ) ) {
+			return '';
+		}
+		$selected = array_map( 'absint', $selected );
+		$outlets = array_filter( PublicationPicker::outlets(), static fn( \WP_Term $term ): bool => in_array( (int) $term->term_id, $selected, true ) );
+		return implode( "\n", array_map( static fn( \WP_Term $term ): string => $term->name, $outlets ) );
 	}
 
 	/** @return string[] */
