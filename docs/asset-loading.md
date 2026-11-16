@@ -8,3 +8,7 @@ Distribution uses the existing `hprwc-force-sync-admin` handles: `assets/admin.j
 - Article: no Distribution assets before or after (admin-only enqueue hook).
 - Feature page: Distribution is available only in the release editor, not on a public feature page.
 - Release editor: `hprwc-force-sync-admin` script and style before and after, version changes 2.22.3 to 2.22.5. Other editor handles remain the existing core.css, release-date.js, editor-checklist.js and delivery-notifications.js. No new asset requests are introduced.
+
+## Verified Profiles query
+
+Before: no profile-query asset on any screen. After: `hprwc-release-profiles` (`assets/admin/release-profiles.js`) loads only on post.php/post-new.php for WordPress posts and administrators. The home page, public articles, public feature pages and plugin settings tabs receive no additional assets. No stylesheet or front-end output is added.

@@ -103,6 +103,7 @@ final class Plugin {
 				->add( new CustomerProfile( $policies, $notification_settings, $mailer ) )
 				->add( new CustomerActions( $access ) )
 				->add( new ReleaseStatus() )
+				->add( new \HexaPrWire\Core\Admin\ReleaseProfiles() )
 				->add( new \HexaPrWire\Core\Integrations\SmpGoLiveProcessing() )
 				->add( new EditorChecklist() )
 				->add( new EditorStyles() )

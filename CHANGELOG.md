@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.23.0 - 2026-11-16
+
+- Adds the release editor Verified Profiles query for published person profiles.
+- Ranks SMP AI subject proposals by headline and opening-text evidence, rejects unsupported or low-confidence names, and retains subjects without a local profile for review.
+- Attaches the selected existing profile on the next release save while preserving other associations.
+- Bundles Hexa WP Core 3.62.1.
+
 ## 2.22.6 - 2026-11-05
 
 - Restores the configured team BCC on customer live-links and draft-update notifications.

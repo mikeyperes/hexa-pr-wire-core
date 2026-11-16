@@ -979,11 +979,13 @@ Use `AcfFieldGroupRegistry` when Core must own the actual `acf/init` registratio
 
 Namespace: Hexa\PluginCore\SchemaTools
 
-Classes: SchemaGraph, SchemaDocumentRenderer, SchemaInjector, SchemaDashboardRenderer.
+Classes: SchemaNodes, SchemaSources, SchemaIds, SchemaPage, SchemaContext, SchemaStructures, SchemaStructuresPanel, SchemaStructuresModule, SchemaGraph, SchemaDocumentRenderer, SchemaInjector, SchemaDashboardRenderer.
+
+`SchemaStructures::register( $owner, $args )` declares a plugin's structures (pages, types, modes, builder, sample page); each ships in its default mode, prints through `SchemaPage`, and gets `SchemaStructuresPanel::render( $owner )` and `wp hexa schema`. Builders take a `SchemaContext`, so the same builder serves the live page, a preview and a test. `SchemaNodes::person_profile( $record )` builds a complete Person from a plain record; see `docs/schema-structures.md`.
 
 `SchemaGraph::web_url()` rejects wrong-shaped field values and returns only HTTP(S) URLs. Hosts should continue to later field sources when it returns an empty string. `SchemaGraph::sanitize_urls()` is the final fail-closed guard for URL-range properties, while `SchemaGraph::validation_issues()` exposes semantic property paths for tests and reports. `SchemaGraph::standalone_nodes()` converts reference-only objects to identifier URL values while preserving detached typed summaries for author, publisher, copyright-holder, and image properties, allowing every top-level graph node to remain independently detectable. A host can include `@id` and `@type` in an overridden typed-summary property map when relationships must stay explicitly linked to those independent nodes without repeating their descriptive fields. Valid URL lists, `Role` values for `url`, and structured policy nodes are preserved.
 
-Host plugins build their own schema objects and hand the result to Core for graph cleanup, duplicate-node merging, safe JSON-LD rendering, and one-shot hook output. Do not move domain-specific Person, Organization, Publication, Profile, or Article mappings into Core. See `docs/schema-tools.md` and `docs/schema-standalone-nodes.md`; test with `tests/schema-document.php` and `tests/schema-standalone-nodes.php`.
+Host plugins read their own fields and decide which pages carry which structures; Core holds the generic builders that turn plain records into nodes (`person_profile()` among them) and handles graph cleanup, duplicate-node merging, safe JSON-LD rendering and output. Do not read a plugin's fields or options in Core. See `docs/schema-tools.md` and `docs/schema-standalone-nodes.md`; test with `tests/schema-document.php` and `tests/schema-standalone-nodes.php`.
 
 ## Taxonomies
 
@@ -1765,3 +1767,13 @@ SubmissionStore::scan($after,$limit,$collection,$upper) provides ascending snaps
 SubmissionStore::deleted($after,$limit) provides an ascending deletion_id cursor, original subscriber ID, collection and UTC time only. delete/erase atomically journal with removal (InnoDB); lists() includes known empty collections and totals. See docs/frontend-forms.md.
 
 Term choice limits support `excluded_terms` (IDs or callback) outside the choice count and `applies_to` (WP_Post callback) for host ownership checks. Only signed-in users are limited; CLI and cron saves are exempt.
+
+### PDF / print
+- **Does:** Renders trusted HTML items as physical-size print pages or PDF, with no domain-specific content.
+- **Use:** `new PdfPrint\PageSize($widthInches, $heightInches)` and `new PdfPrint\HtmlDocument($size)`; call `html($items, $css, true)` or `pdf($items, $css)`. PDF requires host-bundled `dompdf/dompdf`.
+- **Extend:** Hosts supply escaped item HTML, bounded item lists, CSS, permission checks and response delivery.
+- **Code:** `src/PdfPrint/`. See [PDF / print](docs/pdf-print.md).
+
+## Signed JSON requests
+
+Use `Hexa\PluginCore\ApiKeys\SignedJsonClient` for domain-bound HMAC HTTPS calls. Hosts provide endpoints, header prefix, key and calling URL or domain; Core normalizes the domain, signs exact body bytes and generates a new nonce per send. See `docs/signed-json.md`.

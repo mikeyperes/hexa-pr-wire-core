@@ -9,6 +9,12 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+### Verified Profiles query and release subjects
+- **Does:** administrators search published SMP person profiles in the release editor, or review AI subject proposals supported by the release headline or opening text. Headline matches rank first. Organization proposals, unsupported names and low-confidence proposals are excluded. A subject without an existing profile stays visible for review.
+- **Use:** open a release, use **Verified Profiles**, select **Use on next save**, then save the release. Existing associations stay in place; the query never creates profiles. Enable a profile type and configure SMP Verified Profiles' Profile Generation connection first.
+- **Code:** `src/Admin/ReleaseProfiles.php`, `src/Integrations/VerifiedProfiles.php`, `src/Integrations/ReleaseSubjectRecognition.php`.
+- **Contract:** [Verified Profiles integration](docs/verified-profiles.md). Bundles Hexa WP Core 3.62.1.
+
 - Customer live-links and draft-update emails keep customers in To and blind-copy the configured administrator recipients. The shared mailer normalizes recipients and omits BCC addresses already in To.
 
 - Shared Core 3.48.2 prevents helper recommendations and colliding taxonomy activation while preserving the six source-site recommendations.
