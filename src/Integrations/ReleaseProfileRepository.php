@@ -9,6 +9,10 @@ use SMP\VerifiedProfiles\ProfileTypes\ProfileTypes;
 final class ReleaseProfileRepository {
 	public const PAGE_SIZE = 20;
 
+	// Matches SMP's ProfileSchema::profile_type() field and normalized person type.
+	private const PROFILE_TYPE_META_KEY = 'profile_type';
+	private const PERSON_PROFILE_TYPE = 'person';
+
 	public function author( int $id ): ?array {
 		$user = get_userdata( $id );
 		if ( ! $user instanceof \WP_User || ! count_user_posts( $id, 'post', true ) ) {
@@ -57,14 +61,17 @@ final class ReleaseProfileRepository {
 			'has_password' => false,
 			's' => $name,
 			'search_columns' => [ 'post_title' ],
-			'meta_key' => 'profile_type',
-			'meta_value' => 'person',
+			'meta_key' => self::PROFILE_TYPE_META_KEY,
+			'meta_value' => self::PERSON_PROFILE_TYPE,
 			'posts_per_page' => self::PAGE_SIZE,
 			'paged' => $page,
 			'fields' => 'ids',
 			'orderby' => [ 'title' => 'ASC', 'ID' => 'ASC' ],
 		] );
-		$people = array_map( [ $profiles, 'public_person' ], $query->posts );
+		$people = array_values( array_filter(
+			array_map( [ $profiles, 'public_person' ], $query->posts ),
+			static fn( ?array $person ): bool => null !== $person
+		) );
 		return [
 			'items' => $people,
 			'page' => $page,

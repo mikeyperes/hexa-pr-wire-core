@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.24.2 - 2026-11-16
+
+- Removes rejected person rows from public search items and reindexes the result.
+- Keeps the verified SMP profile-type metadata contract in one private constant pair, matching its ProfileSchema resolver without changing SMP.
+- Keeps Hexa WP Core 3.63.0.
+
 ## 2.24.1 - 2026-11-16
 
 - Pages public person search in the database, constrained to explicit SMP person metadata, with query-derived totals and stable ordering.
