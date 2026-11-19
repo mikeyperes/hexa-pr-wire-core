@@ -1,3 +1,7 @@
+## 3.64.0 - 2026-11-18
+
+- Run Hexa field registration, storage, formatting, row loops and editors in Core with or without ACF installed. Preserve existing values, field keys and storage names.
+
 ## 3.63.0 - 2026-11-16
 
 - Add the shared public press-release author/person lookup and paginated release-list client, with safe HTTPS transport and response checks.

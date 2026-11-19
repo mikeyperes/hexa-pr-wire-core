@@ -967,13 +967,13 @@ Namespace: Hexa\PluginCore\FieldStructures
 
 Classes: AcfFieldGroupRegistry, AcfFieldGroupSettingsStore, AcfFieldGroupAjaxController, AcfFieldGroupRenderer, AcfSettingsPanel, FieldStructureManager, FieldStructureRenderer
 
-Use this for admin displays that explain and test ACF field groups, custom post types, taxonomies, and option-backed structures. Host plugins provide definitions; Hexa Core normalizes them, renders one row per structure, shows enabled and registered status, exposes setting toggles through the host save AJAX action, and keeps fields, dependencies, code examples, test reports, and activity notes in a consistent layout.
+Use this for admin displays that explain and test field groups, custom post types, taxonomies, and option-backed structures. Host plugins provide definitions; Hexa Core normalizes them, renders one row per structure, shows enabled and registered status, exposes setting toggles through the host save AJAX action, and keeps fields, dependencies, code examples, test reports, and activity notes in a consistent layout.
 
-Definition keys: id, label, type, setting_key, enabled, registered, acf_group_key, object_name, location, fields, dependencies, instructions, code_example, test_report, activity, edit_url. The registered and test_report values may be callbacks. Do not move plugin-specific ACF registration arrays into core; core owns the display and status model only.
+Definition keys: id, label, type, setting_key, enabled, registered, acf_group_key, object_name, location, fields, dependencies, instructions, code_example, test_report, activity, edit_url. The registered and test_report values may be callbacks. Hosts own their field definitions. Core owns registration, field editing, storage, formatting and the shared status display.
 
 Example use: create a FieldStructureRenderer, pass an array of structure definitions, and pass save_action plus nonce when toggles should save through AJAX.
 
-Use `AcfFieldGroupRegistry` when Core must own the actual `acf/init` registration path and toggle state. A disabled definition also deactivates database-imported copies that use the same ACF group key. Use `AcfSettingsPanel` to display established option-backed ACF groups inside a host tab without moving their stored values. Host plugins always retain their exact field arrays.
+Use `AcfFieldGroupRegistry` to register fields in Core and preserve their toggle state. Use `AcfSettingsPanel` to edit existing option-backed field groups inside a host tab without moving their stored values. The older class names remain callable. Host plugins always retain their exact field arrays.
 
 ## Schema Tools
 

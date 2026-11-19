@@ -5,9 +5,11 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 > Feature base for HWS Skills. Read before building on this plugin; use or
 > extend these features instead of rebuilding them.
 
-**Purpose:** source-site ownership of Hexa PR Wire customers, publications, releases, editorial workflow and syndication. **Admin:** WP Admin → Hexa PR Wire Core. **Depends on:** ACF Pro; WP-CLI commands `wp hprwc ...`.
+**Purpose:** source-site ownership of Hexa PR Wire customers, publications, releases, editorial workflow and syndication. **Admin:** WP Admin → Hexa PR Wire Core. **CLI:** WP-CLI commands `wp hprwc ...`.
 
 ## Features
+
+- Hexa WP Core 3.64.0 owns the release and publication field editors and keeps the existing field keys and values.
 
 ### Submission email outlets
 - **Does:** pending-review and customer-published alerts list the release's assigned publication outlets under “Syndicated to:”, one outlet per line. Parent groups are excluded using the release editor's existing outlet rule.

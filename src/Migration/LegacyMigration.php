@@ -227,35 +227,22 @@ final class LegacyMigration {
 		}
 	}
 
+	/** Changes the exact legacy configuration record through WordPress. */
 	private function set_acf_status( int $post_id, string $post_type, string $status ): void {
-		if ( in_array( $status, [ 'publish', 'acf-disabled' ], true ) ) {
-			$activate = 'publish' === $status;
-			if ( 'acf-taxonomy' === $post_type && function_exists( 'acf_update_taxonomy_active_status' ) ) {
-				$result = acf_update_taxonomy_active_status( $post_id, $activate );
-			} elseif ( 'acf-field-group' === $post_type && function_exists( 'acf_update_field_group_active_status' ) ) {
-				$result = acf_update_field_group_active_status( $post_id, $activate );
-			} else {
-				throw new RuntimeException( 'The supported ACF status interface is unavailable for ' . $post_type . '.' );
-			}
-		} else {
-			$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => sanitize_key( $status ) ], true );
+		// Bug: the legacy migration required ACF even though only record status changes.
+		// Fix: verify the record type and update it through WordPress. Why: definitions and values stay in their existing storage.
+		if ( $post_type !== get_post_type( $post_id ) ) {
+			throw new RuntimeException( 'Unexpected configuration record type for ' . $post_id . '.' );
 		}
+		$result = wp_update_post( [ 'ID' => $post_id, 'post_status' => sanitize_key( $status ) ], true );
 		if ( ! $result || is_wp_error( $result ) || $status !== get_post_status( $post_id ) ) {
 			throw new RuntimeException( 'Could not set legacy UI record ' . $post_id . ' to ' . $status . '.' );
 		}
 	}
 
+	/** Disables a legacy configuration record without changing its definition. */
 	private function disable_acf_post( int $post_id, string $post_type ): void {
-		if ( 'acf-taxonomy' === $post_type && function_exists( 'acf_update_taxonomy_active_status' ) ) {
-			$result = acf_update_taxonomy_active_status( $post_id, false );
-		} elseif ( 'acf-field-group' === $post_type && function_exists( 'acf_update_field_group_active_status' ) ) {
-			$result = acf_update_field_group_active_status( $post_id, false );
-		} else {
-			throw new RuntimeException( 'The supported ACF deactivation interface is unavailable for ' . $post_type . '.' );
-		}
-		if ( ! $result || 'acf-disabled' !== get_post_status( $post_id ) ) {
-			throw new RuntimeException( 'Could not disable legacy ACF record ' . $post_id . '.' );
-		}
+		$this->set_acf_status( $post_id, $post_type, 'acf-disabled' );
 	}
 
 	/** @return array<int,array{ID:int,status:string,title:string,key:string}> */

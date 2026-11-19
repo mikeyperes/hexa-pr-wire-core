@@ -94,7 +94,7 @@ final class ReleaseProfiles implements Module {
 		return [ 'profiles' => $recognition->recognize( (array) ( $result['entities'] ?? [] ), $title, $content ) ];
 	}
 
-	/** Apply the explicit selection after ACF has stored the release's existing profiles. */
+	/** Apply the explicit selection after Core has stored the release's existing profiles. */
 	public function save( int $post_id ): void {
 		$nonce = $_POST['hprwc_profile_nonce'] ?? '';
 		if ( 'post' !== get_post_type( $post_id ) || ! is_string( $nonce ) || ! wp_verify_nonce( wp_unslash( $nonce ), self::NONCE )

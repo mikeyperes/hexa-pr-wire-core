@@ -144,7 +144,7 @@
 - **Code:** `src/SnippetRegistry/` (docs: `docs/snippet-registry.md`)
 
 ### Fields (no ACF needed)
-- **Does:** the one custom-field API: field groups, reading and saving values, repeaters, options pages, edit forms and the client-friendly help view, with ACF's exact function signatures and storage. With ACF active it hands every call to ACF; without it Core stores, formats and edits the same data itself. Safe during plugin startup: before ACF has started (`acf/init`), `Field::get()` returns the stored value instead of starting ACF too early (`Acf::ready()`). Without ACF, the field script and media library load only on post, user and term edit screens (`AdminScreens::field_screen()`).
+- **Does:** Hexa WP Core registers, reads, formats and saves fields, row loops, options pages and editing forms. Existing field keys, option names and WordPress metadata stay in place. Core uses its own field hooks and editor controls whether or not another field plugin is active.
 - **Use:** `FieldGroups::add( $group )`, `Field::get()`/`update()`/`have_rows()`/`the_row()`/`get_sub_field()`, `OptionsPages::add()`, `Form::render()`/`Form::field()`, `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` while plugins load; field `developer_instructions` and group `client_view` (`Audience`).
 - **Extend:** `hexa_fields/load_field_groups`, `hexa_fields/*` (ACF-named hooks), `hexa_core_fields_client_view`, ACF's location filters.
 - **Code:** `src/Fields/` (docs: `docs/fields.md`); `bin/migrate-to-fields.php` moves a plugin off ACF calls.

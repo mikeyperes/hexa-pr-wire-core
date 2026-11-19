@@ -53,7 +53,7 @@ final class FieldGroups implements Module {
 			'definition' => $provider,
 			'fields' => $fields,
 			'location' => $location,
-			'dependencies' => [ 'Advanced Custom Fields Pro' ],
+
 		];
 	}
 
