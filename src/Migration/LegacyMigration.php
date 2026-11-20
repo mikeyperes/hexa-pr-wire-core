@@ -23,7 +23,7 @@ final class LegacyMigration {
 		return [
 			'site' => home_url( '/' ),
 			'plugin' => 'hexa-pr-wire-core',
-			'data_owner' => 'Code Snippets, CPT UI, and ACF UI',
+			'data_owner' => 'Code Snippets, CPT UI, and legacy field definitions',
 			'snippet_ids' => array_keys( $state['snippets'] ),
 			'active_snippet_ids' => array_values( array_map( 'intval', array_keys( array_filter( $state['snippets'], static fn( array $item ): bool => ! empty( $item['active'] ) ) ) ) ),
 			'cpt_ui_publication' => $state['cpt_ui_publication'],
