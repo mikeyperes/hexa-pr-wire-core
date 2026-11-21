@@ -100,7 +100,7 @@ final class AuthorProfile implements Module {
 		}
 	}
 
-	/** A photo hosted on hexaprwire.com (outlets only accept that host). */
+	/** Return the existing author photo or a fallback hosted on the source WordPress site. */
 	private function avatar_url( int $user_id ): string {
 		$attachment_id = 0;
 		$simple = get_user_meta( $user_id, 'simple_local_avatar', true );
@@ -113,7 +113,12 @@ final class AuthorProfile implements Module {
 		$url = $attachment_id > 0 ? (string) wp_get_attachment_url( $attachment_id ) : '';
 		if ( '' === $url ) {
 			$candidate = (string) get_avatar_url( $user_id, [ 'size' => 512 ] );
-			$url = str_contains( (string) wp_parse_url( $candidate, PHP_URL_HOST ), 'hexaprwire.com' ) ? $candidate : '';
+			// Bug: fallback photos were tied to one hostname and substring matching.
+			// Fix: compare against the current source site's hostname and its subdomains.
+			// Why this way: the WordPress site URL is the source's existing configuration.
+			$host = strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) );
+			$candidate_host = strtolower( (string) wp_parse_url( $candidate, PHP_URL_HOST ) );
+			$url = '' !== $host && ( $candidate_host === $host || str_ends_with( $candidate_host, '.' . $host ) ) ? $candidate : '';
 		}
 		return esc_url_raw( $url );
 	}

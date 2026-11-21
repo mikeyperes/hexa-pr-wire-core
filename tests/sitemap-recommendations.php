@@ -1,5 +1,6 @@
 <?php
-$host='hexaprwire.com';$n=0;
+$host='example.test';$site_type='news_outlet';$n=0;
+function get_option($key,$default=false){global $site_type;return 'hws_site_type'===$key?$site_type:$default;}
 function home_url($p='/'){global $host;return 'https://'.$host.$p;}
 function wp_parse_url($u,$c=-1){return parse_url($u,$c);}
 require dirname(__DIR__).'/lib/hexa-wordpress-plugin-core/src/CoreContracts/ModuleInterface.php';
@@ -16,7 +17,7 @@ foreach(['press-release','publication','article','organization','resource','prod
 }
 $rows['post_type_publication']['available']=true;$rows['post_type_publication']['current']=false;
 $rows=R::recommend($rows);check($rows['post_type_publication']['current']===false,'Recommendations never enable Rank Math');
-$host='other.test';check(R::recommend([])===[],'No company-wide policy');
+$site_type='business';check(R::recommend([])===[],'No company-wide policy');
 $main=file_get_contents(dirname(__DIR__).'/hexa-pr-wire-core.php');
 check(str_contains($main,'Version: '.\HexaPrWire\Core\Bootstrap\PluginMetadata::VERSION),'Metadata version matches header');
 check(str_contains($main,'lib/hexa-wordpress-plugin-core/bootstrap.php'),'One canonical bundle path');

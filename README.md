@@ -9,6 +9,8 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+- Author photo fallback and sitemap recommendations use the source site’s WordPress URL and configured site type.
+
 - The migration overview describes the legacy field definitions it imports.
 
 - Hexa WP Core 3.64.0 owns the release and publication field editors and keeps the existing field keys and values.
