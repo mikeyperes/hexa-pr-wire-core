@@ -21,6 +21,10 @@ function acf_form( ...$args ) { throw new RuntimeException( 'ACF form called' );
 function esc_attr( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES ); }
 function esc_html( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES ); }
 function esc_url( $v ) { return (string) $v; }
+function __( $v, $domain = '' ) { return (string) $v; }
+function esc_html__( $v, $domain = '' ) { return esc_html( $v ); }
+function sanitize_text_field( $v ) { return trim( strip_tags( (string) $v ) ); }
+function wp_die( $message, ...$args ) { throw new InvalidArgumentException( $message ); }
 function wp_kses_post( $v ) { return (string) $v; }
 function wpautop( $v ) { return (string) $v; }
 function get_option( $name, $default = false ) { return array_key_exists( $name, $GLOBALS['options'] ) ? $GLOBALS['options'][ $name ] : $default; }
@@ -67,6 +71,8 @@ spl_autoload_register( static function ( string $class ): void {
 use Hexa\PluginCore\Fields\Acf;
 use Hexa\PluginCore\Fields\Field;
 use Hexa\PluginCore\Fields\FieldGroups;
+use Hexa\PluginCore\Fields\Form;
+use Hexa\PluginCore\Fields\Renderer;
 
 $fail = static function ( string $message ): void {
 	fwrite( STDERR, 'FAIL: ' . $message . PHP_EOL );
@@ -155,4 +161,99 @@ FieldGroups::add( [ 'key' => 'group_desk', 'title' => 'Desk', 'fields' => [], 'l
 ! in_array( 'group_db_binned__trashed', array_map( static fn( array $g ): string => (string) $g['key'], FieldGroups::all() ), true ) || $fail( 'A trashed database group is not listed.' );
 'db_greeting' === ( FieldGroups::get_field( 'field_db_greeting' )['name'] ?? '' ) || $fail( 'A field of a trashed database group still resolves by key.' );
 
-echo "PASS: native Fields resolve, derive keys and return values as ACF does.\n";
+$map = [ 'key' => 'field_editor_location', 'name' => 'editor_location', 'type' => 'google_map' ];
+$source = [ 'key' => 'field_editor_source', 'name' => 'editor_source', 'label' => 'Original title', 'type' => 'text' ];
+FieldGroups::add( [ 'key' => 'group_editor_source', 'fields' => [ $source ] ] );
+FieldGroups::add( [
+	'key' => 'group_editor_types',
+	'fields' => [
+		[
+			'key' => 'field_editor_content', 'name' => 'editor_content', 'type' => 'flexible_content',
+			'layouts' => [
+				[ 'name' => 'intro', 'label' => 'Introduction', 'sub_fields' => [ [ 'name' => 'editor_intro' ] ] ],
+				[ 'name' => 'venue', 'label' => 'Venue', 'sub_fields' => [ $map ] ],
+			],
+		],
+		[ 'key' => 'field_editor_copy', 'name' => 'editor_copy', 'type' => 'clone', 'display' => 'group', 'clone' => [ 'group_editor_source' ], 'prefix_name' => 1 ],
+		[ 'key' => 'field_editor_shared', 'name' => 'editor_shared', 'type' => 'clone', 'clone' => [ 'field_editor_source', 'field_editor_shared' ] ],
+		[ 'key' => 'field_clear_map', 'name' => 'clear_map', 'type' => 'google_map' ],
+	],
+] );
+$editor_group = FieldGroups::get_group( 'group_editor_types' );
+$context = [ 'option', 'options' ];
+$legacy_location = [ 'address' => 'Old place', 'lat' => '0.0', 'lng' => '10.5', 'place_id' => 'kept', 'zoom' => 15 ];
+update_option( 'options_editor_content', [ 'intro', 'venue' ] );
+update_option( 'options_editor_content_0_editor_intro', 'Old introduction' );
+update_option( 'options_editor_content_1_editor_location', $legacy_location );
+update_option( 'options_editor_copy_editor_source', 'Existing grouped value' );
+update_option( 'options_editor_source', 'Existing shared value' );
+update_option( 'options_clear_map', $legacy_location );
+
+ob_start();
+Renderer::fields( $editor_group['fields'], $context );
+$html = (string) ob_get_clean();
+str_contains( $html, 'type="hidden" name="hexa_fields[field_editor_content][0][acf_fc_layout]" value="intro"' )
+	&& str_contains( $html, 'name="hexa_fields[field_editor_content][1][field_editor_location][lat]" value="0.0"' )
+	&& str_contains( $html, 'name="hexa_fields[field_editor_copy][field_editor_source]" value="Existing grouped value"' )
+	&& str_contains( $html, 'name="hexa_fields[field_editor_shared][field_editor_source]" value="Existing shared value"' )
+	|| $fail( 'All three field editors load existing values in their nested controls.' );
+
+Form::save( [ $editor_group ], $context, [
+	'field_editor_content' => [
+		[ 'acf_fc_layout' => 'venue', '_hexa_row_index' => '1', 'field_editor_location' => [ 'address' => 'Old place', 'lat' => '0', 'lng' => '10.5' ] ],
+		[ 'acf_fc_layout' => 'intro', '_hexa_row_index' => '-1', 'field_editor_intro' => '<b>New introduction</b>' ],
+		'_hexa_present' => '1',
+	],
+	'field_editor_copy' => [ 'field_editor_source' => 'Edited grouped value' ],
+	'field_editor_shared' => [ 'field_editor_source' => 'Edited shared value' ],
+	'field_clear_map' => [ 'address' => 'New point', 'lat' => '-17.3', 'lng' => '0' ],
+] );
+[ 'venue', 'intro' ] === get_option( 'options_editor_content' )
+	&& $legacy_location === get_option( 'options_editor_content_0_editor_location' )
+	&& 'field_editor_location' === get_option( '_options_editor_content_0_editor_location' )
+	&& false === get_option( 'options_editor_content_0_editor_intro' )
+	&& 'New introduction' === get_option( 'options_editor_content_1_editor_intro' )
+	&& 'field_editor_intro' === get_option( '_options_editor_content_1_editor_intro' )
+	|| $fail( 'Moving and replacing layout rows keeps ordered layout names, child references and unchanged map attributes.' );
+'Edited grouped value' === Field::get( 'editor_copy_editor_source', 'option' )
+	&& 'Edited shared value' === Field::get( 'editor_source', 'option' )
+	&& 'field_editor_source' === get_option( '_options_editor_copy_editor_source' )
+	&& 'field_editor_source' === get_option( '_options_editor_source' )
+	|| $fail( 'Group and direct-field clones save under their original metadata names and references.' );
+[ 'address' => 'New point', 'lat' => -17.3, 'lng' => 0.0 ] === Field::get( 'clear_map', 'option' )
+	|| $fail( 'An edited map keeps the location array and accepts zero coordinates.' );
+
+Form::save( [ $editor_group ], $context, [
+	'field_editor_content' => [ '_hexa_present' => '1' ],
+	'field_clear_map' => [ 'address' => '', 'lat' => '', 'lng' => '' ],
+] );
+[] === get_option( 'options_editor_content' ) && false === get_option( 'options_editor_content_1_editor_intro' )
+	&& false === get_option( 'options_clear_map' )
+	|| $fail( 'An editor can clear a map and remove every layout row.' );
+
+update_option( 'options_editor_content', '' );
+ob_start();
+Renderer::fields( $editor_group['fields'], $context );
+$html = (string) ob_get_clean();
+str_contains( $html, 'class="button hexa-flexible-add"' ) || $fail( 'Legacy empty flexible content still offers the add-layout control.' );
+
+update_option( 'options_editor_content', [ 'retired_layout' ] );
+update_option( 'options_editor_content_0_editor_hidden', 'Preserved legacy data' );
+$before = $GLOBALS['options'];
+try {
+	Form::save( [ $editor_group ], $context, [ 'field_editor_content' => [ '_hexa_present' => '1' ] ] );
+	$fail( 'A missing layout cannot be deleted accidentally.' );
+} catch ( InvalidArgumentException $error ) {
+	$before === $GLOBALS['options'] || $fail( 'Rejected rows leave storage intact.' );
+}
+try {
+	Form::save( [ $editor_group ], $context, [
+		'field_editor_copy' => [ 'field_editor_source' => 'Do not save this yet' ],
+		'field_clear_map' => [ 'address' => 'Invalid location', 'lat' => '91', 'lng' => '0' ],
+	] );
+	$fail( 'Map coordinates outside their bounds are rejected.' );
+} catch ( InvalidArgumentException $error ) {
+	$before === $GLOBALS['options'] || $fail( 'Invalid coordinates do not partially save the form.' );
+}
+
+echo "PASS: native Fields read and write existing storage and edit flexible content, clones and maps.\n";

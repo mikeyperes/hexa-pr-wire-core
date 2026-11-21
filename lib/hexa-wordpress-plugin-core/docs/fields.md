@@ -33,8 +33,10 @@ before the migration. Core's editing inputs and hooks are separate from ACF.
 - Storage: post, user, term and comment meta, or `{post_id}_{name}` options,
   each with the `_{name}` field-key reference. Group sub fields are
   `{group}_{field}`; repeater rows are `{repeater}_{row}_{field}` with the row
-  count in `{repeater}`; flexible-content layouts are stored as the layout
-  name list.
+  count in `{repeater}`. Flexible content stores the layout name list in the
+  parent field and indexed child values under `{field}_{row}_{child}`.
+  Clones edit the referenced fields in place, honoring the configured name
+  prefix. Maps store the location array with the address and coordinates.
 - Return formats match ACF for text, textarea (`new_lines`), wysiwyg, number,
   true_false, select, checkbox, radio, button_group, image, file, gallery,
   post_object, page_link, relationship, user, taxonomy, link, date, date-time,
@@ -44,8 +46,10 @@ before the migration. Core's editing inputs and hooks are separate from ACF.
   post_type, post, page_template, post_status, post_taxonomy, post_category,
   user_form, user_role, current_user, current_user_role, taxonomy and
   options_page, plus host-defined rules registered with
-  `Hooks::on( 'location/rule_match/<param>', ... )` exactly as with ACF. Flexible content, clone and map fields keep their stored value
-  and are read-only in Core editors.
+  `Hooks::on( 'location/rule_match/<param>', ... )` exactly as with ACF.
+  Add, reorder, or remove rows in a flexible-content editor. Grouped and
+  seamless clones use the referenced fields' controls. Enter a map address
+  and coordinates manually. An unchanged location keeps its original data.
 - Native hooks fire only as `hexa_fields/*`, never `acf/*`, so independently managed fields keep their own callbacks.
 
 ## Groups built in the ACF admin screen

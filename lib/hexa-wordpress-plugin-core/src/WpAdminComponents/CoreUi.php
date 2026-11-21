@@ -408,6 +408,38 @@ final class CoreUi {
             . '<span class="hpc-toggle-label">' . esc_html( $label ) . $tooltip . '</span>'
             . '</label>';
     }
+    /** Render an existing switch without changing its host CSS or click binding. */
+    public static function legacy_toggle(
+        string $id,
+        string $label,
+        bool $checked,
+        string $onclick,
+        string $extra_class,
+        string $class_prefix,
+        bool $slider = true
+    ): string {
+        $class = $class_prefix . ( $slider ? '-toggle-switch' : '-check' );
+        $html = '<label class="' . esc_attr( $class . ' ' . $extra_class ) . '">';
+        $html .= '<input type="checkbox" id="' . esc_attr( $id ) . '"';
+        if ( ! $slider ) {
+            $html .= checked( $checked, true, false );
+            if ( '' !== $onclick ) {
+                $html .= ' onclick="' . esc_attr( $onclick ) . '"';
+            }
+            return $html . '><span>' . esc_html( $label ) . '</span></label>';
+        }
+
+        $html .= ' ' . ( $checked ? 'checked' : '' );
+        if ( $onclick ) {
+            $html .= ' onclick="' . esc_attr( $onclick ) . '"';
+        }
+        $html .= '><span class="' . esc_attr( $class_prefix . '-toggle-slider' ) . '"></span>';
+        if ( $label ) {
+            $html .= '<span class="' . esc_attr( $class_prefix . '-toggle-label' ) . '">' . esc_html( $label ) . '</span>';
+        }
+        return $html . '</label>';
+    }
+
     public static function inline_details( string $summary, string $body_html, bool $open = false ): string {
         return '<details class="hpc-inline-details"' . ( $open ? ' open' : '' ) . '><summary>' . esc_html( $summary ) . '</summary><div class="hpc-inline-details-body">' . wp_kses_post( $body_html ) . '</div></details>';
     }

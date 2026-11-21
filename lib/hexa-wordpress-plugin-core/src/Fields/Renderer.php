@@ -50,7 +50,7 @@ final class Renderer {
             if ( ! is_array( $field ) ) {
                 continue;
             }
-            $value = null === $context ? ( $field['default_value'] ?? null ) : Values::load( $context, $field, (string) $field['name'] );
+            $value = null === $context ? ( $field['default_value'] ?? null ) : Values::load( $context, $field, (string) $field['name'], true );
             self::field( $field, $value, $base . '[' . $field['key'] . ']', 0 );
         }
         echo '</div>';
@@ -76,7 +76,7 @@ final class Renderer {
             . ( '' !== (string) ( $wrapper['id'] ?? '' ) ? ' id="' . esc_attr( (string) $wrapper['id'] ) . '"' : '' )
             . ' data-key="' . esc_attr( (string) ( $field['key'] ?? '' ) ) . '"'
             . ' data-name="' . esc_attr( (string) ( $field['name'] ?? '' ) ) . '">';
-        if ( 'true_false' !== $type && '' !== (string) $field['label'] ) {
+        if ( 'true_false' !== $type && ! ( 'clone' === $type && CloneFields::seamless( $field ) ) && '' !== (string) $field['label'] ) {
             echo '<label class="hexa-field-label" for="' . esc_attr( $id ) . '">' . esc_html( (string) $field['label'] ) . ( ! empty( $field['required'] ) ? ' <span class="required">*</span>' : '' ) . '</label>';
         }
         self::input( $field, $value, $name, $id, $depth );
@@ -175,21 +175,23 @@ final class Renderer {
                 return;
             case 'group':
                 echo '<fieldset class="hexa-group">';
-                foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                    $sub = Hooks::field_filter( 'prepare_field', $sub, $sub );
-                    if ( is_array( $sub ) ) {
-                        self::field( $sub, is_array( $value ) ? ( $value[ $sub['key'] ] ?? null ) : null, $name . '[' . $sub['key'] . ']', $depth + 1 );
-                    }
-                }
+                self::children( (array) ( $field['sub_fields'] ?? [] ), (array) $value, $name, $depth );
                 echo '</fieldset>';
                 return;
             case 'repeater':
                 self::repeater( $field, $value, $name, $depth );
                 return;
             case 'flexible_content':
+                // Bug: flexible content had no form controls even though Core stored and read its layouts.
+                // Fix: render layout rows with the registered child editors.
+                // Why: row inputs follow the same field-key naming and nesting as repeaters.
+                self::flexible( $field, $value, $name, $depth );
+                return;
             case 'clone':
+                self::clone_fields( $field, $value, $name, $depth );
+                return;
             case 'google_map':
-                echo '<p class="description">This field type has no editor here. Its saved value is preserved.</p>';
+                self::map( $field, $value, $name, $id );
                 return;
             default:
                 $html = [ 'email' => 'email', 'url' => 'url', 'oembed' => 'url', 'number' => 'number', 'range' => 'number', 'password' => 'password', 'date_picker' => 'date', 'date_time_picker' => 'datetime-local', 'time_picker' => 'time' ][ $type ] ?? 'text';
@@ -217,10 +219,10 @@ final class Renderer {
         echo '<input type="hidden" name="' . esc_attr( $name ) . '[_hexa_present]" value="1">';
         echo '<div class="hexa-repeater" data-next="' . esc_attr( (string) count( $rows ) ) . '" data-placeholder="' . esc_attr( $placeholder ) . '"><table class="widefat striped"><tbody class="hexa-repeater-rows">';
         foreach ( $rows as $i => $row ) {
-            self::repeater_row( $subs, is_array( $row ) ? $row : [], $name . '[' . $i . ']', $depth, (string) ( $i + 1 ) );
+            self::repeater_row( $subs, is_array( $row ) ? $row : [], $name . '[' . $i . ']', $depth, $i );
         }
         echo '</tbody></table><template class="hexa-repeater-template">';
-        self::repeater_row( $subs, [], $name . '[' . $placeholder . ']', $depth, '+' );
+        self::repeater_row( $subs, [], $name . '[' . $placeholder . ']', $depth, -1 );
         echo '</template><p><button type="button" class="button hexa-repeater-add">' . esc_html( (string) ( $field['button_label'] ?? '' ) ?: 'Add Row' ) . '</button></p></div>';
     }
 
@@ -228,15 +230,99 @@ final class Renderer {
      * @param array<int,array<string,mixed>> $subs
      * @param array<string,mixed> $row
      */
-    private static function repeater_row( array $subs, array $row, string $name, int $depth, string $label ): void {
+    private static function repeater_row( array $subs, array $row, string $name, int $depth, int $index ): void {
+        $label = $index < 0 ? '+' : (string) ( $index + 1 );
         echo '<tr class="hexa-repeater-row"><td class="hexa-repeater-index">' . esc_html( $label ) . '</td><td>';
-        foreach ( $subs as $sub ) {
-            $sub = Hooks::field_filter( 'prepare_field', $sub, $sub );
-            if ( is_array( $sub ) ) {
-                self::field( $sub, $row[ $sub['key'] ] ?? ( $row ? null : ( $sub['default_value'] ?? null ) ), $name . '[' . $sub['key'] . ']', $depth + 1 );
+        self::row_index( $name, $index );
+        self::children( $subs, $row, $name, $depth, $index < 0 );
+        echo '</td><td class="hexa-repeater-actions"><button type="button" class="button-link hexa-repeater-remove" aria-label="Remove row">✕</button></td></tr>';
+    }
+
+    /** Renders the child controls used by every nested field type. */
+    private static function children( array $fields, array $values, string $name, int $depth, bool $defaults = false ): void {
+        foreach ( $fields as $child ) {
+            $child = Hooks::field_filter( 'prepare_field', $child, $child );
+            if ( is_array( $child ) ) {
+                $value = $values[ $child['key'] ] ?? ( $defaults ? ( $child['default_value'] ?? null ) : null );
+                self::field( $child, $value, $name . '[' . $child['key'] . ']', $depth + 1 );
             }
         }
-        echo '</td><td class="hexa-repeater-actions"><button type="button" class="button-link hexa-repeater-remove" aria-label="Remove row">✕</button></td></tr>';
+    }
+
+    /** Carries the original storage row index independently of the submitted list position. */
+    private static function row_index( string $name, int $index ): void {
+        echo '<input type="hidden" name="' . esc_attr( $name . '[' . Values::EDITOR_ROW_INDEX . ']' ) . '" value="' . esc_attr( (string) $index ) . '">';
+    }
+
+    /** Renders the configured layouts and their row templates. */
+    private static function flexible( array $field, mixed $value, string $name, int $depth ): void {
+        $layouts = Values::layouts( $field );
+        $rows = is_array( $value ) ? array_values( $value ) : [];
+        $placeholder = '__hexa_row_' . $depth . '__';
+        $locked = ! empty( $field['readonly'] ) || ! empty( $field['disabled'] );
+        $unavailable = array_diff( array_column( $rows, 'acf_fc_layout' ), array_keys( $layouts ) );
+        $can_move = ! $locked && [] === $unavailable;
+        echo '<fieldset class="hexa-flexible" data-next="' . esc_attr( (string) count( $rows ) ) . '" data-placeholder="' . esc_attr( $placeholder ) . '"' . ( $locked ? ' disabled' : '' ) . '>';
+        echo '<div class="hexa-flexible-rows">';
+        foreach ( $rows as $i => $row ) {
+            $layout = (string) ( $row['acf_fc_layout'] ?? '' );
+            self::flexible_row( $layouts[ $layout ] ?? [ 'name' => $layout ], (array) $row, $name . '[' . $i . ']', $depth, $i, $can_move );
+        }
+        echo '</div>';
+        if ( $can_move && [] !== $layouts ) {
+            foreach ( $layouts as $layout ) {
+                echo '<template data-layout="' . esc_attr( (string) $layout['name'] ) . '">';
+                self::flexible_row( $layout, [], $name . '[' . $placeholder . ']', $depth, -1, true );
+                echo '</template>';
+            }
+            echo '<p><label>' . esc_html__( 'Layout', 'hexa-plugin-core' ) . ' <select class="hexa-flexible-layout">';
+            foreach ( $layouts as $layout ) {
+                echo '<option value="' . esc_attr( (string) $layout['name'] ) . '">' . esc_html( (string) ( $layout['label'] ?? $layout['name'] ) ) . '</option>';
+            }
+            echo '</select></label> <button type="button" class="button hexa-flexible-add">' . esc_html( (string) ( $field['button_label'] ?? '' ) ?: __( 'Add layout', 'hexa-plugin-core' ) ) . '</button></p>';
+        } elseif ( [] !== $unavailable ) {
+            echo '<p class="description">' . esc_html__( 'Restore the unavailable layout before adding, moving, or removing rows.', 'hexa-plugin-core' ) . '</p>';
+        }
+        echo '<input type="hidden" name="' . esc_attr( $name ) . '[_hexa_present]" value="1"></fieldset>';
+    }
+
+    /** Renders one layout without changing its saved layout name. */
+    private static function flexible_row( array $layout, array $row, string $name, int $depth, int $index, bool $can_move ): void {
+        echo '<fieldset class="hexa-group hexa-flexible-row"><legend>' . esc_html( (string) ( $layout['label'] ?? $layout['name'] ) ) . '</legend>';
+        echo '<input type="hidden" name="' . esc_attr( $name ) . '[acf_fc_layout]" value="' . esc_attr( (string) $layout['name'] ) . '">';
+        self::row_index( $name, $index );
+        self::children( (array) ( $layout['sub_fields'] ?? [] ), $row, $name, $depth, $index < 0 );
+        if ( $can_move ) {
+            echo '<p class="hexa-flexible-actions"><button type="button" class="button hexa-flexible-up">' . esc_html__( 'Move up', 'hexa-plugin-core' ) . '</button> ';
+            echo '<button type="button" class="button hexa-flexible-down">' . esc_html__( 'Move down', 'hexa-plugin-core' ) . '</button> ';
+            echo '<button type="button" class="button-link hexa-flexible-remove">' . esc_html__( 'Remove layout', 'hexa-plugin-core' ) . '</button></p>';
+        }
+        echo '</fieldset>';
+    }
+
+    /** Reuses the referenced fields' editors for grouped and seamless clones. */
+    private static function clone_fields( array $field, mixed $value, string $name, int $depth ): void {
+        $children = CloneFields::children( $field );
+        if ( [] === $children ) {
+            echo '<p class="description">' . esc_html__( 'The fields referenced by this clone are unavailable.', 'hexa-plugin-core' ) . '</p>';
+            return;
+        }
+        $locked = ! empty( $field['readonly'] ) || ! empty( $field['disabled'] );
+        echo '<fieldset' . ( CloneFields::seamless( $field ) ? '' : ' class="hexa-group"' ) . ( $locked ? ' disabled' : '' ) . '>';
+        self::children( $children, (array) $value, $name, $depth, true );
+        echo '</fieldset>';
+    }
+
+    /** Edits the stored location without requiring a map provider or API key. */
+    private static function map( array $field, mixed $value, string $name, string $id ): void {
+        $value = is_array( $value ) ? $value : [];
+        $locked = ! empty( $field['readonly'] ) || ! empty( $field['disabled'] );
+        echo '<fieldset class="hexa-group hexa-map"' . ( $locked ? ' disabled' : '' ) . '>';
+        echo '<label>' . esc_html__( 'Address', 'hexa-plugin-core' ) . ' <input id="' . esc_attr( $id ) . '" type="text" class="widefat" name="' . esc_attr( $name ) . '[address]" value="' . esc_attr( (string) ( $value['address'] ?? '' ) ) . '"></label>';
+        foreach ( [ 'lat' => [ __( 'Latitude', 'hexa-plugin-core' ), 90 ], 'lng' => [ __( 'Longitude', 'hexa-plugin-core' ), 180 ] ] as $key => [ $label, $limit ] ) {
+            echo '<label>' . esc_html( $label ) . ' <input type="number" step="any" min="-' . esc_attr( (string) $limit ) . '" max="' . esc_attr( (string) $limit ) . '" name="' . esc_attr( $name . '[' . $key . ']' ) . '" value="' . esc_attr( (string) ( $value[ $key ] ?? '' ) ) . '"></label>';
+        }
+        echo '</fieldset>';
     }
 
     /** @param array<string,mixed> $field */
@@ -294,9 +380,63 @@ final class Renderer {
         self::$script_printed = true;
         ?>
         <style>.hexa-fields .hexa-field{margin:0 0 14px}.hexa-field-label{display:block;font-weight:600;margin:0 0 4px}.hexa-field .description{margin:4px 0 0}.hexa-choice{display:inline-block;margin:0 14px 4px 0}.hexa-group{border:1px solid #dcdcde;padding:10px 12px;margin:0}.hexa-repeater table{margin:0 0 6px}.hexa-repeater-index{width:24px;color:#646970}.hexa-repeater-actions{width:24px}.hexa-field-heading{margin:18px 0 8px;padding-top:10px;border-top:1px solid #dcdcde}.hexa-link input[type=url],.hexa-link input[type=text]{margin:0 6px 6px 0}</style>
+        <style>
+            .hexa-flexible-row { margin-bottom: 8px; }
+            .hexa-flexible-actions { display: flex; gap: 8px; }
+            .hexa-map label { display: block; margin-bottom: 4px; }
+        </style>
         <script>
         jQuery(function($){
-            $(document).on('click','.hexa-repeater-add',function(e){e.preventDefault();var r=$(this).closest('.hexa-repeater'),n=parseInt(r.attr('data-next')||'0',10),ph=r.attr('data-placeholder'),tpl=r.children('template.hexa-repeater-template').html()||'';r.attr('data-next',n+1);r.find('tbody.hexa-repeater-rows').first().append(tpl.split(ph).join(String(n)));});
+            function appendRow(field, rows, template) {
+                if (!template) {
+                    return;
+                }
+                var next = Number(field.attr('data-next'));
+                var placeholder = field.attr('data-placeholder');
+                field.attr('data-next', next + 1);
+                rows.append(template.innerHTML.split(placeholder).join(String(next)));
+            }
+
+            function updateFlexibleActions(rows) {
+                var items = rows.children('.hexa-flexible-row');
+                items.each(function(index) {
+                    var actions = $(this).children('.hexa-flexible-actions');
+                    actions.find('.hexa-flexible-up').prop('disabled', index === 0);
+                    actions.find('.hexa-flexible-down').prop('disabled', index === items.length - 1);
+                });
+            }
+
+            $(document).on('click', '.hexa-repeater-add', function() {
+                var field = $(this).closest('.hexa-repeater');
+                appendRow(field, field.children('table').children('tbody'), field.children('template')[0]);
+            });
+            $(document).on('click', '.hexa-flexible-add', function() {
+                var field = $(this).closest('.hexa-flexible');
+                var rows = field.children('.hexa-flexible-rows');
+                var layout = field.children('p').find('.hexa-flexible-layout').val();
+                var template = field.children('template').filter(function() {
+                    return this.dataset.layout === layout;
+                })[0];
+                appendRow(field, rows, template);
+                rows.find('.hexa-flexible-rows').addBack().each(function() {
+                    updateFlexibleActions($(this));
+                });
+            });
+            $(document).on('click', '.hexa-flexible-up, .hexa-flexible-down, .hexa-flexible-remove', function() {
+                var row = $(this).closest('.hexa-flexible-row');
+                var rows = row.parent();
+                if ($(this).hasClass('hexa-flexible-up')) {
+                    row.insertBefore(row.prev());
+                } else if ($(this).hasClass('hexa-flexible-down')) {
+                    row.insertAfter(row.next());
+                } else {
+                    row.remove();
+                }
+                updateFlexibleActions(rows);
+            });
+            $('.hexa-flexible-rows').each(function() {
+                updateFlexibleActions($(this));
+            });
             $(document).on('click','.hexa-repeater-remove',function(e){e.preventDefault();$(this).closest('tr.hexa-repeater-row').remove();});
             $(document).on('click','.hexa-media-select',function(e){e.preventDefault();if(!window.wp||!wp.media){return;}var w=$(this).closest('.hexa-media'),multi=w.hasClass('hexa-gallery'),lib=w.attr('data-library');var frame=wp.media({multiple:multi,library:lib?{type:lib}:{}});frame.on('select',function(){var sel=frame.state().get('selection').toJSON(),input=w.children('input[type=hidden]'),box=w.children('.hexa-media-preview');var thumb=function(a){return a.type==='image'?'<img src="'+((a.sizes&&a.sizes.thumbnail)?a.sizes.thumbnail.url:a.url)+'" style="width:80px;height:auto;margin:0 6px 6px 0">':'<a href="'+a.url+'" target="_blank">'+a.filename+'</a>';};if(multi){var ids=(input.val()||'').split(',').filter(Boolean);sel.forEach(function(a){ids.push(String(a.id));box.append(thumb(a));});input.val(ids.join(','));}else if(sel[0]){input.val(sel[0].id);box.html(thumb(sel[0]));}});frame.open();});
             $(document).on('click','.hexa-media-clear',function(e){e.preventDefault();var w=$(this).closest('.hexa-media');w.children('input[type=hidden]').val('');w.children('.hexa-media-preview').empty();});

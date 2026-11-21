@@ -7,6 +7,8 @@ namespace Hexa\PluginCore\Fields;
  * and return formats.
  */
 final class Values {
+    public const EDITOR_ROW_INDEX = '_hexa_row_index';
+
     private const LAYOUT_TYPES = [ 'accordion', 'tab', 'message' ];
     /** ACF field-type `default_value` defaults, merged into every field ACF loads. */
     private const TYPE_DEFAULTS = [
@@ -55,7 +57,7 @@ final class Values {
      * @param array{0:string,1:int|string} $context
      * @param array<string,mixed> $field
      */
-    public static function load( array $context, array $field, string $name ): mixed {
+    public static function load( array $context, array $field, string $name, bool $editor = false ): mixed {
         $type = (string) $field['type'];
         if ( in_array( $type, self::LAYOUT_TYPES, true ) ) {
             return null;
@@ -66,23 +68,28 @@ final class Values {
             for ( $i = 0; $i < $count; $i++ ) {
                 $row = [];
                 foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                    $row[ $sub['key'] ] = self::load( $context, $sub, $name . '_' . $i . '_' . $sub['name'] );
+                    $row[ $sub['key'] ] = self::load( $context, $sub, $name . '_' . $i . '_' . $sub['name'], $editor );
                 }
                 $value[] = $row;
             }
         } elseif ( 'flexible_content' === $type ) {
             $value = [];
-            foreach ( array_values( (array) Storage::get( $context, $name ) ) as $i => $layout_name ) {
+            foreach ( self::stored_layouts( $context, $name ) as $i => $layout_name ) {
                 $row = [ 'acf_fc_layout' => (string) $layout_name ];
                 foreach ( self::layout_fields( $field, (string) $layout_name ) as $sub ) {
-                    $row[ $sub['key'] ] = self::load( $context, $sub, $name . '_' . $i . '_' . $sub['name'] );
+                    $row[ $sub['key'] ] = self::load( $context, $sub, $name . '_' . $i . '_' . $sub['name'], $editor );
                 }
                 $value[] = $row;
             }
         } elseif ( 'group' === $type ) {
             $value = [];
             foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                $value[ $sub['key'] ] = self::load( $context, $sub, $name . '_' . $sub['name'] );
+                $value[ $sub['key'] ] = self::load( $context, $sub, $name . '_' . $sub['name'], $editor );
+            }
+        } elseif ( $editor && 'clone' === $type ) {
+            $value = [];
+            foreach ( CloneFields::children( $field ) as $sub ) {
+                $value[ $sub['key'] ] = self::load( $context, $sub, CloneFields::stored_name( $field, $name, $sub ), true );
             }
         } else {
             $value = Storage::get( $context, $name );
@@ -200,23 +207,35 @@ final class Values {
      * @param array{0:string,1:int|string} $context
      * @param array<string,mixed> $field
      */
-    public static function write( array $context, array $field, string $name, mixed $value ): bool {
+    public static function write( array $context, array $field, string $name, mixed $value, bool $editor = false ): bool {
         $value = Hooks::field_filter( 'update_value', $value, $field, Storage::acf_id( $context ), $field, $value );
         if ( null === $value && in_array( $field['type'], [ 'repeater', 'group', 'flexible_content' ], true ) ) {
             return false;
+        }
+        if ( $editor && 'clone' === $field['type'] ) {
+            // Bug: a clone is edited as fields, but its name is only a storage marker.
+            // Fix: save each submitted child under its resolved metadata name.
+            // Why: existing readers keep using the original field keys and names.
+            if ( [] === $value ) {
+                return true;
+            }
+            foreach ( CloneFields::children( $field ) as $sub ) {
+                if ( is_array( $value ) && array_key_exists( $sub['key'], $value ) ) {
+                    self::write( $context, $sub, CloneFields::stored_name( $field, $name, $sub ), $value[ $sub['key'] ], true );
+                }
+            }
+            $value = Storage::get( $context, $name ) ?? '';
         }
         switch ( (string) $field['type'] ) {
             case 'repeater':
                 $rows = is_array( $value ) ? array_values( $value ) : [];
                 $old = (int) Storage::get( $context, $name );
                 foreach ( $rows as $i => $row ) {
-                    foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                        self::write( $context, $sub, $name . '_' . $i . '_' . $sub['name'], self::pick( $row, $sub ) );
-                    }
+                    self::write_children( $context, (array) ( $field['sub_fields'] ?? [] ), $name . '_' . $i . '_', $row, $editor );
                 }
                 for ( $i = count( $rows ); $i < $old; $i++ ) {
                     foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                        self::erase( $context, $sub, $name . '_' . $i . '_' . $sub['name'] );
+                        self::erase( $context, $sub, $name . '_' . $i . '_' . $sub['name'], $editor );
                     }
                 }
                 // ACF stores an empty repeater as an empty string.
@@ -224,20 +243,31 @@ final class Values {
                 break;
             case 'flexible_content':
                 $rows = is_array( $value ) ? array_values( $value ) : [];
-                $layouts = [];
-                foreach ( $rows as $i => $row ) {
-                    $layout = (string) ( is_array( $row ) ? ( $row['acf_fc_layout'] ?? '' ) : '' );
-                    $layouts[] = $layout;
-                    foreach ( self::layout_fields( $field, $layout ) as $sub ) {
-                        self::write( $context, $sub, $name . '_' . $i . '_' . $sub['name'], self::pick( $row, $sub ) );
+                $layouts = array_map( static fn( $row ): string => (string) ( is_array( $row ) ? ( $row['acf_fc_layout'] ?? '' ) : '' ), $rows );
+                if ( $editor ) {
+                    // Bug: replacing or deleting a row can leave its old child metadata behind.
+                    // Fix: erase the outgoing layout's keys before writing the new rows.
+                    // Why: row positions are part of existing metadata names.
+                    foreach ( self::stored_layouts( $context, $name ) as $i => $old_layout ) {
+                        $source = $rows[ $i ][ self::EDITOR_ROW_INDEX ] ?? $i;
+                        if ( $source !== $i || (string) $old_layout !== ( $layouts[ $i ] ?? null ) ) {
+                            foreach ( self::layout_fields( $field, (string) $old_layout ) as $sub ) {
+                                self::erase( $context, $sub, $name . '_' . $i . '_' . $sub['name'], true );
+                            }
+                        }
                     }
                 }
-                Storage::update( $context, $name, $layouts );
+                foreach ( $rows as $i => $row ) {
+                    self::write_children( $context, self::layout_fields( $field, $layouts[ $i ] ), $name . '_' . $i . '_', $row, $editor );
+                }
+                if ( ! $editor || [] !== $layouts || [] !== self::stored_layouts( $context, $name ) ) {
+                    Storage::update( $context, $name, $layouts );
+                } else {
+                    return true;
+                }
                 break;
             case 'group':
-                foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                    self::write( $context, $sub, $name . '_' . $sub['name'], self::pick( $value, $sub ) );
-                }
+                self::write_children( $context, (array) ( $field['sub_fields'] ?? [] ), $name . '_', $value, $editor );
                 Storage::update( $context, $name, '' );
                 break;
             default:
@@ -256,21 +286,131 @@ final class Values {
      * @param array{0:string,1:int|string} $context
      * @param array<string,mixed> $field
      */
-    public static function erase( array $context, array $field, string $name ): bool {
+    public static function erase( array $context, array $field, string $name, bool $editor = false ): bool {
         if ( 'repeater' === $field['type'] || 'flexible_content' === $field['type'] ) {
-            $count = 'repeater' === $field['type'] ? (int) Storage::get( $context, $name ) : count( (array) Storage::get( $context, $name ) );
+            $stored = Storage::get( $context, $name );
+            $layouts = is_array( $stored ) ? array_values( $stored ) : [];
+            $flexible = 'flexible_content' === $field['type'];
+            $count = $flexible ? count( $layouts ) : (int) $stored;
             for ( $i = 0; $i < $count; $i++ ) {
-                foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                    self::erase( $context, $sub, $name . '_' . $i . '_' . $sub['name'] );
+                $children = $flexible ? self::layout_fields( $field, (string) $layouts[ $i ] ) : (array) ( $field['sub_fields'] ?? [] );
+                foreach ( $children as $sub ) {
+                    self::erase( $context, $sub, $name . '_' . $i . '_' . $sub['name'], $editor );
                 }
             }
         } elseif ( 'group' === $field['type'] ) {
             foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                self::erase( $context, $sub, $name . '_' . $sub['name'] );
+                self::erase( $context, $sub, $name . '_' . $sub['name'], $editor );
+            }
+        } elseif ( $editor && 'clone' === $field['type'] ) {
+            foreach ( CloneFields::children( $field ) as $sub ) {
+                self::erase( $context, $sub, CloneFields::stored_name( $field, $name, $sub ), true );
             }
         }
         Storage::delete( $context, $name, true );
         return Storage::delete( $context, $name );
+    }
+
+    /** Writes child controls through the same value pipeline as top-level controls. */
+    private static function write_children( array $context, array $children, string $prefix, mixed $row, bool $editor ): void {
+        if ( $editor ) {
+            // Put clone changes after any source controls that share the same storage names.
+            usort( $children, static fn( array $a, array $b ): int => ( 'clone' === $a['type'] ) <=> ( 'clone' === $b['type'] ) );
+        }
+        foreach ( $children as $child ) {
+            if ( $editor && ( ! is_array( $row ) || ! array_key_exists( $child['key'], $row ) ) ) {
+                continue;
+            }
+            self::write( $context, $child, $prefix . $child['name'], self::pick( $row, $child ), $editor );
+        }
+    }
+
+    /** Prepares the submitted controls against their original stored rows before writes begin. */
+    public static function prepare_editor_value( array $field, mixed $value, mixed $previous, bool $moved = false ): mixed {
+        switch ( (string) $field['type'] ) {
+            case 'google_map':
+                // Bug: a map edit submitted as an array would lose its keys and provider details.
+                // Fix: keep the original payload for an untouched location.
+                // Why: readers depend on its shape and may use provider fields beyond the editor.
+                if ( is_array( $value ) && is_array( $previous )
+                    && ( $value['address'] ?? '' ) === (string) ( $previous['address'] ?? '' )
+                    && isset( $previous['lat'], $previous['lng'] )
+                    && $value['lat'] === (float) $previous['lat'] && $value['lng'] === (float) $previous['lng'] ) {
+                    return $previous;
+                }
+                return false === $value && ! is_array( $previous ) ? ( $previous ?? false ) : $value;
+            case 'clone':
+                return self::prepare_editor_children( CloneFields::children( $field ), $value, $previous, $moved, true );
+            case 'group':
+                return self::prepare_editor_children( (array) ( $field['sub_fields'] ?? [] ), $value, $previous, $moved );
+            case 'repeater':
+            case 'flexible_content':
+                return self::prepare_editor_rows( $field, $value, (array) $previous, $moved );
+            default:
+                return $value;
+        }
+    }
+
+    /** Fills missing child inputs only when a row moves to a different storage name. */
+    private static function prepare_editor_children( array $children, mixed $value, mixed $previous, bool $moved, bool $changes_only = false ): array {
+        $clean = [];
+        foreach ( $children as $child ) {
+            $key = $child['key'];
+            if ( is_array( $value ) && array_key_exists( $key, $value ) ) {
+                $prior = $previous[ $key ] ?? null;
+                $submitted = self::prepare_editor_value( $child, $value[ $key ], $prior, $moved );
+                // A seamless clone and its source can share metadata on the same form.
+                // Leave unchanged clone controls out of the write so they cannot undo a source edit.
+                if ( ! $changes_only || $moved || $submitted != $prior ) {
+                    $clean[ $key ] = $submitted;
+                }
+            } elseif ( $moved && is_array( $previous ) && array_key_exists( $key, $previous ) ) {
+                $clean[ $key ] = $previous[ $key ];
+            }
+        }
+        return $clean;
+    }
+
+    /** Checks submitted row identities and preserves children when rows move. */
+    private static function prepare_editor_rows( array $field, array $rows, array $previous, bool $moved ): array {
+        $flexible = 'flexible_content' === $field['type'];
+        $layouts = $flexible ? self::layouts( $field ) : [];
+        $seen = [];
+        foreach ( $rows as $i => &$row ) {
+            $index = $row[ self::EDITOR_ROW_INDEX ] ?? $i;
+            $original = $previous[ $index ] ?? [];
+            if ( $index >= 0 ) {
+                if ( isset( $seen[ $index ] ) ) {
+                    throw new \InvalidArgumentException( __( 'A content row was submitted more than once. Reload and try again.', 'hexa-plugin-core' ) );
+                }
+                $seen[ $index ] = true;
+            }
+            $layout = $row['acf_fc_layout'] ?? '';
+            if ( $flexible ) {
+                if ( ! isset( $layouts[ $layout ] ) && ( $index !== $i || $layout !== ( $original['acf_fc_layout'] ?? null ) ) ) {
+                    throw new \InvalidArgumentException( __( 'A content row has an unavailable layout.', 'hexa-plugin-core' ) );
+                }
+                if ( $layout !== ( $original['acf_fc_layout'] ?? null ) ) {
+                    $original = [];
+                }
+            }
+            $children = $flexible ? self::layout_fields( $field, $layout ) : (array) ( $field['sub_fields'] ?? [] );
+            $row = self::prepare_editor_children( $children, $row, $original, $moved || $i !== $index );
+            if ( $flexible ) {
+                $row['acf_fc_layout'] = $layout;
+                $row[ self::EDITOR_ROW_INDEX ] = $index;
+            }
+        }
+        unset( $row );
+        if ( $flexible ) {
+            foreach ( $previous as $i => $row ) {
+                $layout = $row['acf_fc_layout'];
+                if ( ! isset( $layouts[ $layout ] ) && $layout !== ( $rows[ $i ]['acf_fc_layout'] ?? null ) ) {
+                    throw new \InvalidArgumentException( __( 'A saved content layout is unavailable. Its row must stay in place.', 'hexa-plugin-core' ) );
+                }
+            }
+        }
+        return $rows;
     }
 
     /** @param array<string,mixed> $field */
@@ -333,12 +473,24 @@ final class Values {
      * @return array<int,array<string,mixed>>
      */
     public static function layout_fields( array $field, string $layout ): array {
+        return (array) ( self::layouts( $field )[ $layout ]['sub_fields'] ?? [] );
+    }
+
+    /** Reads ordered layout names, including legacy fields cleared to an empty string. */
+    private static function stored_layouts( array $context, string $name ): array {
+        $stored = Storage::get( $context, $name );
+        return is_array( $stored ) ? array_values( $stored ) : [];
+    }
+
+    /** Returns layout definitions keyed by their existing storage names. */
+    public static function layouts( array $field ): array {
+        $layouts = [];
         foreach ( (array) ( $field['layouts'] ?? [] ) as $definition ) {
-            if ( is_array( $definition ) && $layout === (string) ( $definition['name'] ?? '' ) ) {
-                return (array) ( $definition['sub_fields'] ?? [] );
+            if ( is_array( $definition ) && '' !== (string) ( $definition['name'] ?? '' ) ) {
+                $layouts[ $definition['name'] ] ??= $definition;
             }
         }
-        return [];
+        return $layouts;
     }
 
     /** WordPress content formatters for Core's rich-text field values. */

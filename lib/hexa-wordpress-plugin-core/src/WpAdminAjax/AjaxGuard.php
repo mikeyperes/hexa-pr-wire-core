@@ -9,6 +9,21 @@ final class AjaxGuard {
 
     private function __construct() {}
 
+    /** Keep WordPress's nonce fallback, action hook and optional -1/403 response. */
+    public static function check_request_nonce( mixed $action = -1, mixed $field = false, mixed $stop = true ): mixed {
+        return check_ajax_referer( $action, $field, $stop );
+    }
+
+    /** Verify a nonce the caller already read, preserving the WordPress nonce age result. */
+    public static function verify_explicit_nonce( mixed $nonce, mixed $action = -1 ): mixed {
+        return wp_verify_nonce( $nonce, $action );
+    }
+
+    /** Check a WordPress capability, forwarding object IDs for mapped capabilities. */
+    public static function allows( mixed $capability, mixed ...$objects ): bool {
+        return current_user_can( $capability, ...$objects );
+    }
+
     public static function create_nonce( string $action ): string {
         return function_exists( 'wp_create_nonce' ) ? wp_create_nonce( $action ) : '';
     }
@@ -47,7 +62,7 @@ final class AjaxGuard {
 
         $nonce = function_exists( 'sanitize_text_field' ) ? sanitize_text_field( $nonce ) : trim( $nonce );
 
-        return false !== wp_verify_nonce( $nonce, $action );
+        return false !== self::verify_explicit_nonce( $nonce, $action );
     }
 
     public static function require_nonce_or_error(
@@ -71,7 +86,7 @@ final class AjaxGuard {
         string $capability,
         string $message = 'Unauthorized: You do not have permission to perform this action.'
     ): void {
-        if ( function_exists( 'current_user_can' ) && current_user_can( $capability ) ) {
+        if ( function_exists( 'current_user_can' ) && self::allows( $capability ) ) {
             return;
         }
 

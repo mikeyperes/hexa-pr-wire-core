@@ -196,3 +196,9 @@ Use these names consistently:
 | `canonical_plugin_basename` | Expected canonical basename after normalization. |
 | `github_repo` | GitHub `owner/repo`. |
 | `github_branch` | Branch to check/download. |
+
+## Managed plugin updaters
+
+Use `Hexa\PluginCore\PluginUpdates\UpdaterConfig::from_managed_plugin_file()` with the main file, repository, canonical slug and the plugin’s AJAX prefix. The factory reads the plugin header and supplies the nonce action and progress key. Pass overrides for existing runtime basenames, nonce actions or compatibility settings that differ from those defaults.
+
+`Hexa\PluginCore\PluginUpdates\LegacyPluginBasenameMigration::migrate()` replaces an active legacy entry during `plugins_loaded`. Pass the known old and canonical basenames and retain the host’s rules for duplicate entries, option autoload and existing multisite activation timestamps. Run `php tests/plugin-update-configuration.php` for configuration and migration policy and `php tests/plugin-update-activation.php` for the updater’s activation and live Git copy refusal fixtures.

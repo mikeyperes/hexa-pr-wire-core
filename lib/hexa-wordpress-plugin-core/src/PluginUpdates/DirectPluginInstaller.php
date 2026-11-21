@@ -2,6 +2,7 @@
 
 namespace Hexa\PluginCore\PluginUpdates;
 
+/** Installs a GitHub release from the plugin Update Center. */
 final class DirectPluginInstaller {
     private UpdaterConfig $config;
 
@@ -12,7 +13,19 @@ final class DirectPluginInstaller {
         $this->progress = $progress ?: new UpdateProgressStore( $config->progress_key() );
     }
 
+    /** Downloads a published release and replaces a regular plugin installation. */
     public function run(): array|\WP_Error {
+        // Bug: The Update Center could replace a Git copy outside WordPress's upgrader hooks.
+        // Fix: Apply the same Git check before downloading or replacing anything.
+        // Why this way: Both admin update paths keep the checkout and use the same message.
+        // Test: tests/plugin-update-activation.php
+        $blocked = UpdaterFilesystem::git_checkout_update_error( $this->config );
+        if ( is_wp_error( $blocked ) ) {
+            $this->progress->reset();
+            $this->progress->finish( 'error', $blocked->get_error_message() );
+            return $blocked;
+        }
+
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
@@ -114,6 +127,11 @@ final class DirectPluginInstaller {
             return $fail( 'Package cleanup failed: ' . $purged_staged->get_error_message() );
         }
 
+        $blocked = UpdaterFilesystem::git_checkout_update_error( $this->config );
+        if ( is_wp_error( $blocked ) ) {
+            return $fail( $blocked->get_error_message() );
+        }
+
         $backup_dir = '';
         if ( is_dir( $canonical_plugin_dir ) ) {
             $current_data    = get_plugin_data( $canonical_plugin_dir . '/' . $this->config->plugin_starter_file(), false, false );
@@ -136,7 +154,8 @@ final class DirectPluginInstaller {
         $this->progress->step( 'Installing v' . $new_version . ' into ' . $this->config->proper_folder_name() . '/.' );
         $installed = @rename( $staged_folder, $canonical_plugin_dir );
         if ( ! $installed ) {
-            $copy      = UpdaterFilesystem::copy_directory_clean( $staged_folder, $canonical_plugin_dir );
+            // The staged package is already clean. The install fallback must not purge live files.
+            $copy      = UpdaterFilesystem::copy_directory_clean( $staged_folder, $canonical_plugin_dir, false );
             $installed = ! is_wp_error( $copy );
         }
 
@@ -156,7 +175,9 @@ final class DirectPluginInstaller {
         UpdaterFilesystem::delete_directory( $work_dir );
 
         foreach ( (array) glob( WP_PLUGIN_DIR . '/' . $this->config->proper_folder_name() . '.bak-*', GLOB_ONLYDIR ) as $stale ) {
-            UpdaterFilesystem::delete_directory( $stale );
+            if ( ! UpdaterFilesystem::contains_git_metadata( $stale ) ) {
+                UpdaterFilesystem::delete_directory( $stale );
+            }
         }
 
         ( new GitHubPluginUpdater( $this->config ) )->clear_cache();
@@ -188,7 +209,10 @@ final class DirectPluginInstaller {
             }
         }
 
-        $targets = array_unique( $targets );
+        $targets = array_filter(
+            array_unique( $targets ),
+            static fn( string $target ): bool => ! UpdaterFilesystem::contains_git_metadata( $target )
+        );
         if ( ! $targets ) {
             return;
         }

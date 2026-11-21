@@ -27,7 +27,7 @@ $assertions = [
 	[ ! str_contains( $transport, "'key'         =>" ), 'The credential must not be placed in a query argument.' ],
 	[ str_contains( $resolver, 'resolve_post' ), 'Saved taxonomy resolution is required.' ],
 	[ str_contains( $admin, "'unassigned_publication'" ), 'Tampered unassigned targets must receive an explicit rejection.' ],
-	[ str_contains( $admin, "current_user_can( 'manage_options' )" ), 'Force Sync must require an administrator capability.' ],
+	[ str_contains( $admin, "AjaxGuard::allows( 'manage_options' )" ), 'Force Sync must require an administrator capability.' ],
 	[ str_contains( $admin, 'legacy_action_disabled' ), 'Legacy force and bulk AJAX actions must be blocked during migration.' ],
 ];
 

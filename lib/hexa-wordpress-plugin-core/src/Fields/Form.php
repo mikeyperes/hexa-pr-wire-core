@@ -82,6 +82,7 @@ final class Form {
      */
     public static function save( array $groups, array $context, array $input, ?array $only = null ): void {
         $changes = [];
+        $clones = [];
         foreach ( $groups as $group ) {
             foreach ( (array) $group['fields'] as $field ) {
                 if ( ! array_key_exists( $field['key'], $input ) ) {
@@ -96,11 +97,25 @@ final class Form {
                     $message = is_string( $valid ) ? $valid : __( 'A field value is invalid.', 'hexa-plugin-core' );
                     wp_die( esc_html( $message ), '', [ 'back_link' => true, 'response' => 400 ] );
                 }
-                $changes[] = [ $field, self::sanitize( $field, $raw ) ];
+                try {
+                    $name = (string) $field['name'];
+                    $value = self::sanitize( $field, $raw );
+                    if ( in_array( $field['type'], [ 'group', 'repeater', 'flexible_content', 'clone', 'google_map' ], true ) ) {
+                        $value = Values::prepare_editor_value( $field, $value, Values::load( $context, $field, $name, true ) );
+                    }
+                } catch ( \InvalidArgumentException $error ) {
+                    wp_die( esc_html( $error->getMessage() ), '', [ 'back_link' => true, 'response' => 400 ] );
+                }
+                if ( 'clone' === $field['type'] ) {
+                    $clones[] = [ $field, $value ];
+                } else {
+                    $changes[] = [ $field, $value ];
+                }
             }
         }
-        foreach ( $changes as [ $field, $value ] ) {
-            Values::write( $context, $field, (string) $field['name'], $value );
+        // A changed clone can share a name with its source. Save it after the source control.
+        foreach ( array_merge( $changes, $clones ) as [ $field, $value ] ) {
+            Values::write( $context, $field, (string) $field['name'], $value, true );
         }
     }
 
@@ -108,29 +123,23 @@ final class Form {
     public static function sanitize( array $field, mixed $value ): mixed {
         $type = (string) $field['type'];
         switch ( $type ) {
+            case 'flexible_content':
+                // A trailing marker distinguishes an intentionally empty field from a truncated request.
+                if ( ! is_array( $value ) || '1' !== (string) ( $value['_hexa_present'] ?? '' ) ) {
+                    throw new \InvalidArgumentException( __( 'The content rows were not fully submitted. Reload and try again.', 'hexa-plugin-core' ) );
+                }
+                // Fall through to the shared row sanitizer.
             case 'repeater':
-                $rows = [];
-                foreach ( is_array( $value ) ? $value : [] as $row ) {
-                    if ( ! is_array( $row ) ) {
-                        continue;
-                    }
-                    $clean = [];
-                    foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                        if ( array_key_exists( $sub['key'], $row ) ) {
-                            $clean[ $sub['key'] ] = self::sanitize( $sub, $row[ $sub['key'] ] );
-                        }
-                    }
-                    $rows[] = $clean;
-                }
-                return $rows;
+                // Bug: generic sanitization flattens array inputs and loses layout and child keys.
+                // Fix: keep the row schema and sanitize only the controls Core recognizes.
+                // Why: the same children can be posted from any editor that uses Fields.
+                return self::sanitize_rows( $field, $value );
             case 'group':
-                $clean = [];
-                foreach ( (array) ( $field['sub_fields'] ?? [] ) as $sub ) {
-                    if ( is_array( $value ) && array_key_exists( $sub['key'], $value ) ) {
-                        $clean[ $sub['key'] ] = self::sanitize( $sub, $value[ $sub['key'] ] );
-                    }
-                }
-                return $clean;
+                return self::sanitize_children( (array) ( $field['sub_fields'] ?? [] ), $value );
+            case 'clone':
+                return self::sanitize_children( CloneFields::children( $field ), $value );
+            case 'google_map':
+                return self::sanitize_map( $value );
             case 'textarea':
                 return sanitize_textarea_field( (string) $value );
             case 'wysiwyg':
@@ -160,6 +169,65 @@ final class Form {
                 }
                 return sanitize_text_field( (string) $value );
         }
+    }
+
+    /** Keeps only submitted child controls, preserving their field keys. */
+    private static function sanitize_children( array $children, mixed $value ): array {
+        $clean = [];
+        foreach ( $children as $child ) {
+            if ( is_array( $value ) && array_key_exists( $child['key'], $value ) ) {
+                $clean[ $child['key'] ] = self::sanitize( $child, $value[ $child['key'] ] );
+            }
+        }
+        return $clean;
+    }
+
+    /** Sanitizes row contents against their registered repeater or layout fields. */
+    private static function sanitize_rows( array $field, mixed $value ): array {
+        $rows = [];
+        foreach ( is_array( $value ) ? $value : [] as $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+            $layout = $row['acf_fc_layout'] ?? null;
+            $is_flexible = 'flexible_content' === $field['type'];
+            if ( $is_flexible && ! is_string( $layout ) ) {
+                throw new \InvalidArgumentException( __( 'A content row has an invalid layout.', 'hexa-plugin-core' ) );
+            }
+            $children = $is_flexible ? Values::layout_fields( $field, $layout ) : (array) ( $field['sub_fields'] ?? [] );
+            $clean = self::sanitize_children( $children, $row );
+            if ( $is_flexible ) {
+                $clean['acf_fc_layout'] = $layout;
+            }
+            $index = $row[ Values::EDITOR_ROW_INDEX ] ?? null;
+            if ( is_scalar( $index ) && ( '-1' === (string) $index || ctype_digit( (string) $index ) ) ) {
+                $clean[ Values::EDITOR_ROW_INDEX ] = (int) $index;
+            }
+            $rows[] = $clean;
+        }
+        return $rows;
+    }
+
+    /** Accepts an empty location or a valid latitude and longitude pair. */
+    private static function sanitize_map( mixed $value ): array|false {
+        $location = [];
+        foreach ( [ 'address', 'lat', 'lng' ] as $key ) {
+            if ( ! is_array( $value ) || ! isset( $value[ $key ] ) || ! is_scalar( $value[ $key ] ) ) {
+                throw new \InvalidArgumentException( __( 'The map location is incomplete.', 'hexa-plugin-core' ) );
+            }
+            $location[ $key ] = trim( (string) $value[ $key ] );
+        }
+        if ( '' === $location['address'] && '' === $location['lat'] && '' === $location['lng'] ) {
+            return false;
+        }
+        foreach ( [ 'lat' => 90, 'lng' => 180 ] as $key => $limit ) {
+            if ( ! is_numeric( $location[ $key ] ) || abs( (float) $location[ $key ] ) > $limit ) {
+                throw new \InvalidArgumentException( __( 'Enter a latitude from -90 to 90 and a longitude from -180 to 180.', 'hexa-plugin-core' ) );
+            }
+            $location[ $key ] = (float) $location[ $key ];
+        }
+        $location['address'] = sanitize_text_field( $location['address'] );
+        return $location;
     }
 
     /**

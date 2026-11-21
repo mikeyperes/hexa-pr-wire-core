@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\CorePackageUpdates;
 
+use Hexa\PluginCore\WpAdminAjax\AjaxGuard;
+
 use Hexa\PluginCore\CoreContracts\ModuleInterface;
 use Hexa\PluginCore\PluginUpdates\UpdateProgressStore;
 
@@ -69,10 +71,10 @@ final class CorePackageAjaxController implements ModuleInterface {
     }
 
     private function authorize( string $capability ): void {
-        if ( ! current_user_can( $capability ) ) {
+        if ( ! AjaxGuard::allows( $capability ) ) {
             wp_send_json_error( 'Unauthorized', 403 );
         }
 
-        check_ajax_referer( $this->config->nonce_action(), $this->config->nonce_param() );
+        AjaxGuard::check_request_nonce( $this->config->nonce_action(), $this->config->nonce_param() );
     }
 }

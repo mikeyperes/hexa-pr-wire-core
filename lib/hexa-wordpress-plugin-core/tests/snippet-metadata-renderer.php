@@ -14,10 +14,14 @@ function disabled( bool $disabled, bool $current = true, bool $display = true ):
 function admin_url( string $path = '' ): string { return 'https://example.test/wp-admin/' . $path; }
 function get_option( string $key, mixed $default = false ): mixed { return $default; }
 
-require dirname( __DIR__ ) . '/src/WpAdminComponents/CoreUi.php';
-require dirname( __DIR__ ) . '/src/SnippetRegistry/SnippetDefinition.php';
-require dirname( __DIR__ ) . '/src/SnippetRegistry/SnippetRegistry.php';
-require dirname( __DIR__ ) . '/src/SnippetRegistry/SnippetsTableRenderer.php';
+// Bug: the fixture loaded renderer classes manually and missed CodeDisplay.
+// Fix: load the fixture's Core package through the production autoloader.
+// Why this way: renderer dependencies are resolved automatically as they are on a site.
+// Test: snippet-metadata-renderer.php.
+$core_root = dirname( __DIR__ );
+require $core_root . '/bootstrap.php';
+hexa_plugin_core_register_package( 'snippet-metadata-fixture', $core_root );
+HexaPluginCorePackageRegistry::resolve();
 
 use Hexa\PluginCore\SnippetRegistry\SnippetRegistry;
 use Hexa\PluginCore\SnippetRegistry\SnippetsTableRenderer;

@@ -448,7 +448,7 @@ CODE;
             [
                 [
                     "id"           => "example_article_faqs",
-                    "label"        => "Article FAQ ACF",
+                    "label"        => "Article FAQ Fields",
                     "type"         => "acf",
                     "setting_key"  => "post_faqs_acf_enabled",
                     "enabled"      => true,
@@ -458,7 +458,7 @@ CODE;
                     "description"  => "Structured FAQ rows that feed shortcode output and FAQPage JSON-LD.",
                     "instructions" => "Host plugins pass the setting key and save action. Core renders the row, toggle, docs, and status shell.",
                     "fields"       => [ "question", "answer", "enabled_for_schema" ],
-                    "dependencies" => [ "ACF Pro", "host schema module" ],
+                    "dependencies" => [ "Hexa WP Core Fields", "host schema module" ],
                     "code_example" => "[example_post_faqs]",
                     "test_report"  => "The editor should show FAQ rows and the schema scanner should detect FAQPage when rows are enabled.",
                 ],

@@ -18,6 +18,15 @@
 
 ## Features
 
+### Existing AJAX guards
+
+- **Use:** Run WordPress request and explicit nonce checks and object-level capability checks through Core while retaining the action’s existing failure response.
+
+### Legacy snippet activation
+
+- **Use:** Run saved snippet callbacks in host-defined order, keep the existing debug format, and render existing switches with their established markup.
+- **Docs:** [Legacy snippet compatibility](docs/legacy-snippet-compatibility.md)
+
 ### Press-release profile client
 - **Does:** validates and reads public author identities, person-profile search, exact person identity, and paginated releases by author or person from a configured HTTPS source. Redirects are disabled; safe HTTP transport rejects private network targets.
 - **Use:** `PressReleaseProfiles\PressReleaseProfilesClient`: `author()`, `find_author()`, `author_releases()`, `search_people()`, `person()`, `releases()`. Each takes the source origin first and returns a success/data or failure/code/message envelope.
@@ -144,7 +153,7 @@
 - **Code:** `src/SnippetRegistry/` (docs: `docs/snippet-registry.md`)
 
 ### Fields (no ACF needed)
-- **Does:** Hexa WP Core registers, reads, formats and saves fields, row loops, options pages and editing forms. Existing field keys, option names and WordPress metadata stay in place. Core uses its own field hooks and editor controls whether or not another field plugin is active.
+- **Does:** Hexa WP Core registers, reads, formats and saves fields, row loops, options pages and editing forms. Editors support flexible-content rows, grouped and seamless clones, and map addresses and coordinates. Existing field keys, option names and WordPress metadata stay in place. Core uses its own field hooks and editor controls whether or not another field plugin is active.
 - **Use:** `FieldGroups::add( $group )`, `Field::get()`/`update()`/`have_rows()`/`the_row()`/`get_sub_field()`, `OptionsPages::add()`, `Form::render()`/`Form::field()`, `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` while plugins load; field `developer_instructions` and group `client_view` (`Audience`).
 - **Extend:** `hexa_fields/load_field_groups`, `hexa_fields/*` (ACF-named hooks), `hexa_core_fields_client_view`, ACF's location filters.
 - **Code:** `src/Fields/` (docs: `docs/fields.md`); `bin/migrate-to-fields.php` moves a plugin off ACF calls.
@@ -207,8 +216,13 @@
 - **Extend:** `hexa_plugin_core/plugin_bridge_owners`.
 - **Code:** `src/PluginProvisioning/` (docs: `docs/plugin-provisioning.md`)
 
+### Managed plugin updater setup
+
+- **Use:** Build updater settings from the plugin header, slug and AJAX prefix, with overrides for existing settings. The same package also migrates active legacy plugin basenames while preserving each plugin’s activation policy.
+- **Docs:** [Updater configuration and legacy basenames](docs/updater.md#managed-plugin-updaters)
+
 ### Plugin updater
-- **Does:** updates the plugin from GitHub inside WordPress's updater, and the Git Report panel: repo, branch, GitHub against installed version, update button, version downloads and a live log; keeps the plugin's active state across updates.
+- **Does:** updates the plugin from GitHub through WordPress or the Git Report panel and keeps its activation state. Both update paths refuse Git checkouts before downloading and direct administrators to Git. Ignored metadata is removed from the extracted update package.
 - **Use:** `$config = UpdaterConfig::from_plugin_file( __FILE__, [...] )`, `( new GitHubPluginUpdater( $config ) )->register()`, `( new UpdaterAjaxController( $config ) )->register()`, `( new UpdaterPanelRenderer( $config ) )->render()`; `bin/build-php74-release.sh` makes the PHP 7.4 release zip.
 - **Code:** `src/PluginUpdates/` (docs: `docs/updater.md`)
 

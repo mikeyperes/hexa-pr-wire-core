@@ -9,6 +9,8 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+- Admin AJAX uses Hexa WP Core 3.66.1 for nonce and capability checks. Existing action names, role requirements, nonce fields, and responses stay the same.
+
 - Author photo fallback and sitemap recommendations use the source site’s WordPress URL and configured site type.
 
 - The migration overview describes the legacy field definitions it imports.

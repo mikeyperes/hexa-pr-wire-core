@@ -117,6 +117,33 @@ final class UpdaterConfig {
         );
     }
 
+    /** Build a managed updater from the plugin header and the host's stable updater prefix. */
+    public static function from_managed_plugin_file(
+        string $plugin_file,
+        string $github_repo_or_url,
+        string $plugin_slug,
+        string $ajax_action_prefix,
+        array $overrides = []
+    ): self {
+        $progress_key = str_ends_with( $ajax_action_prefix, '_updater' )
+            ? substr( $ajax_action_prefix, 0, -strlen( '_updater' ) ) . '_update_progress'
+            : '';
+
+        return self::from_plugin_file(
+            $plugin_file,
+            $github_repo_or_url,
+            array_merge(
+                [
+                    'plugin_slug'        => $plugin_slug,
+                    'nonce_action'       => $ajax_action_prefix,
+                    'ajax_action_prefix' => $ajax_action_prefix,
+                    'progress_key'       => $progress_key,
+                ],
+                $overrides
+            )
+        );
+    }
+
     public static function from_slug_and_github_url( string $plugin_slug, string $github_repo_or_url, array $overrides = [] ): self {
         $plugin_slug  = trim( $plugin_slug, '/' );
         $starter_file = ! empty( $overrides['plugin_starter_file'] )

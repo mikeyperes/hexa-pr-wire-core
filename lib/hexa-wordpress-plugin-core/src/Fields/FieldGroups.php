@@ -322,6 +322,11 @@ final class FieldGroups {
             if ( isset( $field['sub_fields'] ) && is_array( $field['sub_fields'] ) ) {
                 $field['sub_fields'] = self::normalize_fields( $field['sub_fields'], $field['key'] );
             }
+            foreach ( (array) ( $field['layouts'] ?? [] ) as $i => $layout ) {
+                if ( is_array( $layout ) && isset( $layout['sub_fields'] ) && is_array( $layout['sub_fields'] ) ) {
+                    $field['layouts'][ $i ]['sub_fields'] = self::normalize_fields( $layout['sub_fields'], $field['key'] );
+                }
+            }
             $normalized[] = $field;
         }
         return $normalized;

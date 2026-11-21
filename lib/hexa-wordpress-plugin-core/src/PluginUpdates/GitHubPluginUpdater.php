@@ -4,6 +4,7 @@ namespace Hexa\PluginCore\PluginUpdates;
 
 use Hexa\PluginCore\CoreContracts\ModuleInterface;
 
+/** Connects GitHub releases to the WordPress plugin upgrader. */
 final class GitHubPluginUpdater implements ModuleInterface {
     private UpdaterConfig $config;
 
@@ -19,6 +20,7 @@ final class GitHubPluginUpdater implements ModuleInterface {
     public function register(): void {
         add_filter( 'pre_set_site_transient_update_plugins', [ $this, 'check_for_update' ] );
         add_filter( 'plugins_api', [ $this, 'plugin_info' ], 10, 3 );
+        add_filter( 'upgrader_pre_download', [ $this, 'pre_download' ], PHP_INT_MAX, 4 );
         add_filter( 'upgrader_pre_install', [ $this, 'pre_install' ], 9, 2 );
         add_filter( 'upgrader_source_selection', [ $this, 'source_selection' ], 10, 4 );
         add_filter( 'upgrader_post_install', [ $this, 'post_install' ], 10, 3 );
@@ -133,53 +135,78 @@ final class GitHubPluginUpdater implements ModuleInterface {
         ];
     }
 
+    /** Refuses to download an update for an installed plugin Git copy. */
+    public function pre_download( mixed $reply, mixed $package, mixed $upgrader, array $hook_extra ): mixed {
+        if ( is_wp_error( $reply ) || ! $this->matches_plugin_update_target( $hook_extra ) ) {
+            return $reply;
+        }
+
+        // Bug: A later pre-install filter can discard the Git checkout refusal.
+        // Fix: WordPress sees the refusal when it asks for the package.
+        // Why this way: WordPress exits that update before running any install hooks.
+        // Test: tests/plugin-update-activation.php
+        return UpdaterFilesystem::git_checkout_update_error( $this->config ) ?? $reply;
+    }
+
+    /** Protects installed Git copies before WordPress can replace their files. */
     public function pre_install( mixed $response, array $hook_extra ): mixed {
-        if ( ! $this->matches_plugin_update_target( $hook_extra ) ) {
+        if ( is_wp_error( $response ) || ! $this->matches_plugin_update_target( $hook_extra ) ) {
             return $response;
+        }
+
+        // Bug: Pre-install cleanup removed .git from the installed plugin.
+        // Fix: Refuse to replace Git copies and capture activation only for permitted updates.
+        // Why this way: WordPress stops before moving or clearing the installed folder.
+        // Test: tests/plugin-update-activation.php
+        $blocked = UpdaterFilesystem::git_checkout_update_error( $this->config );
+        if ( is_wp_error( $blocked ) ) {
+            return $blocked;
         }
 
         $this->activation_scope = $this->capture_activation_scope();
 
-        $targets = array_unique(
-            array_filter(
-                [
-                    WP_PLUGIN_DIR . '/' . $this->config->runtime_folder_name(),
-                    WP_PLUGIN_DIR . '/' . $this->config->proper_folder_name(),
-                ]
-            )
-        );
-
-        foreach ( $targets as $target ) {
-            if ( ! is_dir( $target ) ) {
-                continue;
-            }
-
-            $purged = UpdaterFilesystem::purge_ignored_package_paths( $target, true );
-            if ( is_wp_error( $purged ) ) {
-                return new \WP_Error(
-                    'hexa_plugin_core_update_metadata_locked',
-                    'Cannot update ' . $this->config->plugin_name() . ' because the installed plugin contains locked package metadata. ' . $purged->get_error_message()
-                );
-            }
-        }
-
         return $response;
     }
 
+    /** Cleans and normalizes the downloaded package before WordPress installs it. */
     public function source_selection( mixed $source, mixed $remote_source, mixed $upgrader, array $hook_extra ): mixed {
         global $wp_filesystem;
 
-        if ( ! $this->matches_plugin_update_target( $hook_extra ) ) {
+        if ( is_wp_error( $source ) || ! $this->matches_plugin_update_target( $hook_extra ) ) {
             return $source;
-        }
-
-        if ( basename( (string) $source ) === $this->config->proper_folder_name() ) {
-            return trailingslashit( (string) $source );
         }
 
         if ( ! $wp_filesystem ) {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             WP_Filesystem();
+        }
+
+        // Bug: Package metadata was removed from the installed plugin during pre-install.
+        // Fix: Remove ignored paths from WordPress's extracted source before it is installed.
+        // Why this way: Both normalized and legacy-named archives are cleaned in staging.
+        // Test: tests/plugin-update-activation.php
+        $source       = untrailingslashit( (string) $source );
+        $package_root = untrailingslashit( (string) $remote_source );
+        if ( 'direct' === $wp_filesystem->method ) {
+            $local_source = realpath( $source );
+            $local_root   = realpath( $package_root );
+            if ( false !== $local_source && false !== $local_root ) {
+                $source       = $local_source;
+                $package_root = $local_root;
+            }
+        }
+        if ( '' === $package_root || ( $source !== $package_root && ! str_starts_with( $source, trailingslashit( $package_root ) ) ) ) {
+            return new \WP_Error( 'hexa_plugin_core_updater_invalid_source', 'The update package source is outside the extracted package.' );
+        }
+
+        $filesystem = 'direct' === $wp_filesystem->method ? null : $wp_filesystem;
+        $purged     = UpdaterFilesystem::purge_ignored_package_paths( $source, true, $filesystem );
+        if ( is_wp_error( $purged ) ) {
+            return $purged;
+        }
+
+        if ( basename( $source ) === $this->config->proper_folder_name() ) {
+            return trailingslashit( $source );
         }
 
         $target = trailingslashit( dirname( (string) $source ) ) . $this->config->proper_folder_name();
@@ -198,6 +225,7 @@ final class GitHubPluginUpdater implements ModuleInterface {
         return trailingslashit( $target );
     }
 
+    /** Restores the plugin's canonical directory and previous activation scope. */
     public function post_install( mixed $response, array $hook_extra, array $result ): mixed {
         global $wp_filesystem;
 

@@ -2,6 +2,7 @@
 
 namespace Hexa\PluginCore\PluginUpdates;
 
+/** Handles the local and staging filesystem operations used by Core updaters. */
 final class UpdaterFilesystem {
     private const IGNORED_PACKAGE_DIRECTORIES = [
         '.git' => true,
@@ -67,18 +68,41 @@ final class UpdaterFilesystem {
         return isset( self::IGNORED_PACKAGE_FILES[ $basename ] );
     }
 
+    /** Checks whether a directory contains Git metadata, including a worktree pointer. */
+    public static function contains_git_metadata( string $directory ): bool {
+        $marker = untrailingslashit( $directory ) . '/.git';
+
+        return file_exists( $marker ) || is_link( $marker );
+    }
+
+    /** Refuses a replace-in-place update if either managed directory is a Git copy. */
+    public static function git_checkout_update_error( UpdaterConfig $config ): ?\WP_Error {
+        $folders = array_unique( [ $config->runtime_folder_name(), $config->proper_folder_name() ] );
+
+        foreach ( $folders as $folder ) {
+            if ( self::contains_git_metadata( WP_PLUGIN_DIR . '/' . $folder ) ) {
+                return new \WP_Error( 'hexa_plugin_core_git_checkout', 'This plugin copy is updated through Git.' );
+            }
+        }
+
+        return null;
+    }
+
     /**
+     * Removes ignored metadata from an extracted update package.
+     *
      * @return array<int,string>|\WP_Error
      */
-    public static function purge_ignored_package_paths( string $root, bool $strict = false ): array|\WP_Error {
-        if ( ! is_dir( $root ) ) {
+    public static function purge_ignored_package_paths( string $root, bool $strict = false, ?\WP_Filesystem_Base $filesystem = null ): array|\WP_Error {
+        if ( ! ( $filesystem ? $filesystem->is_dir( $root ) : is_dir( $root ) ) ) {
             return [];
         }
 
         $removed = [];
         $failed  = [];
 
-        self::purge_ignored_from_directory( self::normalize_path( $root ), self::normalize_path( $root ), $removed, $failed );
+        $root = self::normalize_path( $root );
+        self::purge_ignored_from_directory( $root, $root, $removed, $failed, $filesystem );
 
         if ( $strict && $failed ) {
             return new \WP_Error(
@@ -90,7 +114,8 @@ final class UpdaterFilesystem {
         return $removed;
     }
 
-    public static function copy_directory_clean( string $source, string $destination ): true|\WP_Error {
+    /** Copies package files, optionally removing ignored metadata from an existing destination. */
+    public static function copy_directory_clean( string $source, string $destination, bool $clean_destination = true ): true|\WP_Error {
         $source      = untrailingslashit( $source );
         $destination = untrailingslashit( $destination );
 
@@ -98,9 +123,11 @@ final class UpdaterFilesystem {
             return new \WP_Error( 'hexa_plugin_core_copy_source_missing', 'Source folder does not exist: ' . $source );
         }
 
-        $purged = self::purge_ignored_package_paths( $destination, true );
-        if ( is_wp_error( $purged ) ) {
-            return $purged;
+        if ( $clean_destination ) {
+            $purged = self::purge_ignored_package_paths( $destination, true );
+            if ( is_wp_error( $purged ) ) {
+                return $purged;
+            }
         }
 
         $copied = self::copy_entry_clean( $source, $destination, $source );
@@ -307,19 +334,20 @@ final class UpdaterFilesystem {
      * @param array<int,string> $removed
      * @param array<int,string> $failed
      */
-    private static function purge_ignored_from_directory( string $dir, string $root, array &$removed, array &$failed ): void {
-        $scan = @scandir( $dir );
-        if ( false === $scan ) {
+    private static function purge_ignored_from_directory( string $dir, string $root, array &$removed, array &$failed, ?\WP_Filesystem_Base $filesystem ): void {
+        $entries = $filesystem ? $filesystem->dirlist( $dir, true, false ) : @scandir( $dir );
+        if ( ! is_array( $entries ) ) {
+            $failed[] = $dir;
             return;
         }
 
-        $files = array_diff( $scan, [ '.', '..' ] );
+        $files = array_diff( $filesystem ? array_keys( $entries ) : $entries, [ '.', '..' ] );
 
         foreach ( $files as $file ) {
             $path = $dir . '/' . $file;
 
             if ( self::is_ignored_package_path( $path, $root ) ) {
-                if ( self::delete_path( $path ) ) {
+                if ( $filesystem ? $filesystem->delete( $path, true ) : self::delete_path( $path ) ) {
                     $removed[] = $path;
                 } else {
                     $failed[] = $path;
@@ -328,8 +356,9 @@ final class UpdaterFilesystem {
                 continue;
             }
 
-            if ( is_dir( $path ) && ! is_link( $path ) ) {
-                self::purge_ignored_from_directory( $path, $root, $removed, $failed );
+            $is_directory = $filesystem ? 'd' === $entries[ $file ]['type'] : is_dir( $path ) && ! is_link( $path );
+            if ( $is_directory ) {
+                self::purge_ignored_from_directory( $path, $root, $removed, $failed, $filesystem );
             }
         }
     }

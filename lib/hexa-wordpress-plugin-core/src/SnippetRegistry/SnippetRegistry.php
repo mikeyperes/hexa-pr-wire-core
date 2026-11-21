@@ -64,11 +64,12 @@ final class SnippetRegistry {
             return false;
         }
 
-        if ( "" === $definition->option_key || ! function_exists( "get_option" ) ) {
-            return $definition->default_enabled;
-        }
+        return self::option_enabled( $definition->option_key, $definition->default_enabled );
+    }
 
-        return (bool) get_option( $definition->option_key, $definition->default_enabled );
+    /** Read a snippet option using the host's existing default for an absent value. */
+    public static function option_enabled( string $key, bool $default = false ): bool {
+        return '' === $key || ! function_exists( 'get_option' ) ? $default : (bool) get_option( $key, $default );
     }
 
     public function set_enabled( string $id, bool $enabled ): bool {
