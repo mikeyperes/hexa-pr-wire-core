@@ -1,5 +1,7 @@
 # Existing AJAX actions
 
-Use `Hexa\PluginCore\WpAdminAjax\AjaxGuard::check_request_nonce()` for WordPress’s exact request field fallback and optional 403 response. Call `verify_explicit_nonce()` when the handler already reads and normalizes its own input. It retains the original nonce age result. Use `allows()` for checks with object IDs or a plugin’s established error response. Existing action names, privileges, response formats and nonce sources stay with the host.
+Use `Hexa\PluginCore\WpAdminAjax\AjaxGuard::require_access()` for a handler’s capability and nonce guard. It calls Core’s existing capability and nonce helpers, keeping the original check order, capability object IDs, WordPress nonce field fallback, and failure body and status.
 
-Run `php tests/admin-ajax-legacy-guards.php` to compare the forwarding methods with WordPress-compatible fixtures.
+For a custom JSON failure, pass the payload and optional HTTP status as `capability_error` or `nonce_error`. Without a custom nonce failure, the WordPress source retains WordPress’s native `-1` response. Set `nonce_source: AjaxGuard::CORE_NONCE` for an action that already uses Core’s standard nonce validation, or pass a closure that reads an explicit nonce after permission is checked. Set `nonce_first: true` where the old handler checked the nonce first.
+
+Run `php tests/admin-ajax-legacy-guards.php` for the complete guard comparison.

@@ -2,8 +2,6 @@
 
 namespace Hexa\PluginCore\SmartSearch;
 
-use Hexa\PluginCore\WpAdminAjax\AjaxGuard;
-
 final class SmartSearchAjaxController {
     private static bool $registered = false;
 
@@ -18,12 +16,12 @@ final class SmartSearchAjaxController {
     }
 
     public function search(): void {
-        if ( function_exists( 'current_user_can' ) && ! AjaxGuard::allows( 'manage_options' ) ) {
+        if ( function_exists( 'current_user_can' ) && ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
         }
 
         if ( function_exists( 'check_ajax_referer' ) ) {
-            AjaxGuard::check_request_nonce( 'hexa_plugin_core_smart_search' );
+            check_ajax_referer( 'hexa_plugin_core_smart_search' );
         }
 
         $source = isset( $_GET['source'] ) ? sanitize_key( (string) wp_unslash( $_GET['source'] ) ) : 'posts';

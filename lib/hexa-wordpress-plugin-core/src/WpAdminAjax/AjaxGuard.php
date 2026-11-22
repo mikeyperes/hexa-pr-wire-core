@@ -6,20 +6,30 @@ use Throwable;
 
 final class AjaxGuard {
     public const DEFAULT_NONCE_FIELD = 'nonce';
+    public const WORDPRESS_NONCE = 'wordpress';
+    public const CORE_NONCE = 'core';
 
     private function __construct() {}
 
-    /** Keep WordPress's nonce fallback, action hook and optional -1/403 response. */
+    /**
+     * Keep WordPress's original request nonce behavior for plugins still on Core 3.66.1.
+     *
+     * Bug: A newer bundle wins site-wide, so upgrading one plugin would break another plugin's existing AJAX calls.
+     * Fix: Preserve the three legacy entry points while the affected plugins move to require_access().
+     * Why this way: The plugins can update independently when they share one selected Core package.
+     *
+     * @deprecated 3.66.2 Migrate complete guard blocks to require_access().
+     */
     public static function check_request_nonce( mixed $action = -1, mixed $field = false, mixed $stop = true ): mixed {
         return check_ajax_referer( $action, $field, $stop );
     }
 
-    /** Verify a nonce the caller already read, preserving the WordPress nonce age result. */
+    /** @deprecated 3.66.2 Use require_access() for complete guards. Retained for the mixed-version rollout above. */
     public static function verify_explicit_nonce( mixed $nonce, mixed $action = -1 ): mixed {
         return wp_verify_nonce( $nonce, $action );
     }
 
-    /** Check a WordPress capability, forwarding object IDs for mapped capabilities. */
+    /** @deprecated 3.66.2 Use require_access() for complete guards. Retained for the mixed-version rollout above. */
     public static function allows( mixed $capability, mixed ...$objects ): bool {
         return current_user_can( $capability, ...$objects );
     }
@@ -62,41 +72,73 @@ final class AjaxGuard {
 
         $nonce = function_exists( 'sanitize_text_field' ) ? sanitize_text_field( $nonce ) : trim( $nonce );
 
-        return false !== self::verify_explicit_nonce( $nonce, $action );
+        return false !== wp_verify_nonce( $nonce, $action );
     }
 
+    /** Run an existing action's capability and nonce guards in their original order. */
+    public static function require_access(
+        string $capability,
+        string $action,
+        string|false $field = false,
+        ?array $capability_error = null,
+        ?array $nonce_error = null,
+        array $objects = [],
+        bool $nonce_first = false,
+        string|callable $nonce_source = self::WORDPRESS_NONCE
+    ): void {
+        if ( ! $nonce_first ) {
+            self::require_capability_or_error( $capability, objects: $objects, failure: $capability_error );
+        }
+
+        self::require_nonce_or_error( $action, $field, failure: $nonce_error, source: $nonce_source );
+
+        if ( $nonce_first ) {
+            self::require_capability_or_error( $capability, objects: $objects, failure: $capability_error );
+        }
+    }
+
+    /** Validate the selected nonce source and keep the action's exact failure format. */
     public static function require_nonce_or_error(
         string $action,
-        string $field = self::DEFAULT_NONCE_FIELD,
-        string $message = 'Security check failed. Please refresh the page and try again.'
+        string|false $field = self::DEFAULT_NONCE_FIELD,
+        string $message = 'Security check failed. Please refresh the page and try again.',
+        ?array $failure = null,
+        string|callable $source = self::CORE_NONCE
     ): void {
-        if ( self::verify_nonce( $action, null, $field ) ) {
+        if ( self::WORDPRESS_NONCE === $source && null === $failure ) {
+            check_ajax_referer( $action, $field );
             return;
         }
 
-        self::send_json_error(
-            [
-                'message' => $message,
-                'code'    => 'invalid_nonce',
-            ]
-        );
+        if ( self::WORDPRESS_NONCE === $source ) {
+            $valid = (bool) check_ajax_referer( $action, $field, false );
+        } elseif ( is_callable( $source ) ) {
+            $nonce = $source();
+            $valid = null !== $nonce && (bool) wp_verify_nonce( $nonce, $action );
+        } else {
+            $valid = self::verify_nonce( $action, null, false === $field ? self::DEFAULT_NONCE_FIELD : $field );
+        }
+        if ( $valid ) {
+            return;
+        }
+
+        $failure ??= [ [ 'message' => $message, 'code' => 'invalid_nonce' ], 200 ];
+        self::send_json_error( $failure[0], $failure[1] ?? null );
     }
 
+    /** Check one capability and its object IDs while preserving the caller's response. */
     public static function require_capability_or_error(
         string $capability,
-        string $message = 'Unauthorized: You do not have permission to perform this action.'
+        string $message = 'Unauthorized: You do not have permission to perform this action.',
+        array $objects = [],
+        ?array $failure = null
     ): void {
-        if ( function_exists( 'current_user_can' ) && self::allows( $capability ) ) {
+        if ( function_exists( 'current_user_can' ) && current_user_can( $capability, ...$objects ) ) {
             return;
         }
 
-        self::send_json_error(
-            [
-                'message' => $message,
-                'code'    => 'unauthorized',
-            ],
-            403
-        );
+        $failure ??= [ [ 'message' => $message, 'code' => 'unauthorized' ], 403 ];
+        self::send_json_error( $failure[0], $failure[1] ?? null );
     }
 
     /**
@@ -146,7 +188,7 @@ final class AjaxGuard {
     /**
      * @param mixed $data
      */
-    private static function send_json_error( mixed $data, int $status_code = 200 ): void {
+    private static function send_json_error( mixed $data, ?int $status_code = 200 ): void {
         if ( function_exists( 'wp_send_json_error' ) ) {
             wp_send_json_error( $data, $status_code );
         }

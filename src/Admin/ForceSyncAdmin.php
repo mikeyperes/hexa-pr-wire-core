@@ -298,7 +298,7 @@ final class ForceSyncAdmin {
 
 	/** Administrators, and the release's owner when they can edit it. */
 	private function can_pick_category( \WP_Post $post ): bool {
-		if ( ! \Hexa\PluginCore\WpAdminAjax\AjaxGuard::allows( 'edit_post', $post->ID ) ) {
+		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
 			return false;
 		}
 		return $this->is_admin_user() || \HexaPrWire\Core\Customer\ReleaseOwner::id( $post ) === get_current_user_id();
@@ -351,17 +351,17 @@ final class ForceSyncAdmin {
 	}
 
 	private function verify_nonce(): void {
-		if ( ! \Hexa\PluginCore\WpAdminAjax\AjaxGuard::check_request_nonce( self::NONCE_ACTION, 'nonce', false ) ) {
+		if ( ! check_ajax_referer( self::NONCE_ACTION, 'nonce', false ) ) {
 			wp_send_json_error( [ 'message' => 'The editor session expired. Reload the page and try again.' ], 403 );
 		}
 	}
 
 	private function is_admin_user(): bool {
-		return \Hexa\PluginCore\WpAdminAjax\AjaxGuard::allows( 'manage_options' );
+		return current_user_can( 'manage_options' );
 	}
 
 	private function can_view( int $post_id ): bool {
-		return $post_id > 0 && \Hexa\PluginCore\WpAdminAjax\AjaxGuard::allows( 'edit_post', $post_id );
+		return $post_id > 0 && current_user_can( 'edit_post', $post_id );
 	}
 
 	/**

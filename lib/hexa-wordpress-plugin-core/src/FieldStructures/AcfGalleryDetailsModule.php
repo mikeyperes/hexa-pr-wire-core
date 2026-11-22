@@ -4,8 +4,6 @@ declare( strict_types=1 );
 
 namespace Hexa\PluginCore\FieldStructures;
 
-use Hexa\PluginCore\WpAdminAjax\AjaxGuard;
-
 use Hexa\PluginCore\CoreContracts\ModuleInterface;
 use Hexa\PluginCore\WpAdminComponents\MediaGalleryDetailsRenderer;
 
@@ -83,7 +81,7 @@ final class AcfGalleryDetailsModule implements ModuleInterface {
             wp_send_json_error( [ 'message' => 'You do not have permission to edit this gallery.' ], 403 );
         }
 
-        AjaxGuard::check_request_nonce( $this->nonce_action( $context ), (string) $this->config['nonce_field'] );
+        check_ajax_referer( $this->nonce_action( $context ), (string) $this->config['nonce_field'] );
         $operation = isset( $_POST['operation'] ) ? sanitize_key( (string) wp_unslash( $_POST['operation'] ) ) : '';
 
         if ( 'refresh' === $operation ) {
@@ -209,23 +207,23 @@ final class AcfGalleryDetailsModule implements ModuleInterface {
             return (bool) call_user_func( $capability, $context, $this );
         }
         if ( is_string( $capability ) && '' !== $capability ) {
-            return AjaxGuard::allows( $capability );
+            return current_user_can( $capability );
         }
         if ( preg_match( '/\Auser_(\d+)\z/', $context, $matches ) ) {
-            return AjaxGuard::allows( 'edit_user', (int) $matches[1] );
+            return current_user_can( 'edit_user', (int) $matches[1] );
         }
         if ( preg_match( '/\Aterm_(\d+)\z/', $context, $matches ) ) {
-            return AjaxGuard::allows( 'edit_term', (int) $matches[1] );
+            return current_user_can( 'edit_term', (int) $matches[1] );
         }
         if ( preg_match( '/\Acomment_(\d+)\z/', $context, $matches ) ) {
-            return AjaxGuard::allows( 'edit_comment', (int) $matches[1] );
+            return current_user_can( 'edit_comment', (int) $matches[1] );
         }
         if ( ctype_digit( $context ) || preg_match( '/\Apost_(\d+)\z/', $context, $matches ) ) {
             $post_id = ctype_digit( $context ) ? (int) $context : (int) $matches[1];
-            return AjaxGuard::allows( 'edit_post', $post_id );
+            return current_user_can( 'edit_post', $post_id );
         }
 
-        return AjaxGuard::allows( 'manage_options' );
+        return current_user_can( 'manage_options' );
     }
 
     /** @return array<string,mixed> */

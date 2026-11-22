@@ -9,7 +9,7 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
-- Admin AJAX uses Hexa WP Core 3.66.1 for nonce and capability checks. Existing action names, role requirements, nonce fields, and responses stay the same.
+- Force Sync uses WordPress checks for release-specific access and session validation. The plugin bundles Hexa WP Core 3.66.2.
 
 - Author photo fallback and sitemap recommendations use the source site’s WordPress URL and configured site type.
 

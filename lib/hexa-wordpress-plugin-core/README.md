@@ -20,7 +20,7 @@
 
 ### Existing AJAX guards
 
-- **Use:** Run WordPress request and explicit nonce checks and object-level capability checks through Core while retaining the action’s existing failure response.
+- **Use:** Run a handler’s capability and nonce guards through Core while retaining the action’s existing check order and failure response.
 
 ### Legacy snippet activation
 

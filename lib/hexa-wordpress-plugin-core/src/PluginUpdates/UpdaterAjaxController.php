@@ -121,10 +121,6 @@ final class UpdaterAjaxController implements ModuleInterface {
     }
 
     private function authorize( string $capability ): void {
-        if ( ! AjaxGuard::allows( $capability ) ) {
-            wp_send_json_error( 'Unauthorized', 403 );
-        }
-
-        AjaxGuard::check_request_nonce( $this->config->nonce_action(), $this->config->nonce_param() );
+        AjaxGuard::require_access( $capability, $this->config->nonce_action(), $this->config->nonce_param(), capability_error: [ 'Unauthorized', 403 ] );
     }
 }

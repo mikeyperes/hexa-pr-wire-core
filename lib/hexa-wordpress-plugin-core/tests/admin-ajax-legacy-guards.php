@@ -1,5 +1,5 @@
 <?php
-/** Compare legacy WordPress AJAX checks with the shared forwarding methods. */
+/** Compares complete AJAX guards with their original WordPress responses. */
 
 declare( strict_types=1 );
 
@@ -7,17 +7,28 @@ use Hexa\PluginCore\WpAdminAjax\AjaxGuard;
 
 require dirname( __DIR__ ) . '/src/WpAdminAjax/AjaxGuard.php';
 
+final class GuardResult extends RuntimeException {
+    public function __construct( public string $mode, public mixed $payload, public ?int $status ) {
+        parent::__construct( $mode );
+    }
+}
+
+function wp_send_json_error( mixed $payload = null, ?int $status = null ): void {
+    throw new GuardResult( 'json', $payload, $status );
+}
+
 function check_ajax_referer( $action = -1, $field = false, $stop = true ) {
-    $nonce = ( $field && isset( $_REQUEST[ $field ] ) ) ? $_REQUEST[ $field ] : ( $_REQUEST['_ajax_nonce'] ?? $_REQUEST['_wpnonce'] ?? '' );
-    $result = wp_verify_nonce( $nonce, $action );
-    $GLOBALS['trace'][] = [ $action, $field, $stop, $result ];
-    if ( $stop && false === $result ) {
-        throw new RuntimeException( '-1/403' );
+    $value = $field && isset( $_REQUEST[ $field ] )
+        ? $_REQUEST[ $field ] : ( $_REQUEST['_ajax_nonce'] ?? $_REQUEST['_wpnonce'] ?? '' );
+    $result = wp_verify_nonce( $value, $action );
+    if ( $stop && ! $result ) {
+        throw new GuardResult( 'wp_die', -1, 403 );
     }
     return $result;
 }
 
-function wp_verify_nonce( $nonce, $action = -1 ) {
+function wp_verify_nonce( mixed $nonce, mixed $action ): int|false {
+    $GLOBALS['trace'][] = [ 'nonce', $nonce, $action ];
     return match ( [ $nonce, $action ] ) {
         [ 'fresh', 'fixture_action' ] => 1,
         [ 'previous', 'fixture_action' ] => 2,
@@ -25,47 +36,66 @@ function wp_verify_nonce( $nonce, $action = -1 ) {
     };
 }
 
-function current_user_can( $capability, ...$objects ): bool {
-    $GLOBALS['trace'][] = [ $capability, $objects ];
-    return 'edit_post' === $capability && [ 7 ] === $objects;
+function current_user_can( string $capability, mixed ...$objects ): bool {
+    $GLOBALS['trace'][] = [ 'capability', $capability, $objects ];
+    return $GLOBALS['editor'] && 'edit_post' === $capability && [ 7 ] === $objects;
 }
 
-function outcome( callable $callable ): array {
+function observe( callable $callback ): array {
     $GLOBALS['trace'] = [];
     try {
-        $value = [ 'return', $callable() ];
-    } catch ( RuntimeException $exception ) {
-        $value = [ 'error', $exception->getMessage() ];
+        $callback();
+        return [ 'allowed', $GLOBALS['trace'] ];
+    } catch ( GuardResult $failure ) {
+        return [ $failure->mode, $failure->payload, $failure->status, $GLOBALS['trace'] ];
     }
-    return [ $value, $GLOBALS['trace'] ];
 }
 
-$cases = [
-    'custom field' => [ 'nonce' => 'fresh' ],
-    'alternate field' => [ '_ajax_nonce' => 'previous' ],
-    'WordPress field' => [ '_wpnonce' => 'fresh' ],
-    'preferred malformed field' => [ 'nonce' => [ 'fresh' ], '_ajax_nonce' => 'fresh' ],
-    'invalid' => [ 'nonce' => 'bad' ],
-    'missing' => [],
-];
-foreach ( $cases as $case => $_REQUEST ) {
-    foreach ( [ true, false ] as $stop ) {
-        $before = outcome( static fn() => check_ajax_referer( 'fixture_action', 'nonce', $stop ) );
-        $after = outcome( static fn() => AjaxGuard::check_request_nonce( 'fixture_action', 'nonce', $stop ) );
-        if ( $before !== $after ) {
-            throw new RuntimeException( 'Request nonce contract changed for ' . $case );
+$states = [ [ 'nonce' => 'fresh' ], [ '_ajax_nonce' => 'previous' ], [ '_wpnonce' => 'fresh' ], [ 'nonce' => [ 'fresh' ], '_ajax_nonce' => 'fresh' ], [ 'nonce' => 'invalid' ], [] ];
+$checks = 0;
+foreach ( $states as $_REQUEST ) {
+    foreach ( [ true, false ] as $editor ) {
+        foreach ( [ true, false ] as $nonce_first ) {
+            $before = observe(
+                static function () use ( $nonce_first ): void {
+                    if ( $nonce_first ) {
+                        check_ajax_referer( 'fixture_action', 'nonce' );
+                    }
+                    if ( ! current_user_can( 'edit_post', 7 ) ) {
+                        wp_send_json_error( [ 'message' => 'Permission denied.' ] );
+                    }
+                    if ( ! $nonce_first ) {
+                        check_ajax_referer( 'fixture_action', 'nonce' );
+                    }
+                }
+            );
+            $after = observe(
+                static fn() => AjaxGuard::require_access( 'edit_post', 'fixture_action', 'nonce', [ [ 'message' => 'Permission denied.' ] ], objects: [ 7 ], nonce_first: $nonce_first )
+            );
+            if ( $before !== $after ) {
+                throw new RuntimeException( 'Capability order, native nonce, or failure response changed' );
+            }
+            ++$checks;
         }
-    }
-    $explicit = $_REQUEST['nonce'] ?? null;
-    if ( wp_verify_nonce( $explicit, 'fixture_action' ) !== AjaxGuard::verify_explicit_nonce( $explicit, 'fixture_action' ) ) {
-        throw new RuntimeException( 'Explicit nonce contract changed for ' . $case );
+
+        $before = observe(
+            static function (): void {
+                if ( ! current_user_can( 'edit_post', 7 ) ) {
+                    wp_send_json_error( 'Unauthorized', 403 );
+                }
+                if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'fixture_action' ) ) {
+                    wp_send_json_error( 'Bad nonce', 400 );
+                }
+            }
+        );
+        $after = observe(
+            static fn() => AjaxGuard::require_access( 'edit_post', 'fixture_action', capability_error: [ 'Unauthorized', 403 ], nonce_error: [ 'Bad nonce', 400 ], objects: [ 7 ], nonce_source: static fn() => $_REQUEST['nonce'] ?? null )
+        );
+        if ( $before !== $after ) {
+            throw new RuntimeException( 'Explicit nonce or custom error response changed' );
+        }
+        ++$checks;
     }
 }
 
-foreach ( [ [ 'edit_post', 7 ], [ 'edit_post', 8 ], [ 'manage_options' ], [ 'edit_user', 7 ] ] as $args ) {
-    if ( outcome( static fn() => current_user_can( ...$args ) ) !== outcome( static fn() => AjaxGuard::allows( ...$args ) ) ) {
-        throw new RuntimeException( 'Capability or object ID contract changed' );
-    }
-}
-
-echo "PASS: 22 legacy AJAX guard parity checks.\n";
+echo "PASS: {$checks} complete AJAX guard parity checks.\n";
