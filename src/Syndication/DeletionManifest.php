@@ -2,19 +2,22 @@
 
 namespace HexaPrWire\Core\Syndication;
 
+use Hexa\PluginCore\PressReleaseSyndication\DeletionProtocol;
+use Hexa\PluginCore\PressReleaseSyndication\Protocol;
+
 use HexaPrWire\Core\Contracts\Module;
 
 final class DeletionManifest implements Module {
 	public function register(): void {
 		add_action( 'rest_api_init', [ $this, 'register_route' ] );
-		add_action( 'wp_ajax_purge_release_list', [ $this, 'legacy_response' ] );
-		add_action( 'wp_ajax_nopriv_purge_release_list', [ $this, 'legacy_response' ] );
+		add_action( 'wp_ajax_' . DeletionProtocol::LEGACY_ACTION, [ $this, 'legacy_response' ] );
+		add_action( 'wp_ajax_nopriv_' . DeletionProtocol::LEGACY_ACTION, [ $this, 'legacy_response' ] );
 	}
 
 	public function register_route(): void {
-		register_rest_route( 'hprwc/v1', '/deletions', [
+		register_rest_route( Protocol::REST_NAMESPACE, DeletionProtocol::ROUTE, [
 			'methods' => \WP_REST_Server::READABLE,
-			'callback' => fn() => rest_ensure_response( [ 'slugs' => $this->slugs(), 'sources' => $this->sources(), 'updated_gmt' => (string) get_option( 'hprwc_deletion_manifest_updated', '' ) ] ),
+			'callback' => fn() => rest_ensure_response( DeletionProtocol::manifest( $this->slugs(), $this->sources(), (string) get_option( 'hprwc_deletion_manifest_updated', '' ) ) ),
 			'permission_callback' => '__return_true',
 		] );
 	}
@@ -22,7 +25,7 @@ final class DeletionManifest implements Module {
 	public function legacy_response(): void {
 		nocache_headers();
 		header( 'Content-Type: text/plain; charset=' . get_option( 'blog_charset' ) );
-		echo esc_html( implode( ',', $this->slugs() ) );
+		echo esc_html( DeletionProtocol::legacy_body( $this->slugs() ) );
 		exit;
 	}
 

@@ -10,7 +10,7 @@ $assert = static function ( bool $condition, string $message ): void {
 
 $api = (string) file_get_contents( $root . '/src/Onboarding/OnboardingApi.php' );
 $registry = (string) file_get_contents( $root . '/src/DestinationRegistry.php' );
-$feed = (string) file_get_contents( $root . '/src/Syndication/FeedRenderer.php' );
+$feed = (string) file_get_contents( $root . '/lib/hexa-wordpress-plugin-core/src/PressReleaseSyndication/FeedProtocol.php' );
 $bootstrap = (string) file_get_contents( $root . '/src/Bootstrap/Plugin.php' );
 
 foreach ( [ "'/onboarding'", "'/onboarding/outlet'", "'/onboarding/rollback'" ] as $route ) {
@@ -23,7 +23,7 @@ $assert( str_contains( $api, 'hierarchy_revision' ) && str_contains( $api, 'plan
 $assert( str_contains( $api, 'media_retained_for_review' ) && ! str_contains( $api, 'wp_delete_attachment' ), 'rollback retains source media' );
 $assert( str_contains( $api, "'logo_attachment_id'" ) && str_contains( $api, "'icon_attachment_id'" ), 'source logo and icon receipts are returned' );
 $assert( str_contains( $registry, 'public function approve(' ) && str_contains( $registry, 'public function restore(' ), 'destination approvals support bounded apply and rollback' );
-$assert( 1 === substr_count( $feed, 'xmlns:media="http://search.yahoo.com/mrss/"' ), 'source feed declares Media RSS exactly once' );
+$assert( 1 === substr_count( $feed, 'xmlns:media=' ) && str_contains( $feed, 'http://search.yahoo.com/mrss/' ), 'source feed declares Media RSS exactly once' );
 $assert( str_contains( $feed, "preg_replace( '/\\s*xmlns:(?:media|hpr)=" ), 'source feed removes duplicate hook-provided namespaces' );
 $assert( str_contains( $feed, 'ob_get_level() > $preamble_level' ), 'source feed tolerates namespace hooks that close their own output buffer' );
 $assert( str_contains( $feed, '<media:content' ) && str_contains( $feed, '<hpr:canonicalUrl>' ), 'source feed exposes remote image and canonical release metadata' );

@@ -11,29 +11,6 @@ final class AjaxGuard {
 
     private function __construct() {}
 
-    /**
-     * Keep WordPress's original request nonce behavior for plugins still on Core 3.66.1.
-     *
-     * Bug: A newer bundle wins site-wide, so upgrading one plugin would break another plugin's existing AJAX calls.
-     * Fix: Preserve the three legacy entry points while the affected plugins move to require_access().
-     * Why this way: The plugins can update independently when they share one selected Core package.
-     *
-     * @deprecated 3.66.2 Migrate complete guard blocks to require_access().
-     */
-    public static function check_request_nonce( mixed $action = -1, mixed $field = false, mixed $stop = true ): mixed {
-        return check_ajax_referer( $action, $field, $stop );
-    }
-
-    /** @deprecated 3.66.2 Use require_access() for complete guards. Retained for the mixed-version rollout above. */
-    public static function verify_explicit_nonce( mixed $nonce, mixed $action = -1 ): mixed {
-        return wp_verify_nonce( $nonce, $action );
-    }
-
-    /** @deprecated 3.66.2 Use require_access() for complete guards. Retained for the mixed-version rollout above. */
-    public static function allows( mixed $capability, mixed ...$objects ): bool {
-        return current_user_can( $capability, ...$objects );
-    }
-
     public static function create_nonce( string $action ): string {
         return function_exists( 'wp_create_nonce' ) ? wp_create_nonce( $action ) : '';
     }

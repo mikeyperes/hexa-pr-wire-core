@@ -2,6 +2,8 @@
 
 namespace HexaPrWire\Core\Syndication;
 
+use Hexa\PluginCore\PressReleaseSyndication\FeedProtocol;
+
 use HexaPrWire\Core\Contracts\Module;
 use HexaPrWire\Core\CredentialRepository;
 
@@ -38,11 +40,11 @@ final class FeedRegistry implements Module {
 		add_feed( 'internal-rss', fn() => $this->renderer->render( [] ) );
 		add_feed( 'rss_scale_my_publication', fn() => $this->renderer->render( [ 'category_name' => 'scale-my-publication' ] ) );
 		add_feed( 'rss_michael_peres', fn() => $this->renderer->render( [ 'category_name' => 'michael-peres' ] ) );
-		add_feed( 'rss_publication', [ $this, 'render_publication_feed' ] );
+		add_feed( FeedProtocol::OUTLET_FEED, [ $this, 'render_publication_feed' ] );
 	}
 
 	public function render_publication_feed(): void {
-		$publication = isset( $_GET['publication'] ) ? sanitize_text_field( wp_unslash( $_GET['publication'] ) ) : '';
+		$publication = isset( $_GET[ FeedProtocol::OUTLET_PARAMETER ] ) ? sanitize_text_field( wp_unslash( $_GET[ FeedProtocol::OUTLET_PARAMETER ] ) ) : '';
 		$action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
 		$terms = array_values( array_filter( array_map( 'sanitize_title', explode( ',', $publication ) ) ) );
 

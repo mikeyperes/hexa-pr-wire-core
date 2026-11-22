@@ -1,3 +1,9 @@
+## 3.67.0 - 2026-11-21
+
+- Share the existing PR Wire syndication feed, deletion manifest and author profile contracts.
+## 3.66.3 - 2026-11-21
+
+- Remove the three temporary AJAX compatibility methods once all active plugin callers have migrated.
 ## 3.64.0 - 2026-11-18
 
 - Run Hexa field registration, storage, formatting, row loops and editors in Core with or without ACF installed. Preserve existing values, field keys and storage names.

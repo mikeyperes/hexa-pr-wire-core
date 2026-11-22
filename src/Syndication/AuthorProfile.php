@@ -2,6 +2,9 @@
 
 namespace HexaPrWire\Core\Syndication;
 
+use Hexa\PluginCore\PressReleaseSyndication\AuthorProtocol;
+use Hexa\PluginCore\PressReleaseSyndication\Protocol;
+
 use HexaPrWire\Core\Contracts\Module;
 use HexaPrWire\Core\Support\Activity;
 
@@ -11,10 +14,9 @@ use HexaPrWire\Core\Support\Activity;
  * Distributor; editing that user (or the admin button) pushes a refresh.
  */
 final class AuthorProfile implements Module {
-	public const LOGIN = 'hexaprwire';
+	public const LOGIN = AuthorProtocol::LOGIN;
 	public const PUSH_HOOK = 'hprwc_push_author';
 	public const LAST_PUSH_OPTION = 'hprwc_author_push_last';
-	private const URL_KEYS = [ 'facebook', 'instagram', 'linkedin', 'x', 'twitter', 'crunchbase', 'muckrack', 'website', 'the_org', 'calendly', 'youtube', 'tiktok', 'wikipedia' ];
 
 	public function __construct( private OutletClient $client ) {}
 
@@ -27,8 +29,8 @@ final class AuthorProfile implements Module {
 
 	public function routes(): void {
 		register_rest_route(
-			'hprwc/v1',
-			'/author',
+			Protocol::REST_NAMESPACE,
+			AuthorProtocol::ROUTE,
 			[
 				'methods'             => \WP_REST_Server::READABLE,
 				'callback'            => fn() => null === ( $profile = $this->profile() ) ? new \WP_Error( 'hprwc_author_missing', 'The Hexa PR Wire author does not exist.', [ 'status' => 404 ] ) : rest_ensure_response( $profile ),
@@ -43,25 +45,8 @@ final class AuthorProfile implements Module {
 		if ( ! $user instanceof \WP_User ) {
 			return null;
 		}
-		$urls = [];
-		foreach ( self::URL_KEYS as $key ) {
-			$url = esc_url_raw( trim( (string) get_user_meta( $user->ID, 'urls_' . $key, true ) ) );
-			if ( '' !== $url ) {
-				$urls[ 'twitter' === $key ? 'x' : $key ] = $url;
-			}
-		}
-		return [
-			'login'        => $user->user_login,
-			'display_name' => $user->display_name,
-			'first_name'   => (string) $user->first_name,
-			'last_name'    => (string) $user->last_name,
-			'email'        => $user->user_email,
-			'user_url'     => $user->user_url,
-			'description'  => (string) $user->description,
-			'urls'         => $urls,
-			'avatar_url'   => $this->avatar_url( (int) $user->ID ),
-			'updated_gmt'  => (string) get_user_meta( $user->ID, 'hprwc_author_updated_gmt', true ),
-		];
+		$urls = AuthorProtocol::urls( static fn( string $key ) => get_user_meta( $user->ID, 'urls_' . $key, true ) );
+		return AuthorProtocol::profile( $user, $urls, $this->avatar_url( (int) $user->ID ), (string) get_user_meta( $user->ID, 'hprwc_author_updated_gmt', true ) );
 	}
 
 	public function profile_updated( int $user_id ): void {
