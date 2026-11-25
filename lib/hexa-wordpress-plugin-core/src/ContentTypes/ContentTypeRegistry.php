@@ -79,7 +79,8 @@ final class ContentTypeRegistry implements ModuleInterface {
     private function rewrite_signature(): array {
         $types = [];
         foreach ( $this->resolved_definitions() as $definition ) {
-            if ( empty( $definition['enabled'] ) || 'external' === $definition['registration_mode'] ) {
+            // An external registrar can still use the original settings and URL signature.
+            if ( empty( $definition['enabled'] ) || ( 'external' === $definition['registration_mode'] && empty( $definition['retain_post_type_settings'] ) ) ) {
                 continue;
             }
             $args = $definition['post_type']['args'];

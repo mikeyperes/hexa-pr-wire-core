@@ -18,6 +18,8 @@
 
 ## Features
 
+- Existing post-type settings and rewrite signatures can stay in a feature plugin when a shared provider takes over registration.
+
 ### Press-release syndication
 
 - **Use:** Publish and read existing PR Wire feeds, deletion manifests and author profiles with shared formats. See [the wire contract](docs/press-release-syndication.md).
@@ -158,7 +160,7 @@
 - **Code:** `src/SnippetRegistry/` (docs: `docs/snippet-registry.md`)
 
 ### Fields (no ACF needed)
-- **Does:** Hexa WP Core registers, reads, formats and saves fields, row loops, options pages and editing forms. Editors support flexible-content rows, grouped and seamless clones, and map addresses and coordinates. Existing field keys, option names and WordPress metadata stay in place. Core uses its own field hooks and editor controls whether or not another field plugin is active.
+- **Does:** Hexa WP Core registers, reads, formats and saves fields, row loops, options pages and editing forms. Editors support flexible-content rows, grouped and seamless clones, and map addresses and coordinates. Existing field keys, option names and WordPress metadata stay in place. Core uses its own field hooks and editor controls whether or not another field plugin is active. Groups with `show_in_rest` enabled appear in the existing WordPress REST `acf` property with the resource’s access checks.
 - **Use:** `FieldGroups::add( $group )`, `Field::get()`/`update()`/`have_rows()`/`the_row()`/`get_sub_field()`, `OptionsPages::add()`, `Form::render()`/`Form::field()`, `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` while plugins load; field `developer_instructions` and group `client_view` (`Audience`).
 - **Extend:** `hexa_fields/load_field_groups`, `hexa_fields/*` (ACF-named hooks), `hexa_core_fields_client_view`, ACF's location filters.
 - **Code:** `src/Fields/` (docs: `docs/fields.md`); `bin/migrate-to-fields.php` moves a plugin off ACF calls.

@@ -37,7 +37,7 @@ final class ContentTypeRenderer {
     /** @param array<string,mixed> $definition */
     private function content_type_card( array $definition ): string {
         $post = $definition['post_type'];
-        $external = 'external' === $definition['registration_mode'];
+        $external = 'external' === $definition['registration_mode'] && empty( $definition['retain_post_type_settings'] );
         $supports = implode( ', ', (array) ( $post['args']['supports'] ?? [] ) ) ?: 'Default';
         $taxonomies = implode( ', ', array_map( 'esc_html', array_column( $definition['taxonomies'], 'key' ) ) );
         $header_toggle = CoreUi::toggle(

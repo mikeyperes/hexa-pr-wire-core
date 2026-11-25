@@ -29,6 +29,7 @@ final class ContentTypeDefinition {
             'owner'           => self::text( (string) ( $definition['owner'] ?? '' ) ),
             'description'     => self::text( (string) ( $definition['description'] ?? '' ) ),
             'registration_mode' => $registration_mode,
+            'retain_post_type_settings' => ! empty( $definition['retain_post_type_settings'] ),
             'enabled_default' => ! array_key_exists( 'enabled_default', $definition ) || (bool) $definition['enabled_default'],
             'legacy_enabled_option' => self::key( (string) ( $definition['legacy_enabled_option'] ?? '' ) ),
             'post_type'       => [

@@ -5,6 +5,7 @@ namespace Hexa\PluginCore\CoreBootstrap;
 use Hexa\PluginCore\CoreContracts\ModuleInterface;
 use Hexa\PluginCore\CoreContracts\PluginContextInterface;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageFleetSyncModule;
+use Hexa\PluginCore\Fields\RestFields;
 use Hexa\PluginCore\IntegrationTests\IntegrationTestRuntime;
 use Hexa\PluginCore\QuerySafety\StaticFrontPageQueryGuard;
 
@@ -47,6 +48,14 @@ final class CoreBootstrap {
         IntegrationTestRuntime::register_host( $this->context );
         if ( class_exists( \Hexa\PluginCore\Fields\Database::class ) ) {
             \Hexa\PluginCore\Fields\Database::boot();
+        }
+
+        // Bug: Core's native field engine stopped exposing registered groups through WordPress REST.
+        // Fix: Register each REST-enabled Core group through the native REST field provider.
+        // Why this way: WordPress supplies resource permissions while Core owns field definitions and storage.
+        // Test: tests/fields-rest.php.
+        if ( class_exists( RestFields::class ) ) {
+            RestFields::register();
         }
 
         foreach ( $this->modules as $module ) {
