@@ -6,6 +6,7 @@ use Hexa\PluginCore\WpAdminAjax\AjaxGuard;
 use HexaPrWire\Core\Contracts\Mailer;
 use HexaPrWire\Core\Contracts\Module;
 use HexaPrWire\Core\Support\Activity;
+use HexaPrWire\Core\Support\MailRecipients;
 
 final class DeliveryNotifications implements Module {
 	private const NONCE = 'hprwc_delivery_notifications';
@@ -38,10 +39,13 @@ final class DeliveryNotifications implements Module {
 
 	public function render( \WP_Post $post ): void {
 		$user_id = (int) ( get_post_meta( $post->ID, 'submitted_by', true ) ?: $post->post_author );
-		$recipients = $this->user_emails( $user_id );
+		$addresses = new MailRecipients( $this->user_emails( $user_id ), $this->settings->admin_emails() );
+		$recipients = $addresses->to();
+		$bcc = $addresses->bcc();
 		?>
 		<div class="hprwc-notification-box" data-hprwc-notifications data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( self::NONCE ) ); ?>">
 			<p><strong>Recipients:</strong><br><?php echo esc_html( $recipients ? implode( ', ', $recipients ) : 'No valid customer recipients' ); ?></p>
+			<p><strong>BCC:</strong><br><?php echo esc_html( $bcc ? implode( ', ', $bcc ) : 'None' ); ?></p>
 			<p><button type="button" class="button button-primary" data-hprwc-notify="live" <?php disabled( ! $recipients ); ?>>Email live links</button></p>
 			<p><button type="button" class="button" data-hprwc-notify="draft" <?php disabled( ! $recipients ); ?>>Notify draft update</button></p>
 			<p class="description" data-hprwc-notify-status aria-live="polite"></p>
@@ -75,12 +79,22 @@ final class DeliveryNotifications implements Module {
 		$message_key = 'live' === $type ? 'live_message' : 'draft_message';
 		$subject = $this->settings->interpolate( (string) $config[ $subject_key ], $post, $user ?: null );
 		$message = $this->settings->interpolate( (string) $config[ $message_key ], $post, $user ?: null );
-		$sent = $this->mailer->send( $recipients, $subject, $message, $this->settings->admin_emails() );
+		// Bug: the send confirmation omitted hidden copies and counted addresses before normalization.
+		// Fix: use the resolved addresses for both sending and the confirmation.
+		// Why this way: using one list prevents the confirmation from drifting from the mail headers.
+		$addresses = new MailRecipients( $recipients, $this->settings->admin_emails() );
+		$sent = $this->mailer->send( $addresses, $subject, $message );
 		Activity::add( ucfirst( $type ) . '-release notification ' . ( $sent ? 'sent.' : 'failed.' ), $sent ? 'success' : 'error', [ 'post_id' => $post_id, 'recipient_count' => count( $recipients ) ], 'notifications' );
 		if ( ! $sent ) {
 			wp_send_json_error( [ 'code' => 'mail_failed', 'message' => 'WordPress could not send the message.' ], 502 );
 		}
-		wp_send_json_success( [ 'message' => 'Notification sent to ' . count( $recipients ) . ' recipient(s).' ] );
+		$to = $addresses->to();
+		$bcc = $addresses->bcc();
+		$status = sprintf( 'Sent to %d recipient(s): %s + %d BCC', count( $to ), implode( ', ', $to ), count( $bcc ) );
+		if ( $bcc ) {
+			$status .= ': ' . implode( ', ', $bcc );
+		}
+		wp_send_json_success( [ 'message' => $status ] );
 	}
 
 	/** @return string[] */

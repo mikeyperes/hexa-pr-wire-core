@@ -3,15 +3,19 @@
 namespace HexaPrWire\Core\Infrastructure\WordPress;
 
 use HexaPrWire\Core\Contracts\Mailer;
+use HexaPrWire\Core\Support\MailRecipients;
 
 final class WordPressMailer implements Mailer {
 	/**
-	 * @param string[] $recipients
-	 * @param string[] $bcc
+	 * Sends a notification through WordPress.
+	 *
+	 * @param string[]|MailRecipients $recipients
+	 * @param string[] $bcc Raw BCC addresses when the recipients are passed as an array.
 	 */
-	public function send( array $recipients, string $subject, string $message, array $bcc = [] ): bool {
-		$recipients = $this->normalize_emails( $recipients );
-		$bcc = array_values( array_diff( $this->normalize_emails( $bcc ), $recipients ) );
+	public function send( array|MailRecipients $recipients, string $subject, string $message, array $bcc = [] ): bool {
+		$addresses = $recipients instanceof MailRecipients ? $recipients : new MailRecipients( $recipients, $bcc );
+		$recipients = $addresses->to();
+		$bcc = $addresses->bcc();
 		if ( ! $recipients ) {
 			return false;
 		}
@@ -32,10 +36,5 @@ final class WordPressMailer implements Mailer {
 		$signature = wp_kses_post( (string) get_option( 'options_email_signature', '' ) );
 		$separator = '' !== trim( $signature ) ? '<br><br>' : '';
 		return wp_mail( $recipients, sanitize_text_field( $subject ), wp_kses_post( $message . $separator . $signature ), $headers );
-	}
-
-	/** @param string[] $emails @return string[] */
-	private function normalize_emails( array $emails ): array {
-		return array_values( array_unique( array_filter( array_map( static fn( string $email ): string => strtolower( sanitize_email( $email ) ), $emails ), 'is_email' ) ) );
 	}
 }

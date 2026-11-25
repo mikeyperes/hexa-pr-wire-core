@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.24.10 - 2026-11-25
+
+- Shows BCC addresses in Customer Notifications and shows To and BCC counts and addresses after both notification actions.
+
 ## 2.24.2 - 2026-11-16
 
 - Removes rejected person rows from public search items and reindexes the result.

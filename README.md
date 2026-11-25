@@ -9,6 +9,11 @@ Versioned source-site ownership for Hexa PR Wire customers, publications, releas
 
 ## Features
 
+### Customer Notifications
+- **Does:** The release editor lists customer and BCC addresses. Both notification buttons show the counts and addresses used for the send.
+- **Use:** Open a release and select **Email live links** or **Notify draft update**. BCC uses the notification settings' admin emails and skips addresses already listed as customer recipients.
+- **Code:** `src/Workflow/DeliveryNotifications.php`.
+
 - Source feeds, deletion manifests and author profiles use the existing wire formats maintained in Hexa WP Core 3.67.0.
 
 - Force Sync uses WordPress checks for release-specific access and session validation. The plugin bundles Hexa WP Core 3.66.2.
